@@ -456,7 +456,15 @@
 
         .room {
           width: 120px;
+          font-size:0;
         }
+        
+        
+ .room::before {
+    content: attr(data-room-number); /* ✅ zeigt nur Nummer */
+    font-size: 12px;
+  }
+
       }
     </style>
   </head>
@@ -1496,7 +1504,13 @@
         t.innerHTML += h;
 
         rooms.forEach((r, row) => {
-          let tr = `<tr><td class='room'>${r}</td>`;
+          
+let roomNumber = r.split(" - ")[0];
+
+let tr = `<tr>
+  <td class='room' data-room-number="${roomNumber}">
+    ${r}
+  </td>`;
           for (let d = 0; d < 7; d++) {
             let weekStart = normalizeDate(startOfWeek(current));
             let cellDate = new Date(weekStart);
