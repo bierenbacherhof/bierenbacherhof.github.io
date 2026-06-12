@@ -412,12 +412,26 @@
 
 
  .booking {
-    top: 0 !important;
+    top: 2px !important;
     bottom: auto !important;
-    height: 100% !important;
+    height: calc(100% - 4px) !important;
    border-radius: 4px;
    font-size: 12px;
         }
+        
+        
+ .booking-layer {
+    top: 0;
+    bottom: auto !important;
+    height: 100% !important;
+  }
+        
+        
+ #calendar tbody tr {
+    position: relative !important;
+  }
+
+
 
 
         #controls {
