@@ -1,0 +1,3944 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hotel Belegungsplan</title>
+
+    <style>
+      body {
+        font-family: Arial;
+        visibility: hidden;
+        cursor: default;
+        margin: 0;
+        position: relative;
+        z-index: 0;
+      }
+
+      #controls {
+        padding: 10px;
+        position: sticky; /* ✅ DAS IST DER FIX */
+        top: 0; /* ✅ GANZ WICHTIG */
+        background: #fff;
+        width: 100%;
+        z-index: 2001;
+      }
+
+      table {
+        border-collapse: collapse;
+        border-spacing: 0;
+        width: 100%;
+      }
+      th,
+      td {
+        border: 1px solid #ccc;
+        position: relative;
+        height: 25px;
+        overflow: visible;
+      }
+
+      thead th {
+        position: sticky;
+        top: 94px; /* Höhe von #controls */
+        z-index: 1000;
+        background: #eee;
+      }
+
+      th {
+        background: transparent;
+        pointer-events: auto;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      td {
+        pointer-events: auto;
+      }
+      .room {
+        width: 180px;
+        background: #fafafa;
+        pointer-events: auto;
+        z-index: 1;
+        position: relative;
+      }
+
+      body.select-mode {
+        cursor: crosshair !important;
+      }
+
+      body.select-mode .booking,
+      body.select-mode .booking * {
+        cursor: crosshair !important;
+      }
+
+      .half::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        border-left: 1px dashed #bbb;
+      }
+      .half {
+        pointer-events: auto;
+      }
+      .booking {
+        position: absolute;
+        top: 3px;
+        bottom: 3px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        font-size: 14px;
+        gap: 4px;
+        overflow: hidden;
+        pointer-events: auto;
+        padding: 0 4px;
+        padding-left: 4px;
+        z-index: 100;
+        transition: padding-left 0.2s ease;
+        will-change: transform;
+        pointer-events: auto;
+      }
+
+      .booking-layer {
+        position: absolute;
+        top: 0;
+        overflow: visible;
+        left: 180px; /* exakt deine .room Breite */
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+      }
+
+      .booking.block {
+        background: repeating-linear-gradient(45deg, #444, #444 10px, #666 10px, #666 20px);
+        color: white;
+        font-weight: bold;
+      }
+
+      .booking .text {
+        flex: 1;
+        min-width: 0;
+        max-width: calc(100% - 30px);
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        transition: transform 0.2s ease;
+      }
+
+      .booking:hover .text {
+        transform: translateX(70px); /* Platz für Flags + Handle */
+      }
+
+      .flags {
+        display: flex;
+        gap: 4px;
+        margin-right: 6px;
+      }
+
+      .flag {
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        border-radius: 4px;
+        cursor: pointer;
+
+        /* ✅ Box immer sichtbar */
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(0, 0, 0, 0.6);
+
+        /* ✅ Standard = ausgegraut */
+        color: rgba(0, 0, 0, 0.3);
+      }
+
+      /* ✅ Aktiv */
+      .flag:not(.off) {
+        color: black;
+      }
+
+      /* optional: Hover schöner */
+      .flag:hover {
+        transform: scale(1.1);
+      }
+
+      .booking .flags,
+      .booking .drag-handle {
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
+
+      .booking .flags {
+        position: absolute;
+        left: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        gap: 4px;
+      }
+
+      .booking .drag-handle {
+        position: absolute;
+        left: 55px; /* 👈 Abstand NACH den Flags */
+        top: 50%;
+        transform: translateY(-50%);
+      }
+
+      /* ✅ Hover: sichtbar */
+      .booking:hover .flags,
+      .booking:hover .drag-handle {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+      }
+
+      td.blocked {
+        background: #ddd !important;
+        cursor: not-allowed !important;
+      }
+
+      .handle {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        opacity: 0.6;
+        width: 7px;
+        background: rgba(0, 0, 0, 0.5);
+        cursor: ew-resize;
+        z-index: 200;
+        pointer-events:auto;
+      }
+
+      .handle:hover {
+        opacity: 1;
+      }
+
+      .drag-handle {
+        cursor: grab;
+      }
+      .drag-handle:active {
+        cursor: grabbing;
+      }
+
+      tr {
+        position: relative;
+      }
+
+      .handle.right {
+        right: 0;
+        background: rgba(0, 0, 0, 0.5);
+      }
+
+      .handle.left {
+        left: 0;
+        background: rgba(0, 0, 0, 0.5);
+      }
+
+      .selected {
+        opacity: 0.5;
+      }
+
+      #calendar {
+        margin-top: 93px;
+      }
+
+      #palette {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #fff;
+        padding: 10px;
+        border: 1px solid #ccc;
+        display: none;
+        z-index: 15000;
+      }
+
+      #palette div {
+        width: 28px;
+        height: 28px;
+        display: inline-block;
+        margin: 4px;
+        cursor: pointer;
+      }
+
+      #legend {
+        padding: 10px;
+        font-size: 14px;
+        background: #fff;
+      }
+
+      .booking .price {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        white-space: nowrap;
+        pointer-events: none;
+        z-index: 10;
+      }
+
+      .booking-half {
+        position: absolute;
+        top: 3px;
+        bottom: 3px;
+        border-radius: 6px;
+        pointer-events: none;
+      }
+
+      .switch-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 10px;
+        font-size: 14px;
+      }
+
+      /* Switch */
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+      }
+
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #bbb;
+        transition: 0.2s;
+        border-radius: 24px;
+      }
+
+      .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.2s;
+        border-radius: 50%;
+      }
+
+      input:checked + .slider {
+        background-color: #2196f3;
+      }
+
+      input:checked + .slider:before {
+        transform: translateX(20px);
+      }
+
+      body.readonly .booking {
+        pointer-events: none;
+      }
+
+      body.readonly .booking.allowed {
+        pointer-events: auto;
+      }
+
+      body.readonly button:not(.allowed),
+      body.readonly input:not(.allowed) {
+        display: none !important;
+      }
+
+      #backupList button {
+        width: 100%;
+        margin-bottom: 6px;
+      }
+
+      #backupList::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      #stickyHeader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 2000;
+        background: #fff;
+      }
+
+      #logoutBtn {
+        position: absolute;
+        top: 10px;
+        right: 30px;
+      }
+
+      #logContent::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      #logContent::-webkit-scrollbar-thumb {
+        background: #bbb;
+        border-radius: 4px;
+      }
+
+      #backupList::-webkit-scrollbar-thumb {
+        background: #bbb;
+        border-radius: 4px;
+      }
+
+      @media (max-width: 768px) {
+        thead th {
+          top: 81px; /* angepasst */
+        }
+
+        #controls {
+          padding: 5px;
+          z-index: 1100;
+        }
+
+        #legend {
+          top: 40px;
+          font-size: 12px;
+          z-index: 1050;
+        }
+
+        /* 👇 HIER NEU */
+        #calendar {
+          margin-top: 81px;
+          overflow-x: auto;
+          position: relative;
+          max-width: 100%;
+        }
+
+        .room {
+          width: 120px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div
+      id="loginBox"
+      style="
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #fff;
+        padding: 20px;
+        border: 1px solid #ccc;
+        z-index: 50000;
+      ">
+      <h3>Login</h3>
+
+      <input type="text" id="login_email" placeholder="Benutzername" /><br /><br />
+      <input type="password" id="login_password" placeholder="Passwort" /><br /><br />
+
+      <button onclick="login()">Login</button>
+    </div>
+
+    <div id="stickyHeader">
+      <div id="controls">
+        <button onclick="changeWeek(-1)" class="allowed">◀ Woche</button>
+        <button onclick="changeWeek(1)" class="allowed">Woche ▶</button>
+        <button onclick="undo()" title="Rückgängig (Strg+Z)">↶</button>
+        <button onclick="openBackupProtected()">Backup</button>
+        <input id="backupUpload" type="file" onchange="importData(event)" style="display: none" />
+        <button onclick="openNewBooking()" style="position: absolute; left: 50%; transform: translateX(-50%)">
+          Neue Buchung anlegen
+        </button>
+
+        <button
+          id="logOverviewBtn"
+          onclick="openLogOverview()"
+          style="position: absolute; top: 10px; right: 90px; /* ✅ Abstand zum Logout */ display: none">
+          Verlauf
+        </button>
+
+        <button id="logoutBtn" onclick="logout()" class="allowed">Logout</button>
+
+        <div
+          id="backupList"
+          style="
+            position: fixed !important;
+
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 20px;
+
+            max-height: 400px;
+            min-width: 300px;
+            max-width: 400px;
+            overflow-y: auto;
+            overflow-x: auto;
+
+            display: none;
+            z-index: 10001;
+
+            border-radius: 10px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+          "></div>
+
+        <div
+          id="logOverview"
+          style="
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #fff;
+            padding: 20px;
+            border: 1px solid #ccc;
+            max-height: 500px;
+            width: 500px;
+            overflow: auto;
+            display: none;
+            z-index: 20000;
+            border-radius: 10px;
+          ">
+          <b>Verlauf</b><br /><br />
+
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px">
+            <input id="logUserFilter" placeholder="User" />
+
+            <input id="logRoomFilter" placeholder="Zimmer" />
+
+            <input id="logDateFrom" type="date" />
+            <input id="logDateTo" type="date" />
+
+            <button onclick="applyLogFilter()">Filtern</button>
+            <button onclick="resetLogFilter()">Reset</button>
+          </div>
+
+          <div id="logOverviewContent"></div>
+
+          <br />
+          <button onclick="closeLogOverview()">Schließen</button>
+        </div>
+
+        <div
+          id="overlay"
+          style="
+            position: fixed !important;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.2);
+            display: none;
+            z-index: 10000;
+          "></div>
+      </div>
+      <div id="legend"></div>
+    </div>
+
+    <table id="calendar"></table>
+    <div id="palette"></div>
+    <div
+      id="bookingForm"
+      style="
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #fff;
+        padding: 20px;
+        border: 1px solid #ccc;
+        z-index: 200;
+        display: none;
+        width: 300px;
+      ">
+      <h3 id="formTitle">Neue Buchung</h3>
+
+      <div class="switch-wrapper">
+        <span>Einzel</span>
+
+        <label class="switch">
+          <input type="checkbox" id="toggleGroup" />
+          <span class="slider"></span>
+        </label>
+
+        <span>Gruppe</span>
+      </div>
+
+      <div id="singleForm">
+        <label>Zimmerkategorie</label><br />
+        <select id="f_guests"></select
+        ><br /><br />
+
+        <label>Name</label><br />
+        <input type="text" id="f_name" /><br /><br />
+
+        <label>Anreise</label><br />
+        <input type="date" id="f_start" /><br /><br />
+
+        <label>Abreise</label><br />
+        <input type="date" id="f_end" /><br /><br />
+
+        <label>Preis (€)</label><br />
+        <input type="text" id="f_price" /><br /><br />
+
+        <label>Kommentar</label><br />
+        <input type="text" id="f_comment" /><br /><br />
+
+        <label>Gruppe</label><br />
+        <select id="f_group"></select
+        ><br /><br />
+
+        <button onclick="saveBooking()">Speichern</button>
+        <button onclick="closeForm()">Abbrechen</button>
+      </div>
+      <div id="groupForm" style="display: none">
+        <label>Gruppenname</label><br />
+        <input type="text" id="g_name" required /><br /><br />
+
+        <div id="groupCategories"></div>
+
+        <br />
+
+        <label>Anreise</label><br />
+        <input type="date" id="g_start" required /><br /><br />
+
+        <label>Abreise</label><br />
+        <input type="date" id="g_end" required /><br /><br />
+
+        <button onclick="submitGroupBooking()">Weiter</button>
+      </div>
+    </div>
+
+    <div
+      id="bookingInfo"
+      style="
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #fff;
+        padding: 20px;
+        border: 1px solid #ccc;
+        z-index: 300;
+        display: none;
+        width: 320px;
+      ">
+      <h3>Buchungsdetails</h3>
+
+      <div id="infoContent"></div>
+
+      <br />
+
+      <button id="logBtn" onclick="toggleLog()" style="display: none">Verlauf</button>
+
+      <br /><br />
+
+      <div
+        id="logContent"
+        style="
+          display: none;
+          max-height: 220px;
+          overflow-y: auto;
+          overflow-x: hidden;
+          border-top: 1px solid #ccc;
+          padding-top: 8px;
+          padding-right: 6px;
+          margin-top: 6px;
+          background: #fafafa;
+          border-radius: 6px;
+        "></div>
+
+      <br />
+      <button onclick="closeInfo()">Schließen</button>
+    </div>
+
+    <script>
+      const rooms = [
+        "101 - DZ B",
+        "102 - DZ B",
+        "103 - DZ B",
+        "104 - DZ B",
+        "201 - DZ B",
+        "202 - DZ B",
+        "203 - DZ B",
+        "204 - DZ B",
+        "205 - DZ B",
+        "206 - kl. DZ",
+        "207 - kl. DZ",
+        "208 - kl. DZ",
+        "209 - kl. DZ",
+        "210 - kl. DZ",
+        "212 - DZ B",
+        "214 - DZ B",
+        "216 - DZ/4",
+        "218 - DZ/4",
+        "219 - DZ",
+        "301 - DZ B",
+        "302 - DZ/3 Twin",
+        "303 - DZ",
+        "304 - EZ",
+        "305 - DZ",
+        "306 - kl. DZ",
+        "307 - kl. DZ",
+        "308 - kl. DZ",
+        "309 - kl. DZ",
+        "310 - kl. DZ",
+        "311 - DZ B",
+        "312 - DZ B",
+        "314 - EZ",
+        "315 - DZ",
+        "316 - EZ",
+        "317 - DZ/3",
+        "318 - kl. EZ",
+        "319 - kl. EZ",
+        "50 - DZ B",
+        "51 - DZ B",
+        "52 - EZ B",
+        "53 - EZ B",
+        "54 - DZ B",
+        "55 - DZ B",
+        "56 - kl. DZ Twin",
+        "57 - kl. DZ Twin",
+        "58 - EZ B",
+        "59 - EZ B",
+        "60 - DZ B",
+        "61 - DZ B",
+        "62 - kl. DZ Twin",
+        "63 - kl. DZ Twin",
+        "64 - DZ/3",
+        "65 - DZ/4 B",
+        "66 - DZ B",
+        "67 - kl. EZ B",
+        "68 - kl EZ",
+        "69 - DZ",
+        "70 - DZ/3"
+      ];
+
+      const SUPABASE_URL = "https://ansbdavzifbfjqbzdafn.supabase.co";
+      const SUPABASE_KEY = "sb_publishable_pkEDopMJHBRRlQvc-j3F7Q_80FvJ2hC";
+
+      const supa = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+      let isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+
+      let current = new Date();
+      let bookings = [];
+      let selected = [];
+      let f = false;
+      let drag = null;
+      let newBookingRow = null;
+      let resizing = false;
+      let editIndex = null;
+      let history = [];
+      let isRestoring = false;
+      let isUndoing = false;
+      let isDeleting = false;
+      let justDragged = false;
+      let clickTimer = null;
+      let isGroupCreating = false;
+      let currentRole = "read";
+      let userMap = {};
+      let allLogs = [];
+      let isDraggingUpdate = false;
+
+      history = JSON.parse(localStorage.getItem("hotel_history") || "[]");
+      const BACKUP_PASSWORD = "726435"; // ← hier dein Passwort
+
+      async function login() {
+        let username = document.getElementById("login_email").value.trim();
+        let password = document.getElementById("login_password").value;
+
+        // ✅ 1. Username → Email holen
+        const { data, error } = await supa.from("user_roles").select("email").ilike("username", username).single();
+
+        if (error || !data) {
+          alert("Benutzer nicht gefunden");
+          console.error(error);
+          return;
+        }
+
+        // ✅ 2. Login mit Email + Passwort
+        const { error: loginError } = await supa.auth.signInWithPassword({
+          email: data.email,
+          password: password
+        });
+
+        if (loginError) {
+          alert("Falsches Passwort");
+          console.error(loginError);
+          return;
+        }
+
+        // ✅ 3. Reload
+        location.reload();
+      }
+
+      function applyLogFilter() {
+        let userFilter = document.getElementById("logUserFilter").value.toLowerCase();
+        let roomFilter = document.getElementById("logRoomFilter").value.toLowerCase();
+
+        let from = document.getElementById("logDateFrom").value;
+        let to = document.getElementById("logDateTo").value;
+
+        let filtered = allLogs.filter((log) => {
+          let userName = (userMap[log.user_id] || "").toLowerCase();
+          let room = (log.room || "").toLowerCase();
+
+          // ✅ USER
+          if (userFilter && !userName.includes(userFilter)) return false;
+
+          // ✅ ROOM
+          if (roomFilter && !room.includes(roomFilter)) return false;
+
+          // ✅ DATE FROM
+          if (from) {
+            let d = new Date(log.created_at);
+            if (d < new Date(from)) return false;
+          }
+
+          // ✅ DATE TO
+          if (to) {
+            let d = new Date(log.created_at);
+            let toDate = new Date(to);
+            toDate.setHours(23, 59, 59);
+            if (d > toDate) return false;
+          }
+
+          return true;
+        });
+
+        renderLogList(filtered);
+      }
+
+      function renderLogList(logs) {
+        const content = document.getElementById("logOverviewContent");
+
+        if (!logs.length) {
+          content.innerHTML = "<i>Keine Einträge gefunden</i>";
+          return;
+        }
+
+        let html = "";
+
+        logs.forEach((log) => {
+          let userName = userMap[log.user_id] || "Unbekannt";
+          let room = log.room || "-";
+
+          let dt = new Date(log.created_at + "Z");
+          let time = dt.toLocaleString("de-DE");
+
+          html += `
+      <div style="margin-bottom:8px;border-bottom:1px solid #eee;padding:5px">
+        <small>
+          <b>${room}</b><br>
+          ${userName} – ${time}<br>
+          ${formatLogText(log)}
+        </small>
+      </div>
+    `;
+        });
+        content.innerHTML = html;
+      }
+
+      function resetLogFilter() {
+        document.getElementById("logUserFilter").value = "";
+        document.getElementById("logRoomFilter").value = "";
+        document.getElementById("logDateFrom").value = "";
+        document.getElementById("logDateTo").value = "";
+
+        renderLogList(allLogs);
+      }
+
+      async function openLogOverview() {
+        const box = document.getElementById("logOverview");
+        const content = document.getElementById("logOverviewContent");
+
+        content.innerHTML = "Lade...";
+        box.style.display = "block";
+
+        const { data: logs, error } = await supa
+          .from("booking_logs")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(500);
+
+        if (error) {
+          content.innerHTML = "Fehler beim Laden";
+          console.error(error);
+          return;
+        }
+
+        allLogs = logs || [];
+
+        renderLogList(allLogs); // ✅ HIER einmal anzeigen
+      }
+
+      function formatLogText(log) {
+        switch (log.field) {
+          case "paid":
+            return log.new_value === "true" ? "💰 bezahlt" : "💰 nicht bezahlt";
+
+          case "checkin":
+            return log.new_value === "true" ? "🏨 Check-in" : "🏨 Check-in entfernt";
+
+          case "start":
+            return `📅 Anreise geändert`;
+
+          case "end":
+            return `📅 Abreise geändert`;
+
+          case "name":
+            return `✏️ Name geändert`;
+
+          case "price":
+            return `💲 Preis geändert`;
+
+          case "comment":
+            return `💬 Kommentar geändert`;
+
+          case "group":
+            return `👥 Gruppe geändert`;
+
+          case "booking":
+            if (log.new_value === "created") return "➕ Buchung erstellt";
+            if (log.new_value === "deleted") return "🗑️ Buchung gelöscht";
+            break;
+
+          default:
+            return `${log.field}`;
+        }
+      }
+      function closeLogOverview() {
+        document.getElementById("logOverview").style.display = "none";
+      }
+
+      async function loadUserMap() {
+        const { data, error } = await supa.from("user_roles").select("id, username");
+
+        if (error) {
+          console.error("Fehler beim Laden der User", error);
+          return;
+        }
+
+        userMap = {};
+
+        data.forEach((u) => {
+          userMap[u.id] = u.username;
+        });
+
+        console.log("UserMap:", userMap);
+      }
+
+      function openNewBooking() {
+        editIndex = null;
+        newBookingRow = null; // ❗ wichtig → noch kein Zimmer
+
+        document.getElementById("toggleGroup").checked = false;
+        document.getElementById("singleForm").style.display = "block";
+        document.getElementById("groupForm").style.display = "none";
+        document.querySelector(".switch-wrapper").style.display = "flex";
+
+        document.getElementById("formTitle").innerText = "Neue Buchung";
+
+        document.getElementById("f_name").value = "";
+        document.getElementById("f_price").value = "";
+        document.getElementById("f_comment").value = "";
+
+        // ✅ Heute +1 als Default
+        let start = new Date();
+        let end = new Date();
+        end.setDate(start.getDate() + 1);
+
+        document.getElementById("f_start").value = start.toISOString().slice(0, 10);
+        document.getElementById("f_end").value = end.toISOString().slice(0, 10);
+
+        // ✅ Zimmerkategorie erstmal generisch
+        let select = document.getElementById("f_guests");
+        select.innerHTML = `
+    <option value="EZ">EZ</option>
+    <option value="DZ">DZ</option>
+    <option value="3er">3er</option>
+    <option value="4er">4er</option>
+    <option value="EZ B">EZ B</option>
+    <option value="DZ B">DZ B</option>
+    <option value="BLOCK">🚫 Block</option>
+  `;
+
+        document.getElementById("bookingForm").style.display = "block";
+      }
+
+      function hasFreePreferredRoom(start, end, type) {
+        return rooms.some((room, row) => {
+          if (!isThreeDigitRoom(room)) return false;
+
+          if (overlapDates(row, start, end, -1)) return false;
+
+          // ✅ Kategorie prüfen
+          let allowed = getGuestOptions(room);
+          if (!allowed.includes(type)) return false;
+
+          // ✅ Jetzt auch EZ/DZ Speziallogik beachten
+
+          // EZ
+          if (type === "EZ") {
+            let isPref = isPreferredEZRoom(room);
+            let hasPref = hasFreePreferredEZ(start, end);
+
+            if (hasPref && !isPref) return false;
+          }
+
+          // DZ
+          if (type === "DZ") {
+            let levels = getFreeDZLevels(start, end);
+
+            if (levels.normalFree && !isNormalDZ(room)) return false;
+            if (!levels.normalFree && levels.deluxeFree && !isDeluxeDZ(room)) return false;
+            if (!levels.normalFree && !levels.deluxeFree && levels.multiFree && !isMultiDZ(room)) return false;
+            if (!levels.normalFree && !levels.deluxeFree && !levels.multiFree && !isSmallDZ(room)) return false;
+          }
+
+          return true;
+        });
+      }
+
+      function hasFreePreferredEZ(start, end) {
+        return rooms.some((room, row) => {
+          if (!isPreferredEZRoom(room)) return false;
+
+          return !overlapDates(row, start, end, -1);
+        });
+      }
+
+      function getGuestOptions(roomName) {
+        let type = roomName.split(" - ")[1] || "";
+
+        let options = ["EZ"];
+
+        // ✅ EZ
+        if (type.includes("EZ")) {
+          // bleibt nur EZ
+        }
+
+        if (type.includes("EzD")) {
+          options.push("DZ");
+        }
+
+        // ✅ EZ B
+        if (type.includes("EZ B")) {
+          options = ["EZ", "EZ B"];
+        }
+
+        // ✅ DZ
+        else if (type.includes("DZ")) {
+          options.push("DZ");
+        }
+
+        // ✅ DZ B
+        if (type.includes("DZ B")) {
+          options = ["EZ", "DZ", "EZ B", "DZ B"];
+        }
+
+        // ✅ 3er
+        if (type.includes("3")) {
+          options = ["EZ", "DZ", "3er"];
+        }
+
+        // ✅ 3er B
+        if (type.includes("3") && type.includes("B")) {
+          options = ["EZ", "DZ", "3er", "EZ B", "DZ B"];
+        }
+
+        // ✅ 4er
+        if (type.includes("4")) {
+          options = ["EZ", "DZ", "3er", "4er"];
+        }
+
+        // ✅ 4er B
+        if (type.includes("4") && type.includes("B")) {
+          options = ["EZ", "DZ", "3er", "4er", "EZ B", "DZ B"];
+        }
+
+        return options;
+      }
+
+      async function logChange(bookingId, field, oldValue, newValue) {
+        const user = (await supa.auth.getUser()).data.user;
+        if (!user) return;
+
+        // ✅ passende Buchung finden
+        const b = bookings.find((x) => x.id === bookingId);
+
+        await supa.from("booking_logs").insert([
+          {
+            booking_id: bookingId,
+            user_id: user.id,
+            action: "update",
+            field: field,
+            old_value: oldValue?.toString() || "",
+            new_value: newValue?.toString() || "",
+            room: b ? rooms[b.row] : "-" // ✅ HIER
+          }
+        ]);
+      }
+
+      function buildGroupForm() {
+        let container = document.getElementById("groupCategories");
+        container.innerHTML = "";
+
+        let types = ["EZ", "DZ", "3er", "4er", "EZ B", "DZ B"];
+
+        types.forEach((t) => {
+          let row = document.createElement("div");
+          row.style.display = "flex";
+          row.style.gap = "6px";
+          row.style.marginBottom = "5px";
+
+          row.innerHTML = `
+      <input type="number" min="0" placeholder="Anz" style="width:60px" data-type="${t}" class="g_count">
+      <div style="width:100px">${t}</div>
+      <input type="text" placeholder="Preis €" style="width:80px" data-type="${t}" class="g_price">
+    `;
+
+          container.appendChild(row);
+        });
+      }
+
+      function collectGroupData() {
+        let counts = document.querySelectorAll(".g_count");
+        let prices = document.querySelectorAll(".g_price");
+
+        let data = [];
+
+        counts.forEach((c) => {
+          let val = Number(c.value);
+
+          if (val > 0) {
+            let type = c.dataset.type;
+            let price = [...prices].find((p) => p.dataset.type === type).value;
+
+            data.push({
+              type,
+              count: val,
+              price
+            });
+          }
+        });
+
+        return data;
+      }
+
+      async function submitGroupBooking() {
+        let name = document.getElementById("g_name").value.trim();
+        let startVal = document.getElementById("g_start").value;
+        let endVal = document.getElementById("g_end").value;
+
+        // ✅ Pflichtfelder prüfen
+        if (!name) {
+          return alert("Bitte Gruppenname eingeben");
+        }
+
+        if (!startVal) {
+          return alert("Bitte Anreise wählen");
+        }
+
+        if (!endVal) {
+          return alert("Bitte Abreise wählen");
+        }
+
+        let start = new Date(startVal);
+        let end = new Date(endVal);
+
+        if (end <= start) {
+          return alert("Abreise muss nach Anreise liegen");
+        }
+
+        // ✅ Kategorien prüfen
+        let data = collectGroupData();
+
+        if (data.length === 0) {
+          return alert("Bitte mindestens eine Zimmerkategorie auswählen");
+        }
+
+        // ✅ Formular schließen
+        document.getElementById("bookingForm").style.display = "none";
+
+        openColorPicker(data, start, end);
+      }
+
+      function openColorPicker(data, start, end) {
+        // ✅ Overlay hinzufügen
+        let overlay = document.createElement("div");
+        overlay.id = "pickerOverlay";
+
+        overlay.style = `
+  position:fixed;
+  top:0;
+  left:0;
+  right:0;
+  bottom:0;
+  background:rgba(0,0,0,0.3);
+  z-index:29999;
+`;
+
+        document.body.appendChild(overlay);
+
+        let used = getUsedColorsInRange(start, end);
+
+        let blocked = ["yellow", "pink", "orange"];
+
+        let freeColors = colors.filter((c) => !used.has(c) && !blocked.includes(c));
+
+        let box = document.createElement("div");
+        box.id = "colorPicker";
+
+        box.style = `
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    background:#fff;
+    padding:20px;
+    border:1px solid #ccc;
+    z-index:30000;
+    text-align:center;
+    border-radius:10px;
+  `;
+
+        let html = "<b>Farbe wählen</b><br><br>";
+
+        freeColors.forEach((c) => {
+          html += `
+      <div class="colorChoice"
+        data-color="${c}"
+        style="
+          display:inline-block;
+          width:30px;
+          height:30px;
+          background:${c};
+          margin:5px;
+          cursor:pointer;
+          border-radius:6px;
+        ">
+      </div>
+    `;
+        });
+
+        html += `
+    <br><br>
+    <button id="colorBack">← Zurück</button>
+  `;
+
+        box.innerHTML = html;
+        document.body.appendChild(box);
+
+        // ✅ Klick auf Farbe
+        document.querySelectorAll(".colorChoice").forEach((el) => {
+          el.onclick = () => {
+            let color = el.dataset.color;
+            document.getElementById("colorPicker").remove();
+            document.getElementById("pickerOverlay")?.remove();
+
+            startPlacementMode(data, start, end, color);
+          };
+        });
+
+        // ✅ Zurück Button
+        document.getElementById("colorBack").onclick = () => {
+          document.getElementById("colorPicker").remove();
+          document.getElementById("pickerOverlay")?.remove();
+
+          document.getElementById("bookingForm").style.display = "block";
+        };
+      }
+
+      let groupPlacement = null;
+
+      function startPlacementMode(data, start, end, color) {
+        saveHistory();
+
+        isGroupCreating = true;
+
+        let groupName = document.getElementById("g_name").value.trim();
+
+        groupPlacement = {
+          data,
+          start,
+          end,
+          color,
+          name: groupName, // ✅ NEU
+          placed: []
+        };
+        render();
+        updatePlacementBox();
+      }
+
+      function updatePlacementBox() {
+        let box = document.getElementById("placementBox");
+
+        // wenn nicht existiert → neu erstellen
+        if (!box) {
+          box = document.createElement("div");
+          box.id = "placementBox";
+
+          box.style = `
+      position:fixed;
+      top:80px;
+      right:20px;
+      padding:10px;
+      z-index:20000;
+      border-radius:8px;
+      min-width:120px;
+      font-size:14px;
+    `;
+
+          document.body.appendChild(box);
+        }
+
+        box.style.background = groupPlacement.color;
+
+        let html = "<b>Zimmer auswählen:</b><br>";
+
+        groupPlacement.data.forEach((d) => {
+          html += `${d.type}: <b>${d.count}</b><br>`;
+        });
+
+        box.innerHTML = html;
+      }
+
+      function normalizeDate(d) {
+        let x = new Date(d);
+        x.setHours(12, 0, 0, 0); // 👉 wichtig!
+        return x;
+      }
+
+      function startOfWeek(d) {
+        let x = new Date(d);
+        let day = x.getDay() || 7;
+        if (day != 1) x.setDate(x.getDate() - day + 1);
+        return x;
+      }
+
+      function getCurrentDZLevel(start, end) {
+        let levels = [
+          { check: (r) => isThreeDigitRoom(r) && isNormalDZ(r) },
+          { check: (r) => isThreeDigitRoom(r) && isDeluxeDZ(r) },
+          { check: (r) => isThreeDigitRoom(r) && isMultiDZ(r) },
+          { check: (r) => isThreeDigitRoom(r) && isSmallDZ(r) },
+
+          { check: (r) => !isThreeDigitRoom(r) && isNormalDZ(r) },
+          { check: (r) => !isThreeDigitRoom(r) && isDeluxeDZ(r) },
+          { check: (r) => !isThreeDigitRoom(r) && isMultiDZ(r) },
+          { check: (r) => !isThreeDigitRoom(r) && isSmallDZ(r) }
+        ];
+
+        // 👉 erste verfügbare Kategorie finden
+        for (let lvl of levels) {
+          let found = rooms.some((room, row) => {
+            if (!lvl.check(room)) return false;
+
+            if (overlapDates(row, start, end, -1)) return false;
+
+            return true;
+          });
+
+          if (found) {
+            return lvl.check;
+          }
+        }
+
+        return null;
+      }
+
+      async function loadUserRole() {
+        const {
+          data: { user }
+        } = await supa.auth.getUser();
+
+        if (!user) {
+          currentRole = "read";
+          return;
+        }
+
+        const { data, error } = await supa.from("user_roles").select("role").eq("id", user.id).single();
+
+        if (error || !data) {
+          console.warn("Keine Rolle gefunden → fallback read");
+          currentRole = "read";
+        } else {
+          currentRole = data.role;
+        }
+
+        console.log("Rolle geladen:", currentRole);
+      }
+
+      function canEdit() {
+        return currentRole === "admin" || currentRole === "staff";
+      }
+
+      function isEditAllowed() {
+        if (isAdmin()) return true; // ✅ Admin darf immer
+
+        return !isMobile && canEdit(); // ✅ andere nur Desktop
+      }
+
+      function isAdmin() {
+        return currentRole === "admin";
+      }
+
+      async function checkAuth() {
+        document.body.style.visibility = "hidden"; // ✅ sofort verstecken
+
+        const {
+          data: { session }
+        } = await supa.auth.getSession();
+
+        if (session) {
+          document.getElementById("loginBox").style.display = "none";
+
+          await loadUserRole();
+          await loadUserMap();
+
+          if (isAdmin()) {
+            // ✅ Admin darf immer Upload (egal ob Desktop oder Mobile)
+            document.getElementById("backupUpload").style.display = "inline-block";
+
+            // ✅ Log nur auf Desktop
+            document.getElementById("logOverviewBtn").style.display = isMobile ? "none" : "inline-block";
+          } else {
+            // ❌ kein Admin → GAR NICHTS
+            document.getElementById("backupUpload").style.display = "none";
+            document.getElementById("logOverviewBtn").style.display = "none";
+          }
+
+          if (currentRole === "read" || isMobile) {
+            document.body.classList.add("readonly");
+          } else {
+            document.body.classList.remove("readonly");
+          }
+
+          await loadData();
+        } else {
+          document.getElementById("loginBox").style.display = "block";
+          render();
+        }
+
+        // ✅ GANZ AM ENDE sichtbar machen
+        document.body.style.visibility = "visible";
+      }
+
+      checkAuth();
+
+      async function logout() {
+        await supa.auth.signOut();
+        location.reload();
+      }
+
+      function render() {
+        let t = document.getElementById("calendar");
+        t.innerHTML = "";
+        let s = startOfWeek(current);
+
+        let h = "<thead><tr><th>Zimmer</th>";
+
+        for (let i = 0; i < 7; i++) {
+          let d = new Date(s);
+          d.setDate(s.getDate() + i);
+          h += `<th>${["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"][i]}<br>${d.toLocaleDateString()}</th>`;
+        }
+
+        h += "</tr></thead><tbody>";
+        t.innerHTML += h;
+
+        rooms.forEach((r, row) => {
+          let tr = `<tr><td class='room'>${r}</td>`;
+          for (let d = 0; d < 7; d++) {
+            let weekStart = normalizeDate(startOfWeek(current));
+            let cellDate = new Date(weekStart);
+            cellDate.setDate(weekStart.getDate() + d);
+
+            let blocked = false;
+
+            if (groupPlacement || singlePlacement) {
+              let start = groupPlacement ? groupPlacement.start : singlePlacement.start;
+              let end = groupPlacement ? groupPlacement.end : singlePlacement.end;
+
+              blocked = overlapDates(row, start, end, -1);
+
+              let roomName = rooms[row];
+              let allowedTypes = getGuestOptions(roomName);
+
+              let typeAllowed = true;
+
+              if (groupPlacement) {
+                typeAllowed = groupPlacement.data.some((d) => {
+                  return d.count > 0 && canUseRoom(roomName, groupPlacement.start, groupPlacement.end, d.type);
+                });
+              } else if (singlePlacement) {
+                typeAllowed = canUseRoom(roomName, singlePlacement.start, singlePlacement.end, singlePlacement.guests);
+              }
+
+              if (!typeAllowed) {
+                blocked = true;
+              }
+
+              if (!typeAllowed) {
+                blocked = true;
+              }
+            }
+
+            tr += `<td class='half ${blocked ? "blocked" : ""}'
+            onclick='${blocked ? "" : `add(${row},${d})`}'>
+         </td>`;
+          }
+          t.innerHTML += tr + "</tr>";
+        });
+        t.innerHTML += "</tbody>";
+
+        document.querySelectorAll("#calendar tbody tr").forEach((tr) => {
+          // verhindern doppelt
+          if (tr.querySelector(".booking-layer")) return;
+
+          let layer = document.createElement("div");
+          layer.className = "booking-layer";
+
+          tr.appendChild(layer);
+        });
+
+        draw();
+        drawLegend();
+      }
+
+      function getCurrent3erLevel(start, end) {
+        let levels = [
+          { check: (r) => isThreeDigitRoom(r) && is3erRoom(r) },
+          { check: (r) => !isThreeDigitRoom(r) && is3erRoom(r) }
+        ];
+
+        for (let lvl of levels) {
+          let found = rooms.some((room, row) => {
+            if (!lvl.check(room)) return false;
+
+            if (overlapDates(row, start, end, -1)) return false;
+
+            return true;
+          });
+
+          if (found) {
+            return lvl.check;
+          }
+        }
+
+        return null;
+      }
+
+      function is3erRoom(room) {
+        let type = getRoomType(room);
+        return type.includes("3");
+      }
+
+      function canUseRoom(roomName, start, end, requestedType) {
+        if (requestedType === "BLOCK") {
+          return true; // ✅ immer erlaubt
+        }
+
+        let allowedTypes = getGuestOptions(roomName);
+
+        // ❌ falsche Kategorie
+        if (!allowedTypes.includes(requestedType)) {
+          return false;
+        }
+
+        // ✅ EZ LOGIK
+        if (requestedType === "EZ") {
+          let levelCheck = getCurrentEZLevel(start, end);
+
+          if (!levelCheck) return false;
+
+          return levelCheck(roomName);
+        }
+
+        // ✅ DZ LOGIK (MIT PHASEN!)
+        if (requestedType === "DZ") {
+          let levelCheck = getCurrentDZLevel(start, end);
+
+          if (!levelCheck) return false;
+
+          return levelCheck(roomName);
+        }
+
+        if (requestedType === "3er") {
+          let levelCheck = getCurrent3erLevel(start, end);
+
+          if (!levelCheck) return false;
+
+          return levelCheck(roomName);
+        }
+
+        if (requestedType === "4er") {
+          let levelCheck = getCurrent4erLevel(start, end);
+
+          if (!levelCheck) return false;
+
+          return levelCheck(roomName);
+        }
+        // ✅ alles andere (3er, 4er, etc.)
+        return true;
+      }
+
+      function getCurrent4erLevel(start, end) {
+        let levels = [
+          { check: (r) => isThreeDigitRoom(r) && isFourRoom(r) },
+          { check: (r) => !isThreeDigitRoom(r) && isFourRoom(r) }
+        ];
+
+        for (let lvl of levels) {
+          let found = rooms.some((room, row) => {
+            if (!lvl.check(room)) return false;
+
+            if (overlapDates(row, start, end, -1)) return false;
+
+            return true;
+          });
+
+          if (found) {
+            return lvl.check;
+          }
+        }
+
+        return null;
+      }
+
+      function isFourRoom(room) {
+        let type = getRoomType(room);
+        return type.includes("4");
+      }
+
+      function getCurrentEZLevel(start, end) {
+        let levels = [
+          { check: (r) => isThreeDigitRoom(r) && isNormalEZ(r) },
+          { check: (r) => isThreeDigitRoom(r) && isDeluxeEZ(r) },
+          { check: (r) => isThreeDigitRoom(r) && isSmallEZ(r) },
+
+          { check: (r) => !isThreeDigitRoom(r) && isNormalEZ(r) },
+          { check: (r) => !isThreeDigitRoom(r) && isDeluxeEZ(r) },
+          { check: (r) => !isThreeDigitRoom(r) && isSmallEZ(r) }
+        ];
+
+        for (let lvl of levels) {
+          let found = rooms.some((room, row) => {
+            if (!lvl.check(room)) return false;
+
+            if (overlapDates(row, start, end, -1)) return false;
+
+            return true;
+          });
+
+          if (found) {
+            return lvl.check;
+          }
+        }
+
+        return null;
+      }
+
+      function saveHistory() {
+        // ✅ HIER GANZ AM ANFANG (das meintest du)
+        try {
+          if (isGroupCreating) return;
+
+          const snapshot = {
+            bookings: JSON.parse(JSON.stringify(bookings)),
+            current: current.toISOString()
+          };
+
+          history.push(snapshot);
+
+          // ✅ maximale Größe begrenzen
+          if (history.length > 10) {
+            history = history.slice(-10);
+          }
+
+          // ✅ speichern
+          localStorage.setItem("hotel_history", JSON.stringify(history));
+        } catch (e) {
+          console.warn("⚠️ saveHistory Error – wird ignoriert", e);
+
+          // ✅ NOTFALL: History komplett löschen
+          history = [];
+          localStorage.removeItem("hotel_history");
+        }
+      }
+
+      async function undo() {
+        if (history.length === 0) return;
+
+        let last;
+
+        do {
+          last = history.pop();
+        } while (history.length && JSON.stringify(last.bookings) === JSON.stringify(bookings));
+
+        if (!last) return;
+
+        bookings = last.bookings || [];
+        current = last.current ? new Date(last.current) : new Date();
+
+        render();
+
+        // ✅ NEU: DB synchronisieren
+        isUndoing = true;
+
+        // IDs entfernen (wichtig für Insert)
+        let cleanBookings = bookings.map((b) => {
+          let copy = { ...b };
+          delete copy.id;
+          return copy;
+        });
+
+        // DB komplett neu setzen
+        await supa.from("bookings").delete().neq("id", 0);
+        await supa.from("bookings").insert(cleanBookings);
+
+        isUndoing = false;
+      }
+
+      function hasAnyFree3DigitDZ(start, end) {
+        return rooms.some((room, row) => {
+          if (!isThreeDigitRoom(room)) return false;
+
+          if (overlapDates(row, start, end, -1)) return false;
+
+          // ✅ ALLE DZ-TYPEN berücksichtigen!
+          return isAnyDZ(room);
+        });
+      }
+
+      function changeWeek(n) {
+        current.setDate(current.getDate() + 7 * n);
+        render();
+      }
+
+      function overlapDates(row, start, end, ignoreIndex) {
+        // ✅ alles auf reines Datum runterbrechen
+        const s = new Date(start);
+        const e = new Date(end);
+
+        s.setHours(0, 0, 0, 0);
+        e.setHours(0, 0, 0, 0);
+
+        return bookings.some((b, i) => {
+          if (i === ignoreIndex) return false;
+          if (b.row !== row) return false;
+
+          const bs = new Date(b.start);
+          const be = new Date(b.end);
+
+          bs.setHours(0, 0, 0, 0);
+          be.setHours(0, 0, 0, 0);
+
+          // ✅ WICHTIG: echtes Intervall prüfen
+          return s < be && e > bs;
+        });
+      }
+
+      function isPreferredEZRoom(roomName) {
+        return roomName.includes("EZ") || roomName.includes("kl. DZ");
+      }
+
+      function getRoomType(roomName) {
+        return roomName.split(" - ")[1];
+      }
+
+      async function assignRoom(row) {
+        if (overlapDates(row, groupPlacement.start, groupPlacement.end, -1)) {
+          alert("Zimmer ist in diesem Zeitraum bereits belegt");
+          return;
+        }
+
+        let roomType = getRoomType(rooms[row]);
+
+        let roomName = rooms[row];
+
+        // ✅ erlaubte Kategorien wie bei Einzelbuchung
+        let allowedTypes = getGuestOptions(roomName);
+
+        // ✅ passende Kategorie finden
+
+        let item = groupPlacement.data
+          .filter((d) => {
+            if (d.count <= 0) return false;
+
+            return canUseRoom(roomName, groupPlacement.start, groupPlacement.end, d.type);
+          })
+          .sort((a, b) => {
+            let order = ["4er", "3er", "DZ B", "DZ", "EZ B", "EZ"];
+            return order.indexOf(a.type) - order.indexOf(b.type);
+          })[0];
+
+        if (!item) {
+          alert("Zimmer passt nicht");
+          return;
+        }
+
+        let newBooking = {
+          row,
+          start: groupPlacement.start.toISOString(),
+          end: groupPlacement.end.toISOString(),
+          name: "",
+          price: item.price,
+          comment: "",
+          guests: item.type,
+          color: groupPlacement.color,
+          group: groupPlacement.name,
+          paid: false,
+          checkin: false
+        };
+
+        // ✅ In DB speichern
+        let tempId = "tmp_" + Date.now();
+
+        let tempBooking = {
+          ...newBooking,
+          id: tempId
+        };
+
+        // ✅ 1. SOFORT anzeigen (kein Lag mehr!)
+        bookings.push(tempBooking);
+        item.count--;
+        render();
+        updatePlacementBox();
+
+        // ✅ 2. DB im Hintergrund speichern
+        const { data, error } = await supa.from("bookings").insert([newBooking]).select();
+
+        if (error) {
+          alert("Fehler beim Speichern");
+          console.error(error);
+
+          // ❌ rollback
+          bookings = bookings.filter((b) => b.id !== tempId);
+          render();
+          return;
+        }
+
+        // ✅ 3. TEMP durch echten Eintrag ersetzen
+        if (data && data[0]) {
+          bookings = bookings.map((b) => (b.id === tempId ? data[0] : b));
+
+          // ✅ wichtig für ESC-Abbruch
+          groupPlacement.placed.push(data[0].id);
+
+          render();
+        }
+
+        // ✅ fertig?
+        if (groupPlacement.data.every((d) => d.count === 0)) {
+          finishPlacement();
+        }
+      }
+
+      function isAnyDZ(room) {
+        return isNormalDZ(room) || isDeluxeDZ(room) || isMultiDZ(room) || isSmallDZ(room);
+      }
+
+      function finishPlacement() {
+        isGroupCreating = false;
+        document.getElementById("placementBox")?.remove();
+
+        groupPlacement = null;
+
+        render();
+        // ✅ ALERT NACH DEM RENDER
+        setTimeout(() => {
+          alert("Gruppe erstellt !");
+        }, 10);
+      }
+
+      async function assignSingleRoom(row) {
+        let start = singlePlacement.start;
+        let end = singlePlacement.end;
+
+        if (overlapDates(row, start, end, -1)) {
+          alert("Zimmer ist belegt");
+          return;
+        }
+
+        let roomName = rooms[row];
+        let allowed = getGuestOptions(roomName);
+
+        if (!canUseRoom(roomName, start, end, singlePlacement.guests)) {
+          alert("Zimmer passt nicht zur aktuellen Regel");
+          return;
+        }
+
+        let color = "yellow";
+
+        if (singlePlacement.guests.includes("B")) {
+          color = "pink";
+        } else if (singlePlacement.guests === "BLOCK") {
+          color = "#444";
+        }
+
+        if (singlePlacement.group) {
+          let found = getGroupsInWeek().find((g) => g.name === singlePlacement.group);
+          if (found) {
+            color = found.color;
+          }
+        }
+
+        let booking = {
+          row,
+          start: start.toISOString(),
+          end: end.toISOString(),
+          name: singlePlacement.name,
+          price: singlePlacement.price,
+          comment: singlePlacement.comment,
+          guests: singlePlacement.guests,
+          color: color,
+          group: singlePlacement.group,
+          paid: false,
+          checkin: false
+        };
+
+        // ✅ direkt anzeigen + speichern
+        await addBookingToDB(booking);
+
+        // ✅ reset
+        singlePlacement = null;
+        document.getElementById("placementBox")?.remove();
+
+        render();
+      }
+
+      async function add(row, day) {
+        if (isMobile) return;
+        if (singlePlacement) {
+          assignSingleRoom(row);
+          return;
+        }
+
+        if (!isEditAllowed()) return;
+
+        if (justDragged) {
+          return;
+        }
+        if (groupPlacement) {
+          assignRoom(row);
+          return;
+        }
+        document.getElementById("toggleGroup").checked = false;
+        document.getElementById("singleForm").style.display = "block";
+        document.getElementById("groupForm").style.display = "none";
+        document.querySelector(".switch-wrapper").style.display = "flex";
+        document.getElementById("g_name").value = "";
+        document.getElementById("g_start").value = "";
+        document.getElementById("g_end").value = "";
+        document.getElementById("groupCategories").innerHTML = "";
+
+        // ✅ prüfen ob schon Buchung existiert
+        let weekStart = normalizeDate(startOfWeek(current));
+        let clickedDate = new Date(weekStart);
+        clickedDate.setDate(weekStart.getDate() + day);
+
+        let isBlocked = bookings.some((b) => {
+          if (b.row !== row) return false;
+
+          let s = new Date(b.start);
+          let e = new Date(b.end);
+
+          s.setHours(0, 0, 0, 0);
+          e.setHours(0, 0, 0, 0);
+
+          return clickedDate >= s && clickedDate < e;
+        });
+
+        if (isBlocked) {
+          return; // ❌ nichts machen
+        }
+
+        editIndex = null;
+        document.getElementById("formTitle").innerText = "Neue Buchung";
+
+        newBookingRow = row;
+
+        let roomName = rooms[row];
+        let opts = getGuestOptions(roomName);
+
+        // ✅ BLOCK IMMER hinzufügen
+        opts.push("BLOCK");
+
+        let select = document.getElementById("f_guests");
+        select.innerHTML = "";
+
+        opts.forEach((o) => {
+          let opt = document.createElement("option");
+          opt.value = o;
+          opt.innerText = o === "BLOCK" ? "🚫 Block" : o;
+          select.appendChild(opt);
+        });
+
+        let startDate = new Date(startOfWeek(current));
+        startDate.setDate(startDate.getDate() + day);
+
+        let endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 1);
+
+        // Formular vorfüllen
+        document.getElementById("f_name").value = "";
+        document.getElementById("f_start").value = startDate.toISOString().slice(0, 10);
+        document.getElementById("f_end").value = endDate.toISOString().slice(0, 10);
+        document.getElementById("f_price").value = "";
+        document.getElementById("f_comment").value = "";
+        // ✅ GRUPPEN-DROPDOWN BEFÜLLEN
+        let groupSelect = document.getElementById("f_group");
+        groupSelect.innerHTML = "";
+
+        // Standard
+        let optNone = document.createElement("option");
+        optNone.value = "";
+        optNone.text = "– keine Gruppe –";
+        groupSelect.appendChild(optNone);
+
+        // vorhandene Gruppen dieser Woche
+        let groups = getGroupsInWeek();
+
+        groups.forEach((g) => {
+          let opt = document.createElement("option");
+          opt.value = g.name;
+          opt.text = g.name;
+          opt.dataset.color = g.color;
+          groupSelect.appendChild(opt);
+        });
+
+        // neue Gruppe
+        let optNew = document.createElement("option");
+        optNew.value = "__new__";
+        optNew.text = "➕ Neue Gruppe...";
+        groupSelect.appendChild(optNew);
+
+        groupSelect.onchange = (e) => {
+          let selected = e.target.options[e.target.selectedIndex];
+
+          if (selected.value === "__new__") {
+            let name = prompt("Neue Gruppe eingeben:");
+
+            if (!name) {
+              groupSelect.value = "";
+              return;
+            }
+
+            let opt = document.createElement("option");
+            opt.value = name;
+            opt.text = name;
+            opt.dataset.color = "";
+            groupSelect.add(opt);
+
+            groupSelect.value = name;
+          }
+
+          let color = selected.dataset.color;
+
+          groupSelect.style.background = color || "white";
+          groupSelect.style.color =
+            color === "yellow" || color === "orange" || color === "pink" || color === "lightgray" ? "black" : "white";
+        };
+
+        document.getElementById("bookingForm").style.display = "block";
+        document.getElementById("f_name").focus();
+      }
+
+      async function saveBooking() {
+        console.log("SAVE START");
+
+        if (!isEditAllowed()) return;
+
+        let guests = document.getElementById("f_guests").value;
+        let group = document.getElementById("f_group").value;
+
+        if (!guests) {
+          return alert("Bitte Gäste auswählen");
+        }
+
+        let name = document.getElementById("f_name").value;
+        let start = new Date(document.getElementById("f_start").value);
+        let end = new Date(document.getElementById("f_end").value);
+        let price = document.getElementById("f_price").value;
+        let comment = document.getElementById("f_comment").value;
+
+        // Zeiten setzen
+        start.setHours(14, 0, 0, 0);
+        end.setHours(11, 0, 0, 0);
+
+        if (guests !== "BLOCK" && !name) {
+          return alert("Name fehlt");
+        }
+
+        if (end <= start) return alert("Abreise muss nach Anreise liegen");
+
+        // ✅ NEUE BUCHUNG
+        if (editIndex === null) {
+          // ✅ KEIN Zimmer → Auswahlmodus
+          if (newBookingRow === null) {
+            let bookingData = {
+              start,
+              end,
+              name,
+              price,
+              comment,
+              guests,
+              group: group || null
+            };
+
+            closeForm();
+            startSinglePlacement(bookingData);
+            return;
+          }
+
+          // ✅ DIREKTBUCHUNG (DAS HAT GEFÄHLT!)
+          let booking = {
+            row: newBookingRow,
+            start: start.toISOString(),
+            end: end.toISOString(),
+            name: name,
+            price: price,
+            comment: comment,
+            guests: guests,
+            color: "yellow",
+            group: group || null,
+            paid: false,
+            checkin: false
+          };
+
+          // ✅ Farbe anpassen
+          if (guests.includes("B")) {
+            booking.color = "pink";
+          }
+
+          if (group) {
+            let found = getGroupsInWeek().find((g) => g.name === group);
+            if (found) {
+              booking.color = found.color;
+            }
+          }
+
+          // ✅ SPEICHERN (FEHLTE BEI DIR!)
+
+          newBookingRow = null;
+
+          // ✅ SOFORT UI schließen
+          closeForm();
+
+          // ✅ sofort anzeigen (addBookingToDB macht das intern nochmal sauber)
+          addBookingToDB(booking);
+
+          return;
+        }
+        // ✅ BESTEHENDE BUCHUNG ÄNDERN
+        else {
+          let b = bookings[editIndex];
+
+          if (overlapDates(b.row, start, end, editIndex)) {
+            return alert("Zimmer bereits belegt!");
+          }
+
+          saveHistory();
+
+          logChange(b.id, "start", b.start, start.toISOString());
+          logChange(b.id, "end", b.end, end.toISOString());
+          logChange(b.id, "name", b.name, name);
+          logChange(b.id, "price", b.price, price);
+          logChange(b.id, "comment", b.comment, comment);
+          logChange(b.id, "guests", b.guests, guests);
+
+          let color = b.color;
+
+          // ✅ wenn Kategorie „B“
+          if (guests.includes("B")) {
+            color = "pink";
+          }
+
+          // ✅ optional: wieder zurück auf normal wenn nicht mehr B
+          else if (b.color === "pink") {
+            color = "yellow";
+          }
+
+          // ✅ 1. UI SOFORT updaten (kein Warten mehr)
+          let newStart = start.toISOString();
+          let newEnd = end.toISOString();
+
+          b.start = newStart;
+          b.end = newEnd;
+          b.name = name;
+          b.price = price;
+          b.comment = comment;
+          b.guests = guests;
+          b.color = color;
+
+          render(); // ✅ sofort sichtbar
+
+          // ✅ 2. DB im Hintergrund updaten (NICHT await!)
+          supa
+            .from("bookings")
+            .update({
+              start: newStart,
+              end: newEnd,
+              name: name,
+              price: price,
+              comment: comment,
+              guests: guests,
+              color: color
+            })
+            .eq("id", b.id)
+            .then(({ error }) => {
+              if (error) {
+                console.error(error);
+                alert("Fehler beim Speichern");
+              }
+            });
+        }
+        closeForm();
+      }
+
+      let singlePlacement = null;
+
+      function startSinglePlacement(data) {
+        saveHistory();
+
+        singlePlacement = data;
+
+        updateSinglePlacementBox();
+
+        render();
+      }
+
+      function getFreeDZLevels(start, end, onlyTwoDigit = false) {
+        let normalFree = false;
+        let deluxeFree = false;
+        let multiFree = false;
+
+        rooms.forEach((room, row) => {
+          if (overlapDates(row, start, end, -1)) return;
+
+          // ✅ NEU: nur 2-stellig berücksichtigen falls gewünscht
+          if (onlyTwoDigit && isThreeDigitRoom(room)) return;
+
+          if (isNormalDZ(room)) normalFree = true;
+          else if (isDeluxeDZ(room)) deluxeFree = true;
+          else if (isMultiDZ(room)) multiFree = true;
+        });
+
+        return {
+          normalFree,
+          deluxeFree,
+          multiFree
+        };
+      }
+
+      function isThreeDigitRoom(room) {
+        let number = room.split(" - ")[0];
+        return number.length === 3;
+      }
+
+      function isNormalEZ(room) {
+        let type = getRoomType(room);
+
+        return type.includes("EZ") && !type.includes("B") && !type.includes("kl");
+      }
+
+      function isDeluxeEZ(room) {
+        let type = getRoomType(room);
+
+        return type.includes("EZ B");
+      }
+
+      function isSmallEZ(room) {
+        let type = getRoomType(room);
+
+        return type.includes("kl. EZ");
+      }
+
+      function isNormalDZ(room) {
+        let type = getRoomType(room);
+
+        return (
+          type.includes("DZ") &&
+          !type.includes("B") &&
+          !type.includes("3") &&
+          !type.includes("4") &&
+          !type.includes("kl")
+        );
+      }
+
+      function isDeluxeDZ(room) {
+        let type = getRoomType(room);
+
+        return type.includes("DZ") && type.includes("B") && !type.includes("3") && !type.includes("4");
+      }
+
+      function isMultiDZ(room) {
+        let type = getRoomType(room);
+
+        return type.includes("3") || type.includes("4");
+      }
+
+      function isSmallDZ(room) {
+        let type = getRoomType(room);
+
+        return type.includes("kl. DZ");
+      }
+
+      function updateSinglePlacementBox() {
+        let box = document.getElementById("placementBox");
+
+        if (!box) {
+          box = document.createElement("div");
+          box.id = "placementBox";
+
+          box.style = `
+      position:fixed;
+      top:80px;
+      right:20px;
+      padding:10px;
+      z-index:20000;
+      border-radius:8px;
+      background:yellow;
+    `;
+
+          document.body.appendChild(box);
+        }
+
+        box.innerHTML = `
+    <b>Zimmer wählen:</b><br>
+    ${singlePlacement.guests}<br>
+    ${singlePlacement.name}
+  `;
+      }
+
+      function formatDate(d) {
+        if (!d) return "-";
+
+        let dt = new Date(d);
+
+        return `${dt.getDate()}.${dt.getMonth() + 1}.${String(dt.getFullYear()).slice(-2)}`;
+      }
+
+      function closeForm() {
+        let form = document.getElementById("bookingForm");
+
+        form.style.transition = "opacity 0.1s";
+        form.style.opacity = "0";
+
+        setTimeout(() => {
+          form.style.display = "none";
+          form.style.opacity = "1";
+        }, 100);
+
+        editIndex = null;
+      }
+
+      async function openInfo(index) {
+        let b = bookings[index];
+
+        let start = new Date(b.start).toLocaleDateString();
+        let end = new Date(b.end).toLocaleDateString();
+
+        let html = `
+    <b>👥 Zimmerkategorie:</b>${b.guests || "-"}<br><br>
+    <b>✏️ Name:</b>${b.name || "-"}<br><br>
+    <b>📅 Anreise:</b>${start}<br>
+    <b>📅 Abreise:</b>${end}<br><br>
+    <b>💲 Preis:</b>${b.price || "-"}<br><br>
+    <b>💬 Kommentar:</b>${b.comment || "-"}<br><br>
+    <b>🎨 Gruppe:</b>
+${
+  b.group
+    ? `<span style="
+      background:${b.color};
+      color:${b.color == "yellow" || b.color == "pink" || b.color == "orange" || b.color == "turquoise" || b.color == "lightgray" ? "black" : "white"};
+      padding:2px 6px;
+      border-radius:6px;
+      font-size:12px;
+    ">
+      ${b.group}
+    </span>`
+    : "-"
+}
+<br><br>
+    <b>💰 Bezahlt:</b>${b.paid ? "🟢" : "🔴"}<br>
+    <b>🏨 Check-in:</b>${b.checkin ? "🟢" : "🔴"}
+  `;
+
+        const user = (await supa.auth.getUser()).data.user;
+
+        // ✅ Button anzeigen / verstecken
+        if (user && isAdmin()) {
+          document.getElementById("logBtn").style.display = "inline-block";
+        } else {
+          document.getElementById("logBtn").style.display = "none";
+        }
+
+        // ✅ Logs laden aber nicht anzeigen
+        const { data } = await supa
+          .from("booking_logs")
+          .select("*")
+          .eq("booking_id", b.id)
+          .order("created_at", { ascending: false });
+
+        window.currentLogs = data || [];
+
+        document.getElementById("infoContent").innerHTML = html;
+
+        document.getElementById("logContent").style.display = "none";
+        document.getElementById("logContent").innerHTML = "";
+
+        document.getElementById("bookingInfo").style.display = "block";
+      }
+
+      function closeInfo() {
+        document.getElementById("bookingInfo").style.display = "none";
+      }
+
+      function draw() {
+        document.querySelectorAll(".booking").forEach((e) => e.remove());
+        document.querySelectorAll(".booking-half").forEach((e) => e.remove());
+
+        let weekStart = normalizeDate(startOfWeek(current));
+
+        bookings.forEach((b, i) => {
+          let bStart = normalizeDate(b.start);
+          let bEnd = normalizeDate(b.end);
+
+          // 👉 wichtig: Abreisetag NICHT anzeigen
+
+          let diffStart = Math.floor((bStart - weekStart) / (1000 * 60 * 60 * 24));
+          let diffEnd = Math.floor((bEnd - weekStart) / (1000 * 60 * 60 * 24));
+
+          // ✅ Spezialfall: endet genau am Wochenanfang → halben Tag anzeigen
+          if (diffEnd <= 0) {
+            let endsExactlyAtStart = diffEnd === 0;
+
+            if (!endsExactlyAtStart) return;
+          }
+          if (diffStart >= 7) return;
+
+          let visStart = Math.max(0, Math.floor(diffStart));
+
+          let co = Math.floor((bEnd - weekStart) / (1000 * 60 * 60 * 24));
+
+          let visEnd = Math.min(7, co);
+
+          let startsBeforeWeek = diffStart < 0;
+          let endsAfterWeek = diffEnd > 7;
+
+          let row = document.querySelectorAll("tr")[b.row + 1];
+          if (!row) return;
+
+          let cell = row.children[visStart + 1];
+
+          let d = document.createElement("div");
+          d.className = "booking";
+
+          if (b.guests === "BLOCK") {
+            d.classList.add("block");
+          }
+
+          d.dataset.id = b.id;
+          d.dataset.index = i;
+
+          d.onclick = (e) => {
+            if (f) {
+              e.stopPropagation();
+
+              if (selected.includes(i)) {
+                selected = selected.filter((x) => x !== i);
+              } else {
+                selected.push(i);
+              }
+
+              render();
+              return;
+            }
+
+            // ✅ Klick verzögern (für Doppelklick-Erkennung)
+
+            if (e.detail === 2) return; // ✅ verhindert Klick bei Doppelklick
+
+            clearTimeout(clickTimer);
+
+            clickTimer = setTimeout(() => {
+              openInfo(i);
+            }, 200);
+          };
+
+          if (selected.includes(i)) {
+            d.classList.add("selected");
+          }
+
+          let widthDays = visEnd - visStart;
+
+          // ✅ Standardwerte
+
+          let rowEl = document.querySelectorAll("tr")[b.row + 1];
+
+          let cells = rowEl.querySelectorAll("td:not(.room)");
+
+          let startCell = cells[visStart];
+          let endCell = cells[visEnd] || cells[cells.length - 1];
+
+          let startRect = startCell.getBoundingClientRect();
+          let endRect = endCell.getBoundingClientRect();
+
+          let layer = rowEl.querySelector(".booking-layer");
+          let layerRect = layer.getBoundingClientRect();
+
+          let dayWidth = startRect.width;
+
+          // ✅ HALBTAGS-KORREKTUR
+
+          let left = startRect.left - layerRect.left + dayWidth / 2;
+
+          if (diffStart < 0) {
+            left -= dayWidth * 0.5;
+          }
+
+          // RIGHT
+          let right = endRect.left - layerRect.left + dayWidth / 2;
+
+          if (diffEnd > 7) {
+            right += dayWidth * 0.5;
+          }
+
+          // ✅ setzen
+          d.style.left = left + "px";
+          d.style.width = right - left + "px";
+
+          // ✅ Wenn Buchung innerhalb der Woche endet → halben Checkout-Tag zeigen
+          if (!endsAfterWeek) {
+            let co = Math.floor((bEnd - weekStart) / (1000 * 60 * 60 * 24));
+
+            if (co >= 0 && co < 7) {
+              let rowEl = document.querySelectorAll("tr")[b.row + 1];
+              let coCell = rowEl.children[co + 1];
+
+              let halfDiv = document.createElement("div");
+              halfDiv.className = "booking-half";
+
+              halfDiv.style.left = "0%";
+              halfDiv.style.width = "50%";
+
+              halfDiv.style.background = b.color;
+              halfDiv.style.opacity = "0.5";
+
+              coCell.appendChild(halfDiv);
+            }
+          }
+
+          d.style.background = b.color;
+          d.style.color =
+            b.color == "yellow" ||
+            b.color == "turquoise" ||
+            b.color == "pink" ||
+            b.color == "orange" ||
+            b.color == "lightgray"
+              ? "black"
+              : "white";
+
+          // ✅ FLAGS CONTAINER
+          let flags = document.createElement("div");
+          flags.className = "flags";
+
+          if (b.guests === "BLOCK") {
+            flags.style.display = "none";
+          }
+
+          // ✅ BEZAHLT (✔)
+          let paid = document.createElement("div");
+          paid.className = "flag ";
+          paid.innerHTML = "✔";
+
+          if (!b.paid) paid.classList.add("off");
+
+          paid.onclick = async (e) => {
+            if (isMobile) return;
+            if (f) return;
+            if (!isEditAllowed()) return;
+            e.stopPropagation();
+
+            let oldVal = b.paid;
+            let newVal = !b.paid;
+
+            // ✅ 1. SOFORT im UI setzen
+            b.paid = newVal;
+            render();
+
+            // ✅ 2. async im Hintergrund speichern
+            const { error } = await supa.from("bookings").update({ paid: newVal }).eq("id", b.id);
+
+            if (error) {
+              // ❌ rollback falls Fehler
+              b.paid = oldVal;
+              render();
+
+              alert("Fehler beim Speichern");
+              console.error(error);
+            } else {
+              // ✅ Logging danach
+              await logChange(b.id, "paid", oldVal, newVal);
+            }
+          };
+
+          // ✅ CHECK-IN (●)
+          let check = document.createElement("div");
+          check.className = "flag ";
+          check.innerHTML = "●";
+
+          if (!b.checkin) check.classList.add("off");
+
+          check.onclick = async (e) => {
+            if (isMobile) return;
+            if (f) return;
+            if (!isEditAllowed()) return;
+            e.stopPropagation();
+
+            let oldVal = b.checkin;
+            let newVal = !b.checkin;
+
+            // ✅ 1. sofort UI
+            b.checkin = newVal;
+            render();
+
+            // ✅ 2. DB im Hintergrund
+            const { error } = await supa.from("bookings").update({ checkin: newVal }).eq("id", b.id);
+
+            if (error) {
+              // ❌ rollback
+              b.checkin = oldVal;
+              render();
+
+              alert("Fehler beim Speichern");
+              console.error(error);
+            } else {
+              await logChange(b.id, "checkin", oldVal, newVal);
+            }
+          };
+
+          flags.appendChild(paid);
+          flags.appendChild(check);
+
+          // ✅ TEXT
+
+          let txt = document.createElement("span");
+          txt.className = "text";
+          txt.style.flex = 1;
+          if (b.guests === "BLOCK") {
+            txt.innerHTML = "🚫 BLOCKIERT";
+          } else {
+            txt.innerHTML = `${b.guests} ${b.name || b.group} - ${b.comment}`;
+          }
+
+          let pr = document.createElement("span");
+          pr.className = "price";
+
+          if (!b.price) {
+            pr.innerHTML = "";
+          } else if (isNaN(b.price)) {
+            pr.innerHTML = b.price; // Text (bez., Rg., etc.)
+          } else {
+            pr.innerHTML = b.price + "€"; // Zahl
+          }
+
+          let r = document.createElement("div");
+          r.className = "handle right";
+          r.onmousedown = (e) => {
+            if (isMobile) return;
+            if (f) return;
+            e.stopPropagation();
+            resize(e, i, 1);
+          };
+
+          let l = document.createElement("div");
+          l.className = "handle left";
+
+          l.onmousedown = (e) => {
+  if(isMobile) return;
+  if (f) return;
+
+  e.stopPropagation();
+  e.preventDefault();
+
+  // ✅ DAS ist der entscheidende Fix:
+  e.stopImmediatePropagation();
+
+  drag = null;
+  resizing = true;
+
+  resize(e, i, -1);
+};
+
+
+          // ✅ nur noch rechter Handle
+          // ✅ DRAG HANDLE (neu)
+          let dragHandle = document.createElement("div");
+
+          dragHandle.className = "drag-handle";
+
+          dragHandle.style.width = "10px";
+          dragHandle.style.cursor = "grab";
+          dragHandle.style.marginRight = "6px";
+          dragHandle.style.background = "rgba(0,0,0,0.2)";
+          dragHandle.style.borderRadius = "3px";
+
+          dragHandle.innerHTML = "⋮⋮"; // kleine Griffpunkte
+          dragHandle.style.fontSize = "12px";
+          dragHandle.style.display = "flex";
+          dragHandle.style.alignItems = "center";
+          dragHandle.style.justifyContent = "center";
+
+          // 👉 wichtig: damit Events funktionieren
+          dragHandle.style.pointerEvents = "auto";
+
+          // ✅ LEFT nur wenn Start in dieser Woche
+          if (!startsBeforeWeek) {
+            d.appendChild(l);
+          }
+
+          // ✅ RIGHT nur wenn Ende in dieser Woche
+          if (!endsAfterWeek) {
+            d.appendChild(r);
+          }
+
+          d.append(flags, dragHandle, txt, pr);
+
+          // ✅ Drag aktivieren
+          // ✅ DRAG START
+          dragHandle.onmousedown = (e) => {
+            let el = document.querySelector(`.booking[data-index='${i}']`);
+
+            let rect = el.getBoundingClientRect();
+
+            let b = bookings[i];
+            let layer = el.parentElement;
+            let layerRect = layer.getBoundingClientRect();
+
+            // echte Tage berechnen (OHNE clipping)
+            let start = new Date(b.start);
+            let end = new Date(b.end);
+            let durationDays = (end - start) / (1000 * 60 * 60 * 24);
+
+            // echte Cell-Breite
+            let rowEl = document.querySelectorAll("tr")[b.row + 1];
+            let cell = rowEl.querySelector("td:not(.room)");
+            let dayWidth = cell.getBoundingClientRect().width;
+
+            // 👉 WICHTIG: echte Breite setzen
+            el.style.width = durationDays * dayWidth + "px";
+
+            // 👉 echte LEFT korrigieren (Clipping rückgängig machen)
+            let weekStart = normalizeDate(startOfWeek(current));
+            let diffStart = (start - weekStart) / (1000 * 60 * 60 * 24);
+
+            let correctedLeft = rect.left - layerRect.left;
+
+            if (diffStart < 0) {
+              correctedLeft += diffStart * dayWidth; // 👈 zurück nach links erweitern
+            }
+
+            el.style.left = correctedLeft + "px";
+
+            drag = {
+              i: i,
+              mouseStartX: e.clientX
+            };
+            resizing = false;
+            document.body.style.userSelect = "none";
+          };
+
+          // ✅ Bearbeiten
+
+          d.ondblclick = (e) => {
+            if (isMobile) return;
+            let b = bookings[i];
+
+            // ✅ BLOCK: nicht editieren
+            if (b.guests === "BLOCK") {
+              e.stopPropagation();
+              return;
+            }
+
+            clearTimeout(clickTimer);
+
+            document.querySelector(".switch-wrapper").style.display = "none";
+
+            document.getElementById("toggleGroup").checked = false;
+            document.getElementById("singleForm").style.display = "block";
+            document.getElementById("groupForm").style.display = "none";
+            document.querySelector(".switch-wrapper").style.display = "none";
+
+            editIndex = i;
+
+            let roomName = rooms[b.row];
+            let opts = getGuestOptions(roomName);
+
+            let select = document.getElementById("f_guests");
+            select.innerHTML = "";
+
+            opts.forEach((o) => {
+              let opt = document.createElement("option");
+              opt.value = o;
+              opt.innerText = o;
+              select.appendChild(opt);
+            });
+
+            select.value = b.guests || opts[0];
+
+            document.getElementById("f_name").value = b.name || "";
+            document.getElementById("f_start").value = b.start.slice(0, 10);
+            document.getElementById("f_end").value = b.end.slice(0, 10);
+            document.getElementById("f_price").value = b.price || "";
+            document.getElementById("f_comment").value = b.comment || "";
+
+            document.getElementById("formTitle").innerText = "Buchung ändern";
+
+            document.getElementById("bookingForm").style.display = "block";
+            document.getElementById("f_name").focus();
+          };
+
+          // ✅ Löschen
+          d.oncontextmenu = async (e) => {
+            if (isMobile) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            drag = null;
+            resizing = false;
+            document.body.style.userSelect = "auto";
+
+            if (f) return;
+            if (!isEditAllowed()) return;
+
+            if (!confirm("Löschen?")) return;
+
+            const id = d.dataset.id; // ✅ HIER IST DER FIX!!!
+
+            if (!id) {
+              console.warn("Keine ID gefunden!");
+              return;
+            }
+
+            isDeleting = true;
+            saveHistory();
+
+            // ✅ 1. DB löschen
+
+            const { data, error } = await supa.from("bookings").delete().eq("id", id).select(); // ✅ GANZ WICHTIG
+
+            console.log("DELETE RESULT:", data, error);
+
+            if (error) {
+              alert("Fehler beim Löschen");
+              console.error(error);
+              isDeleting = false;
+              return;
+            }
+
+            // ✅ 2. lokal löschen
+            bookings = bookings.filter((x) => String(x.id) !== String(id));
+
+            render();
+
+            // ✅ 3. Logging
+            await supa.from("booking_logs").insert([
+              {
+                booking_id: id,
+                user_id: (await supa.auth.getUser()).data.user.id,
+                action: "delete",
+                field: "booking",
+                old_value: "exists",
+                new_value: "deleted",
+                room: rooms[b.row]
+              }
+            ]);
+
+            isDeleting = false;
+          };
+
+          layer.appendChild(d);
+        });
+      }
+
+      window.onmousemove = (e) => {
+        if (drag && !resizing) {
+          let el = document.querySelector(`.booking[data-index='${drag.i}']`);
+          if (!el) return;
+
+          let deltaX = e.clientX - drag.mouseStartX;
+
+          el.style.transform = `translateX(${deltaX}px)`;
+        }
+      };
+
+      // ✅ DRAG END (SNAP TO GRID)
+      window.onmouseup = async (event) => {
+        if (!drag && !resizing) return;
+
+        let currentDrag = drag;
+
+        if (!currentDrag && !resizing) {
+          console.warn("mouseup ohne drag");
+          return;
+        }
+
+        document.body.style.userSelect = "auto";
+        // ✅ RESIZE ENDE
+        if (resizing) {
+          resizing = false;
+          drag = null;
+          document.body.style.userSelect = "auto";
+          return;
+        }
+
+        if (!currentDrag) {
+          drag = null;
+          resizing = false;
+          return;
+        }
+
+        let b = bookings[currentDrag.i];
+
+        let el = document.querySelector(`.booking[data-index='${currentDrag.i}']`);
+        if (!el) return;
+
+        let rowEl = document.querySelectorAll("tr")[b.row + 1];
+        let cell = rowEl.querySelector("td:not(.room)");
+
+        let dayWidth = cell.getBoundingClientRect().width;
+
+        let moveDays = Math.round((event.clientX - currentDrag.mouseStartX) / dayWidth);
+
+        let changed = false;
+        let oldStart = b.start;
+        let oldEnd = b.end;
+
+        if (moveDays !== 0) {
+          let newStart = new Date(b.start);
+          let newEnd = new Date(b.end);
+
+          newStart.setDate(newStart.getDate() + moveDays);
+          newEnd.setDate(newEnd.getDate() + moveDays);
+
+          if (!overlapDates(b.row, newStart, newEnd, currentDrag.i)) {
+            saveHistory();
+
+            b.start = newStart.toISOString();
+            b.end = newEnd.toISOString();
+
+            changed = true;
+          }
+        }
+
+        render();
+
+        el = document.querySelector(`.booking[data-index='${currentDrag.i}']`);
+        if (el) {
+          el.style.transform = "none";
+          el.style.transition = "";
+        }
+
+        justDragged = true;
+        setTimeout(() => (justDragged = false), 100);
+
+        drag = null;
+        resizing = false;
+        document.body.style.userSelect = "auto";
+
+        if (changed) {
+          await logChange(b.id, "start", oldStart, b.start);
+          await logChange(b.id, "end", oldEnd, b.end);
+
+          if (!b.id || String(b.id).startsWith("tmp_")) {
+            console.warn("Ungültige ID – Update abgebrochen:", b.id);
+            return;
+          }
+
+          const { data, error } = await supa
+            .from("bookings")
+            .update({
+              start: b.start,
+              end: b.end
+            })
+            .eq("id", Number(b.id))
+            .select();
+
+          if (error) {
+            console.error("Update Fehler:", error);
+
+            // rollback
+            b.start = oldStart;
+            b.end = oldEnd;
+            render();
+
+            return;
+          }
+
+          if (!data || data.length === 0) {
+            console.warn("Kein Datensatz aktualisiert!");
+          }
+
+          // ✅ optional: DB-Daten zurück übernehmen
+          if (data && data[0]) {
+            bookings[currentDrag.i] = data[0];
+          }
+        }
+      };
+
+      async function resize(e, i, dir) {
+        if (!isEditAllowed()) return;
+
+        if (e.button !== 0) return; // ✅ nur Linksklick erlaubt
+        e.preventDefault();
+
+        drag = null;
+        resizing = true;
+
+        let b = bookings[i];
+        let weekStart = normalizeDate(startOfWeek(current));
+        let baseStart = new Date(b.start);
+        let baseEnd = new Date(b.end);
+
+       if (dir === -1) {
+  let base = normalizeDate(baseStart);
+  let week = normalizeDate(weekStart);
+
+  // ✅ nur blockieren wenn wirklich VOR der Woche
+  if (base < week) {
+    return;
+  }
+}
+        // ✅ sichtbaren Start berechnen
+        let visibleStart = baseStart < weekStart ? new Date(weekStart) : new Date(baseStart);
+
+        let rowEl = document.querySelectorAll("tr")[b.row + 1];
+        let cell = rowEl.querySelector("td:not(.room)");
+
+        let dayWidth = cell.getBoundingClientRect().width;
+
+        let el = document.querySelector(`.booking[data-index='${i}']`);
+
+        let rect = el.getBoundingClientRect();
+
+        let layer = el.parentElement;
+        let layerRect = layer.getBoundingClientRect();
+
+        let resizeState = {
+          mouseStartX: e.clientX,
+          startWidth: rect.width,
+          startLeft: rect.left - layerRect.left // ✅ RELATIV!
+        };
+
+        if (!el) return;
+
+        const resizeMove = (ev) => {
+          if (!resizing) return;
+
+          let deltaX = ev.clientX - resizeState.mouseStartX;
+
+          el.style.transform = "none";
+
+          if (dir === 1) {
+            el.style.width = resizeState.startWidth + deltaX + "px";
+          }
+
+          if (dir === -1) {
+            el.style.left = resizeState.startLeft + deltaX + "px";
+            el.style.width = resizeState.startWidth - deltaX + "px";
+          }
+        };
+
+        const resizeEnd = async (ev) => {
+          saveHistory();
+
+          resizing = false;
+          drag = null;
+          document.body.style.userSelect = "auto";
+
+          let deltaX = ev.clientX - resizeState.mouseStartX;
+
+          let moveDays = Math.round(deltaX / dayWidth);
+
+          
+if (moveDays === 0) {
+  // ✅ VISUELL RESETTEN
+  el.style.transform = "none";
+  el.style.left = "";
+  el.style.width = "";
+
+  document.removeEventListener("mousemove", resizeMove);
+
+  resizing = false;
+  drag = null;
+
+  return;
+}
+
+
+          if (dir === 1) {
+            let newEnd = new Date(baseEnd);
+            newEnd.setDate(baseEnd.getDate() + moveDays);
+
+            if (newEnd <= baseStart) return;
+
+            if (!overlapDates(b.row, baseStart, newEnd, i)) {
+              let oldEnd = b.end;
+
+              b.end = newEnd.toISOString();
+
+              render();
+
+              await logChange(b.id, "end", oldEnd, b.end);
+              await supa.from("bookings").update({ end: b.end }).eq("id", b.id);
+            }
+          }
+          if (dir === -1) {
+            let newStart = new Date(baseStart);
+            newStart.setDate(baseStart.getDate() + moveDays);
+
+            if (newStart >= baseEnd) return;
+
+            if (!overlapDates(b.row, newStart, baseEnd, i)) {
+              let oldStart = b.start;
+
+              b.start = newStart.toISOString();
+
+              render();
+
+              await logChange(b.id, "start", oldStart, b.start);
+              await supa.from("bookings").update({ start: b.start }).eq("id", b.id);
+            }
+          }
+
+          // ✅ RESET
+
+          el.style.transform = "none";
+          el.style.left = "";
+          el.style.width = "";
+
+          document.removeEventListener("mousemove", resizeMove);
+
+          resizing = false;
+          drag = null;
+        };
+
+        document.addEventListener(
+          "mouseup",
+          (ev) => {
+            resizeEnd(ev);
+            document.removeEventListener("mousemove", resizeMove);
+          },
+          { once: true }
+        );
+
+        document.addEventListener("mousemove", resizeMove);
+      }
+
+      window.onkeydown = async (e) => {
+        // ✅ UNDO
+        if (e.ctrlKey && e.key.toLowerCase() === "z") {
+          e.preventDefault();
+          undo();
+          return;
+        }
+
+        if (e.key === "Escape") {
+          // ✅ Gruppenplatzierung abbrechen
+
+          if (groupPlacement) {
+            let ids = groupPlacement.placed;
+
+            if (ids.length) {
+              // ✅ IN DB LÖSCHEN
+              await supa.from("bookings").delete().in("id", ids);
+
+              // ✅ lokal löschen
+              bookings = bookings.filter((b) => !ids.includes(b.id));
+            }
+
+            // ✅ reset
+            groupPlacement.placed = [];
+            groupPlacement = null;
+            isGroupCreating = false;
+
+            document.getElementById("placementBox")?.remove();
+
+            render();
+
+            return;
+          }
+          // ✅ normaler ESC
+          closeInfo();
+          closeForm();
+          selected = [];
+          document.getElementById("palette").style.display = "none";
+          f = false;
+          document.body.classList.remove("select-mode");
+
+          render();
+        }
+
+        // ✅ F gedrückt → Auswahlmodus aktiv
+        if (e.key.toLowerCase() === "f") {
+          f = true;
+          document.body.classList.add("select-mode");
+        }
+      };
+
+      window.onkeyup = (e) => {
+        // ✅ F loslassen → Palette öffnen
+        if (e.key.toLowerCase() === "f") {
+          f = false;
+          document.body.classList.remove("select-mode");
+          if (selected.length) {
+            document.getElementById("palette").style.display = "block";
+          }
+        }
+      };
+
+      let colors = ["yellow", "orange", "pink", "red", "blue", "purple", "green", "brown", "turquoise", "lightgray"];
+      let pal = document.getElementById("palette");
+
+      colors.forEach((c) => {
+        let d = document.createElement("div");
+        d.style.background = c;
+
+        d.onclick = async (e) => {
+          e.stopPropagation();
+
+          if (!selected.length) return;
+
+          let usedColors = getUsedColorsInWeek();
+
+          // ✅ verhindern dass gleiche Farbe mehrfach benutzt wird
+          if (usedColors.has(c)) {
+            alert("Farbe ist in dieser Woche bereits vergeben");
+            return;
+          }
+
+          saveHistory();
+
+          let group = null;
+
+          if (!["orange", "yellow", "pink"].includes(c)) {
+            group = prompt("Gruppenname");
+          }
+
+          let ids = selected.map((i) => bookings[i].id);
+
+          // ✅ lokal setzen
+          for (const i of selected) {
+            let oldColor = bookings[i].color;
+            let oldGroup = bookings[i].group;
+
+            bookings[i].color = c;
+            bookings[i].group = group;
+
+            await logChange(bookings[i].id, "color", oldColor, c);
+            await logChange(bookings[i].id, "group", oldGroup, group);
+          }
+
+          selected = [];
+          pal.style.display = "none";
+          render();
+
+          // ✅ DB speichern
+          const { error } = await supa
+            .from("bookings")
+            .update({
+              color: c,
+              group: group
+            })
+            .in("id", ids);
+
+          if (error) {
+            console.error(error);
+            alert("Fehler beim Speichern");
+          }
+        };
+
+        pal.appendChild(d);
+      });
+
+      function drawLegend() {
+        let l = document.getElementById("legend");
+        l.innerHTML = "";
+
+        // ✅ feste Einträge
+        l.innerHTML += `
+    <div style="background:pink;color:black;padding:4px 8px;border-radius:6px;display:inline-block;margin:4px;">
+      Deluxe
+    </div>
+  `;
+
+        l.innerHTML += `
+    <div style="background:orange;color:black;padding:4px 8px;border-radius:6px;display:inline-block;margin:4px;">
+      Arrangement
+    </div>
+  `;
+
+        // ✅ Dynamisch aus BOOKINGS bauen!
+        let legendMap = {};
+
+        let weekStart = normalizeDate(startOfWeek(current));
+        let weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 7);
+
+        bookings.forEach((b) => {
+          if (!b.group || !b.color) return;
+
+          let s = new Date(b.start);
+          let e = new Date(b.end);
+
+          s.setHours(0, 0, 0, 0);
+          e.setHours(0, 0, 0, 0);
+
+          // ✅ NUR wenn Buchung diese Woche betrifft
+          if (s < weekEnd && e > weekStart) {
+            if (!legendMap[b.color]) {
+              legendMap[b.color] = b.group;
+            }
+          }
+        });
+
+        Object.entries(legendMap).forEach(([c, n]) => {
+          let div = document.createElement("div");
+
+          div.innerText = n;
+
+          div.style.background = c;
+          div.style.color =
+            c == "yellow" || c == "pink" || c == "orange" || c == "turquoise" || c == "lightgray" ? "black" : "white";
+          div.style.padding = "4px 8px";
+          div.style.borderRadius = "6px";
+          div.style.display = "inline-block";
+          div.style.margin = "4px";
+          div.style.cursor = "pointer";
+
+          // ✅ RECHTSKLICK
+          div.oncontextmenu = async (e) => {
+            e.preventDefault();
+
+            if (!confirm(`Alle Buchungen der Gruppe "${n}" in dieser Woche löschen?`)) {
+              return;
+            }
+
+            deleteGroupInWeek(n);
+          };
+
+          l.appendChild(div);
+        });
+      }
+
+      function getUsedColorsInWeek() {
+        let usedColors = new Set();
+
+        let weekStart = normalizeDate(startOfWeek(current));
+        let weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 7);
+
+        bookings.forEach((b) => {
+          if (!b.group || !b.color) return;
+
+          let s = new Date(b.start);
+          let e = new Date(b.end);
+
+          s.setHours(0, 0, 0, 0);
+          e.setHours(0, 0, 0, 0);
+
+          if (s < weekEnd && e > weekStart) {
+            usedColors.add(b.color);
+          }
+        });
+
+        return usedColors;
+      }
+
+      async function loadData() {
+        let { data, error } = await supa.from("bookings").select("*");
+
+        if (!error) {
+          bookings = data.map((b) => ({
+            ...b,
+            row: Number(b.row)
+          }));
+
+          render();
+
+          // ✅ HIER starten (erst wenn Daten da sind!)
+          if (!window.backupStarted) {
+            startAutoBackup();
+            window.backupStarted = true;
+          }
+        } else {
+          console.error("Supabase Fehler:", error);
+        }
+      }
+
+      supa
+        .channel("live-bookings")
+        .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, async () => {
+          if (isRestoring || isUndoing || isDeleting || isDraggingUpdate) return; // ✅ DAS IST DER KEY
+          await checkAuth();
+        })
+        .subscribe();
+
+      async function addBookingToDB(b) {
+        // ✅ 1. TEMP EINTRAG (sofort sichtbar)
+        let tempId = "tmp_" + Date.now();
+
+        let tempBooking = {
+          ...b,
+          id: tempId
+        };
+
+        bookings.push(tempBooking);
+        render();
+
+        // ✅ 2. JETZT ERST DB CALL (läuft im Hintergrund)
+        const { data, error } = await supa.from("bookings").insert([b]).select();
+
+        if (error) {
+          console.error(error);
+          alert("Fehler beim Speichern");
+
+          // ❌ TEMP EINTRAG WIEDER ENTFERNEN
+          bookings = bookings.filter((x) => x.id !== tempId);
+          render();
+
+          return;
+        }
+
+        // ✅ 3. TEMP DURCH ECHTEN ERSETZEN
+        if (data && data[0]) {
+          bookings = bookings.map((x) => (x.id === tempId ? data[0] : x));
+
+          render();
+
+          // ✅ optional: Logging (OHNE await → nicht blockierend)
+          supa.from("booking_logs").insert([
+            {
+              booking_id: data[0].id,
+              user_id: (await supa.auth.getUser()).data.user.id,
+              action: "insert",
+              field: "booking",
+              old_value: "",
+              new_value: "created",
+              room: rooms[b.row]
+            }
+          ]);
+        }
+      }
+
+      async function importData(event) {
+        const user = (await supa.auth.getUser()).data.user;
+
+        if (isAdmin()) {
+          alert("Keine Berechtigung!");
+          return;
+        }
+
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+          try {
+            const data = JSON.parse(e.target.result);
+
+            bookings = data.bookings || [];
+            current = data.current ? new Date(data.current) : new Date();
+
+            render();
+            alert("Backup geladen");
+          } catch (err) {
+            alert("Fehler beim Laden der Datei");
+          }
+        };
+
+        reader.readAsText(file);
+      }
+
+      function saveLocalBackup(label = "") {
+        // ❌ KEINE BACKUPS OHNE HISTORY
+        if (history.length === 0) {
+          console.log("❌ Backup ignoriert – keine History vorhanden");
+          return;
+        }
+
+        const data = {
+          date: new Date().toISOString(),
+          label: label || "Auto",
+          bookings: JSON.parse(JSON.stringify(bookings)),
+          current: current.toISOString(),
+          history: JSON.parse(JSON.stringify(history))
+        };
+
+        let backups = JSON.parse(localStorage.getItem("hotel_backups") || "[]");
+
+        backups.push(data);
+
+        if (backups.length > 168) {
+          backups.shift();
+        }
+
+        localStorage.setItem("hotel_backups", JSON.stringify(backups));
+      }
+
+      window.loadLocalBackup = async function (index) {
+        let backups = JSON.parse(localStorage.getItem("hotel_backups") || "[]");
+        let data = backups[index];
+
+        if (!data) return alert("Backup nicht gefunden");
+
+        isRestoring = true;
+
+        bookings = (data.bookings || []).map((b) => ({
+          ...b,
+          row: Number(b.row)
+        }));
+
+        current = data.current ? new Date(data.current) : new Date();
+
+        // ✅ NEU: history zurückholen
+        history = data.history || [];
+        localStorage.setItem("hotel_history", JSON.stringify(history));
+        render();
+
+        const cleanBookings = bookings.map((b) => {
+          let copy = { ...b };
+          delete copy.id;
+          return copy;
+        });
+
+        await supa.from("bookings").delete().neq("id", 0);
+        await supa.from("bookings").insert(cleanBookings);
+
+        saveHistory();
+
+        isRestoring = false;
+      };
+
+      function showBackupList() {
+        let box = document.getElementById("backupList");
+        let overlay = document.getElementById("overlay");
+
+        let backups = JSON.parse(localStorage.getItem("hotel_backups") || "[]");
+
+        box.innerHTML = "<b>Backup auswählen</b><hr>";
+
+        backups.forEach((b, i) => {
+          let div = document.createElement("div");
+          let date = new Date(b.date).toLocaleString();
+
+          let btn = document.createElement("button");
+          btn.innerText = `${date} - ${b.label}`;
+          btn.onclick = () => loadLocalBackup(i);
+
+          div.appendChild(btn);
+
+          box.appendChild(div);
+        });
+
+        let visible = box.style.display === "block";
+
+        box.style.display = visible ? "none" : "block";
+        overlay.style.display = visible ? "none" : "block";
+      }
+
+      function downloadBackup(label = "AutoBackup") {
+        const data = {
+          date: new Date().toISOString(),
+          bookings: bookings,
+          current: current.toISOString(),
+          history: history
+        };
+
+        const json = JSON.stringify(data, null, 2);
+
+        const blob = new Blob([json], { type: "application/json" });
+
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+
+        const now = new Date();
+
+        const date =
+          now.getFullYear() +
+          "-" +
+          String(now.getMonth() + 1).padStart(2, "0") +
+          "-" +
+          String(now.getDate()).padStart(2, "0") +
+          "_" +
+          String(now.getHours()).padStart(2, "0") +
+          "-" +
+          String(now.getMinutes()).padStart(2, "0") +
+          "-" +
+          String(now.getSeconds()).padStart(2, "0");
+
+        a.download = `hotel-backup-${label}-${date}.json`;
+
+        document.body.appendChild(a);
+        a.click();
+
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        console.log("✅ Backup heruntergeladen:", a.download);
+      }
+
+      function startAutoBackup() {
+        // ✅ sofort einmal
+
+        saveLocalBackup("Startup");
+        // ✅ danach alle 30 Minuten
+        setInterval(
+          () => {
+            saveLocalBackup("Auto");
+            console.log("✅ Auto-Backup (30min)");
+          },
+          60 * 60 * 1000
+        );
+
+        setInterval(
+          () => {
+            downloadBackup("4h");
+          },
+          4 * 60 * 60 * 1000
+        );
+      }
+
+      window.addEventListener("mouseleave", () => {
+        drag = null;
+        resizing = false;
+        document.body.style.userSelect = "auto";
+      });
+
+      window.addEventListener("pointerup", () => {
+        resizing = false;
+        document.body.style.userSelect = "auto";
+      });
+
+      function openBackupProtected() {
+        const input = prompt("Passwort eingeben:");
+
+        if (input === BACKUP_PASSWORD) {
+          showBackupList();
+        } else if (input !== null) {
+          alert("Falsches Passwort");
+        }
+      }
+
+      document.getElementById("overlay").onclick = () => {
+        document.getElementById("backupList").style.display = "none";
+        document.getElementById("overlay").style.display = "none";
+      };
+
+      document.addEventListener("keydown", function (e) {
+        let formOpen = document.getElementById("bookingForm").style.display === "block";
+
+        if (!formOpen) return;
+
+        // ✅ ENTER → speichern
+        if (e.key === "Enter") {
+          e.preventDefault(); // wichtig wegen Input-Fokus
+          saveBooking();
+        }
+
+        // ✅ ESC → abbrechen
+        if (e.key === "Escape") {
+          closeForm();
+        }
+      });
+
+      async function deleteGroupInWeek(groupName) {
+        let weekStart = normalizeDate(startOfWeek(current));
+        let weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 7);
+
+        // ✅ passende Buchungen finden
+        let toDelete = bookings.filter((b) => {
+          if (b.group !== groupName) return false;
+
+          let s = new Date(b.start);
+          let e = new Date(b.end);
+
+          return s < weekEnd && e > weekStart;
+        });
+
+        if (toDelete.length === 0) {
+          alert("Keine Buchungen in dieser Woche");
+          return;
+        }
+
+        saveHistory();
+
+        let ids = toDelete.map((b) => b.id);
+
+        // ✅ lokal löschen
+        bookings = bookings.filter((b) => !ids.includes(b.id));
+
+        render();
+
+        // ✅ aus DB löschen
+        const { error } = await supa.from("bookings").delete().in("id", ids);
+
+        if (error) {
+          console.error(error);
+          alert("Fehler beim Löschen");
+        }
+      }
+
+      function getUsedColorsInRange(start, end) {
+        let usedColors = new Set();
+
+        let currentDate = normalizeDate(start);
+
+        while (currentDate < end) {
+          let weekStart = normalizeDate(startOfWeek(currentDate));
+          let weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 7);
+
+          bookings.forEach((b) => {
+            if (!b.color) return;
+
+            let s = new Date(b.start);
+            let e = new Date(b.end);
+
+            s.setHours(0, 0, 0, 0);
+            e.setHours(0, 0, 0, 0);
+
+            // ✅ Überschneidung mit dieser Woche
+            if (s < weekEnd && e > weekStart) {
+              usedColors.add(b.color);
+            }
+          });
+
+          // 👉 nächste Woche
+          currentDate.setDate(currentDate.getDate() + 7);
+        }
+
+        return usedColors;
+      }
+
+      function getGroupsInWeek() {
+        let groups = [];
+
+        let weekStart = normalizeDate(startOfWeek(current));
+        let weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 7);
+
+        bookings.forEach((b) => {
+          if (!b.group || !b.color) return;
+
+          let s = new Date(b.start);
+          let e = new Date(b.end);
+
+          s.setHours(0, 0, 0, 0);
+          e.setHours(0, 0, 0, 0);
+
+          if (s < weekEnd && e > weekStart) {
+            // ✅ kein Duplicate
+            if (!groups.find((g) => g.name === b.group)) {
+              groups.push({
+                name: b.group,
+                color: b.color
+              });
+            }
+          }
+        });
+
+        return groups;
+      }
+
+      function toggleLog() {
+        const box = document.getElementById("logContent");
+
+        // ✅ öffnen / schließen
+        if (box.style.display === "block") {
+          box.style.display = "none";
+          return;
+        }
+
+        box.style.display = "block";
+
+        const logs = window.currentLogs || [];
+
+        if (!logs.length) {
+          box.innerHTML = "<small>Keine Änderungen vorhanden</small>";
+          return;
+        }
+
+        let html = "";
+
+        for (let i = 0; i < logs.length; i++) {
+          let log = logs[i];
+          let next = logs[i + 1];
+
+          let userName = userMap[log.user_id] || "Unbekannt";
+
+          // ✅ saubere Zeit (immer korrekt)
+          let dt = new Date(log.created_at + "Z");
+
+          let time = new Intl.DateTimeFormat("de-DE", {
+            timeZone: "Europe/Berlin",
+            day: "2-digit",
+            month: "2-digit",
+            year: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit"
+          }).format(dt);
+
+          let text = "";
+          let icon = "✏️";
+
+          // ✅ ✅ START + END zusammenfassen (egal welche Reihenfolge)
+          if (
+            next &&
+            ((log.field === "start" && next.field === "end") || (log.field === "end" && next.field === "start")) &&
+            log.user_id === next.user_id &&
+            Math.abs(new Date(log.created_at) - new Date(next.created_at)) < 3000
+          ) {
+            let startLog = log.field === "start" ? log : next;
+            let endLog = log.field === "end" ? log : next;
+
+            icon = "📅";
+
+            text = `
+        <b>Buchung verschoben</b><br>
+        (${formatDate(startLog.old_value)}–${formatDate(endLog.old_value)}
+        ➡️
+        ${formatDate(startLog.new_value)}–${formatDate(endLog.new_value)})
+      `;
+
+            i++; // ✅ zweiten Log überspringen
+          } else {
+            switch (log.field) {
+              case "paid":
+                icon = "💰";
+                text = log.new_value === "true" ? "als <b>bezahlt</b> markiert" : "<b>Bezahlt</b> entfernt";
+                break;
+
+              case "checkin":
+                icon = "🏨";
+                text = log.new_value === "true" ? "<b>Check-in durchgeführt</b>" : "<b>Check-in entfernt</b>";
+                break;
+
+              case "start":
+                icon = "📅";
+                text = `Anreise geändert (${formatDate(log.old_value)} ➡️ ${formatDate(log.new_value)})`;
+                break;
+
+              case "end":
+                icon = "📅";
+                text = `Abreise geändert (${formatDate(log.old_value)} ➡️ ${formatDate(log.new_value)})`;
+                break;
+
+              case "name":
+                icon = "✏️";
+                text = `Name geändert (${log.old_value} ➡️ ${log.new_value})`;
+                break;
+
+              case "price":
+                icon = "💲";
+                text = `Preis geändert (${log.old_value} ➡️ ${log.new_value})`;
+                break;
+
+              case "comment":
+                icon = "💬";
+                text = "Kommentar geändert";
+                break;
+
+              case "color":
+                icon = "🎨";
+                text = "Kategorie geändert";
+                break;
+
+              case "group":
+                icon = "👥";
+                text = `Gruppe geändert (${log.old_value || "-"} ➡️ ${log.new_value || "-"})`;
+                break;
+
+              case "booking":
+                if (log.new_value === "created") {
+                  icon = "➕";
+                  text = "<b>Buchung erstellt</b>";
+                } else if (log.new_value === "deleted") {
+                  icon = "🗑️";
+                  text = "<b>Buchung gelöscht</b>";
+                }
+                break;
+
+              default:
+                text = `${log.field}: ${log.old_value} ➡️ ${log.new_value}`;
+            }
+          }
+
+          html += `
+      <div style="margin-bottom:8px; padding:4px; border-bottom:1px solid #eee;">
+        <small>
+          <b>${userName}</b> (${time})<br>
+          ${icon} ${text}
+        </small>
+      </div>
+    `;
+        }
+
+        box.innerHTML = html;
+      }
+
+      document.addEventListener("keydown", function (e) {
+        const loginVisible = document.getElementById("loginBox").style.display !== "none";
+
+        if (!loginVisible) return;
+
+        // ✅ ENTER → Login auslösen
+        if (e.key === "Enter") {
+          e.preventDefault();
+          login();
+        }
+      });
+
+      window.addEventListener("DOMContentLoaded", () => {
+        document.getElementById("toggleGroup").onchange = function () {
+          let isGroup = this.checked;
+
+          document.getElementById("singleForm").style.display = isGroup ? "none" : "block";
+          document.getElementById("groupForm").style.display = isGroup ? "block" : "none";
+
+          if (isGroup) {
+            buildGroupForm();
+          }
+        };
+      });
+
+      window.onload = () => {
+        render(); // 👉 Tabelle immer zeichnen
+      };
+    </script>
+  </body>
+</html>
