@@ -106,15 +106,16 @@
         pointer-events: auto;
       }
 
-      .booking-layer {
-        position: absolute;
-        top: 0;
-        overflow: visible;
-        left: 180px; /* exakt deine .room Breite */
-        right: 0;
-        bottom: 0;
-        pointer-events: none;
-      }
+      
+.booking-layer {
+  position: absolute;
+  top: 0;
+  left: 100%;   /* ✅ statt 180px */
+  width: calc(100vw - 180px); /* ✅ flexibel */
+  height: 100%;
+  pointer-events: none;
+}
+
 
       .booking.block {
         background: repeating-linear-gradient(45deg, #444, #444 10px, #666 10px, #666 20px);
@@ -1539,15 +1540,18 @@
         });
         t.innerHTML += "</tbody>";
 
-        document.querySelectorAll("#calendar tbody tr").forEach((tr) => {
-          // verhindern doppelt
-          if (tr.querySelector(".booking-layer")) return;
+        
+document.querySelectorAll("#calendar tbody tr").forEach(tr => {
+  if (tr.querySelector(".booking-layer")) return;
 
-          let layer = document.createElement("div");
-          layer.className = "booking-layer";
+  let td = tr.querySelector("td.room"); // ✅ erste Zelle holen
 
-          tr.appendChild(layer);
-        });
+  let layer = document.createElement("div");
+  layer.className = "booking-layer";
+
+  td.appendChild(layer); // ✅ JETZT KORREKT
+});
+
 
         draw();
         drawLegend();
