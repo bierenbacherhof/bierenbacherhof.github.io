@@ -517,7 +517,7 @@
         <button onclick="undo()" title="Rückgängig (Strg+Z)">↶</button>
         <button onclick="openBackupProtected()">Backup</button>
         <input id="backupUpload" type="file" onchange="importData(event)" style="display: none" />
-        <button onclick="openNewBooking()" style="position: absolute; left: 50%; transform: translateX(-50%)">
+        <button onclick="event.stopPropagation(); openNewBooking()" style="position: absolute; left: 50%; transform: translateX(-50%)">
           Neue Buchung anlegen
         </button>
 
@@ -822,6 +822,7 @@
       let userMap = {};
       let allLogs = [];
       let isDraggingUpdate = false;
+      let lastTapTime = 0;
 
       history = JSON.parse(localStorage.getItem("hotel_history") || "[]");
       const BACKUP_PASSWORD = "726435"; // ← hier dein Passwort
@@ -1012,6 +1013,12 @@
       }
 
       function openNewBooking() {
+        
+lastTapTime = Date.now(); // ✅ schützt vor Ghost-Klick
+
+  let e = window.event;
+  e?.stopPropagation();
+
         editIndex = null;
         newBookingRow = null; // ❗ wichtig → noch kein Zimmer
 
@@ -1574,8 +1581,8 @@
             }
 
             tr += `<td class='half ${blocked ? "blocked" : ""}'
-            onclick='${blocked ? "" : `add(${row},${d})`}'>
-         </td>`;
+       onclick='${blocked ? "" : `event.stopPropagation(); add(${row},${d}, event)`}'>
+     </td>`;
           }
           t.innerHTML += tr + "</tr>";
         });
@@ -1999,8 +2006,26 @@
         render();
       }
 
-      async function add(row, day) {
-        if (isMobile) return;
+  async function add(row, day, e) {
+
+  // ✅ MOBILE HARD BLOCK
+  if (isMobile) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    return;
+  }
+
+  // ✅ DOUBLE-TAP BLOCK (Ghost Click Fix)
+  let now = Date.now();
+
+  if (now - lastTapTime < 300) {
+    return;
+  }
+
+  lastTapTime = now;
+    
         if (singlePlacement) {
           assignSingleRoom(row);
           return;
@@ -2738,14 +2763,16 @@ ${
 txt.className = "text";
 txt.style.flex = 1;
 
-// ✅ MOBILE → kein Text
+if (isMobile){
 if (b.guests === "BLOCK") {
-  txt.innerHTML = "🚫 BLOCKIERT";
-}
-else {
-  if (isMobile) {
+  txt.innerHTML = "🚫";
+}else{
     txt.innerHTML = "";
-  } else {
+  }
+}else {
+  if (b.guests === "BLOCK") {
+  txt.innerHTML = "🚫 BLOCKIERT";
+}else {
     txt.innerHTML = `${b.guests} ${b.name || b.group}${frText}${commentText}`;
   }
 }
@@ -3435,6 +3462,7 @@ if (dir === 1) {
         d.onclick = async (e) => {
           e.stopPropagation();
 
+          
           if (!selected.length) return;
 
           let usedColors = getUsedColorsInWeek();
@@ -4158,6 +4186,52 @@ function getSlotFromDate(date, weekStart, isEnd = false) {
       window.onload = () => {
         render(); // 👉 Tabelle immer zeichnen
       };
+      
+   document.addEventListener("click", function (e) {
+
+     if(isMobile) return;
+  const info = document.getElementById("bookingInfo");
+  const form = document.getElementById("bookingForm");
+
+  const clickedBooking = e.target.closest(".booking");
+
+  // =========================
+  // ✅ 1. INFO OFFEN (HAT PRIORITÄT)
+  // =========================
+  if (info && info.style.display === "block") {
+
+    if (info.contains(e.target)) return;
+
+    // ✅ verhindere ALLES darunter (add etc.)
+    e.stopPropagation();
+    e.preventDefault();
+
+    closeInfo();
+
+    // blockiert add()
+    lastTapTime = Date.now();
+
+    return;
+  }
+
+  // =========================
+  // ✅ 2. FORMULAR OFFEN
+  // =========================
+  if (form && form.style.display === "block") {
+
+    // Klick INS Formular → nichts
+    if (form.contains(e.target)) return;
+
+    // ✅ Klick irgendwo → schließen
+    closeForm();
+
+    // optional gegen Ghostclick
+    lastTapTime = Date.now();
+
+    return;
+  }
+
+}, true); // ✅ CAPTURE bleibt!
     </script>
   </body>
 </html>
