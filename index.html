@@ -90,7 +90,7 @@
       .booking {
         position: absolute;
         top: 3px;
-        bottom:3px;
+        bottom: 3px;
         border-radius: 6px;
         display: flex;
         align-items: center;
@@ -106,16 +106,14 @@
         pointer-events: auto;
       }
 
-      
-.booking-layer {
-  position: absolute;
-  top: 0;
-  left: 100%;   /* ✅ statt 180px */
-  width: calc(100vw - 180px); /* ✅ flexibel */
-  height: 100%;
-  pointer-events: none;
-}
-
+      .booking-layer {
+        position: absolute;
+        top: 0;
+        left: 100%; /* ✅ statt 180px */
+        width: calc(100vw - 180px); /* ✅ flexibel */
+        height: 100%;
+        pointer-events: none;
+      }
 
       .booking.block {
         background: repeating-linear-gradient(45deg, #444, #444 10px, #666 10px, #666 20px);
@@ -143,6 +141,37 @@
         margin-right: 6px;
       }
 
+      .no-breakfast-icon {
+  position: relative;
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+}
+
+.no-breakfast-icon span {
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-size: 14px;
+  line-height: 16px;
+}
+
+.no-breakfast-icon::after {
+  content: "";
+  position: absolute;
+
+  top: 7px;                  /* 👈 weiter nach unten */
+  left: 1px;
+
+  width: 19px;               /* 👈 etwas länger */
+  height: 2px;
+
+  background: rgba(241, 103, 103, 0.8);
+
+  transform: rotate(-45deg);
+  transform-origin: center;
+}
       .flag {
         width: 16px;
         height: 16px;
@@ -214,7 +243,7 @@
         background: rgba(0, 0, 0, 0.5);
         cursor: ew-resize;
         z-index: 200;
-        pointer-events:auto;
+        pointer-events: auto;
       }
 
       .handle:hover {
@@ -404,36 +433,29 @@
         thead th {
           top: 81px; /* angepasst */
         }
-        
 
-  #calendar td {
-    position: relative;
-    height: 32px; /* kannst du anpassen */
-  }
-
-
- .booking {
-    top: 2px !important;
-    bottom: auto !important;
-    height: calc(100% - 4px) !important;
-   border-radius: 4px;
-   font-size: 12px;
+        #calendar td {
+          position: relative;
+          height: 32px; /* kannst du anpassen */
         }
-        
-        
- .booking-layer {
-    top: 0;
-    bottom: auto !important;
-    height: 100% !important;
-  }
-        
-        
- #calendar tbody tr {
-    position: relative !important;
-  }
 
+        .booking {
+          top: 2px !important;
+          bottom: auto !important;
+          height: calc(100% - 4px) !important;
+          border-radius: 4px;
+          font-size: 12px;
+        }
 
+        .booking-layer {
+          top: 0;
+          bottom: auto !important;
+          height: 100% !important;
+        }
 
+        #calendar tbody tr {
+          position: relative !important;
+        }
 
         #controls {
           padding: 5px;
@@ -456,15 +478,13 @@
 
         .room {
           width: 120px;
-          font-size:0;
+          font-size: 0;
         }
-        
-        
- .room::before {
-    content: attr(data-room-number); /* ✅ zeigt nur Nummer */
-    font-size: 12px;
-  }
 
+        .room::before {
+          content: attr(data-room-number); /* ✅ zeigt nur Nummer */
+          font-size: 12px;
+        }
       }
     </style>
   </head>
@@ -637,6 +657,14 @@
 
         <label>Kommentar</label><br />
         <input type="text" id="f_comment" /><br /><br />
+        
+        
+<label>Frühstück</label><br>
+<select id="f_breakfast">
+  <option value="true">Ja</option>
+  <option value="false">Nein</option>
+</select><br><br>
+
 
         <label>Gruppe</label><br />
         <select id="f_group"></select
@@ -1504,10 +1532,9 @@
         t.innerHTML += h;
 
         rooms.forEach((r, row) => {
-          
-let roomNumber = r.split(" - ")[0];
+          let roomNumber = r.split(" - ")[0];
 
-let tr = `<tr>
+          let tr = `<tr>
   <td class='room' data-room-number="${roomNumber}">
     ${r}
   </td>`;
@@ -1554,18 +1581,16 @@ let tr = `<tr>
         });
         t.innerHTML += "</tbody>";
 
-        
-document.querySelectorAll("#calendar tbody tr").forEach(tr => {
-  if (tr.querySelector(".booking-layer")) return;
+        document.querySelectorAll("#calendar tbody tr").forEach((tr) => {
+          if (tr.querySelector(".booking-layer")) return;
 
-  let td = tr.querySelector("td.room"); // ✅ erste Zelle holen
+          let td = tr.querySelector("td.room"); // ✅ erste Zelle holen
 
-  let layer = document.createElement("div");
-  layer.className = "booking-layer";
+          let layer = document.createElement("div");
+          layer.className = "booking-layer";
 
-  td.appendChild(layer); // ✅ JETZT KORREKT
-});
-
+          td.appendChild(layer); // ✅ JETZT KORREKT
+        });
 
         draw();
         drawLegend();
@@ -1960,7 +1985,8 @@ document.querySelectorAll("#calendar tbody tr").forEach(tr => {
           color: color,
           group: singlePlacement.group,
           paid: false,
-          checkin: false
+          checkin: false,
+          breakfast: breakfast
         };
 
         // ✅ direkt anzeigen + speichern
@@ -2127,7 +2153,8 @@ document.querySelectorAll("#calendar tbody tr").forEach(tr => {
         let end = new Date(document.getElementById("f_end").value);
         let price = document.getElementById("f_price").value;
         let comment = document.getElementById("f_comment").value;
-
+        let breakfast = document.getElementById("f_breakfast").value === "true";
+        
         // Zeiten setzen
         start.setHours(14, 0, 0, 0);
         end.setHours(11, 0, 0, 0);
@@ -2212,7 +2239,8 @@ document.querySelectorAll("#calendar tbody tr").forEach(tr => {
           logChange(b.id, "price", b.price, price);
           logChange(b.id, "comment", b.comment, comment);
           logChange(b.id, "guests", b.guests, guests);
-
+          logChange(b.id, "breakfast", b.breakfast, breakfast);
+          
           let color = b.color;
 
           // ✅ wenn Kategorie „B“
@@ -2236,6 +2264,7 @@ document.querySelectorAll("#calendar tbody tr").forEach(tr => {
           b.comment = comment;
           b.guests = guests;
           b.color = color;
+          b.breakfast = breakfast;
 
           render(); // ✅ sofort sichtbar
 
@@ -2249,7 +2278,8 @@ document.querySelectorAll("#calendar tbody tr").forEach(tr => {
               price: price,
               comment: comment,
               guests: guests,
-              color: color
+              color: color,
+              breakfast: breakfast
             })
             .eq("id", b.id)
             .then(({ error }) => {
@@ -2412,6 +2442,7 @@ document.querySelectorAll("#calendar tbody tr").forEach(tr => {
     <b>📅 Abreise:</b>${end}<br><br>
     <b>💲 Preis:</b>${b.price || "-"}<br><br>
     <b>💬 Kommentar:</b>${b.comment || "-"}<br><br>
+    <b>🥐 Frühstück:</b>${b.breakfast !== false ? "Ja" : "Nein"}<br><br>
     <b>🎨 Gruppe:</b>
 ${
   b.group
@@ -2468,10 +2499,11 @@ ${
         let weekStart = normalizeDate(startOfWeek(current));
 
         bookings.forEach((b, i) => {
-          let bStart = normalizeDate(b.start);
-          let bEnd = normalizeDate(b.end);
+          let bStart = new Date(b.start);
+          bStart.setHours(12, 0, 0, 0);
 
-          // 👉 wichtig: Abreisetag NICHT anzeigen
+          let bEnd = new Date(b.end);
+          bEnd.setHours(12, 0, 0, 0);
 
           let diffStart = Math.floor((bStart - weekStart) / (1000 * 60 * 60 * 24));
           let diffEnd = Math.floor((bEnd - weekStart) / (1000 * 60 * 60 * 24));
@@ -2484,14 +2516,12 @@ ${
           }
           if (diffStart >= 7) return;
 
-          let visStart = Math.max(0, Math.floor(diffStart));
+          let visStart = Math.max(0, diffStart);
+          let visEnd = Math.min(7, diffEnd);
 
-          let co = Math.floor((bEnd - weekStart) / (1000 * 60 * 60 * 24));
-
-          let visEnd = Math.min(7, co);
-
+          // ✅ WICHTIG
           let startsBeforeWeek = diffStart < 0;
-          let endsAfterWeek = diffEnd > 7;
+          let endsAfterWeek = diffEnd >= 7;
 
           let row = document.querySelectorAll("tr")[b.row + 1];
           if (!row) return;
@@ -2546,7 +2576,9 @@ ${
           let cells = rowEl.querySelectorAll("td:not(.room)");
 
           let startCell = cells[visStart];
-          let endCell = cells[visEnd] || cells[cells.length - 1];
+
+          let renderEnd = endsAfterWeek ? 7 : visEnd;
+          let endCell = cells[renderEnd] || cells[cells.length - 1];
 
           let startRect = startCell.getBoundingClientRect();
           let endRect = endCell.getBoundingClientRect();
@@ -2567,7 +2599,7 @@ ${
           // RIGHT
           let right = endRect.left - layerRect.left + dayWidth / 2;
 
-          if (diffEnd > 7) {
+          if (diffEnd >= 7) {
             right += dayWidth * 0.5;
           }
 
@@ -2579,16 +2611,24 @@ ${
           if (!endsAfterWeek) {
             let co = Math.floor((bEnd - weekStart) / (1000 * 60 * 60 * 24));
 
-            if (co >= 0 && co < 7) {
+            // ✅ entscheidet OB ein halber Tag gezeigt wird
+            let showHalf =
+              (co >= 0 && co < 7) || // normal innerhalb Woche
+              co === 7; // SPEC: Montag nächste Woche
+
+            if (showHalf) {
               let rowEl = document.querySelectorAll("tr")[b.row + 1];
-              let coCell = rowEl.children[co + 1];
+
+              // ✅ WO zeichnen
+              let targetDay = co === 7 ? 6 : co;
+
+              let coCell = rowEl.children[targetDay + 1];
 
               let halfDiv = document.createElement("div");
               halfDiv.className = "booking-half";
 
               halfDiv.style.left = "0%";
               halfDiv.style.width = "50%";
-
               halfDiv.style.background = b.color;
               halfDiv.style.opacity = "0.5";
 
@@ -2689,15 +2729,26 @@ ${
           flags.appendChild(check);
 
           // ✅ TEXT
+          let commentText = b.comment ? ' - ' + b.comment : '';
+          let frText = b.breakfast === false
+          ? " <span class='no-breakfast-icon'><span>☕</span></span>"
+          : "";
 
-          let txt = document.createElement("span");
-          txt.className = "text";
-          txt.style.flex = 1;
-          if (b.guests === "BLOCK") {
-            txt.innerHTML = "🚫 BLOCKIERT";
-          } else {
-            txt.innerHTML = `${b.guests} ${b.name || b.group} - ${b.comment}`;
-          }
+  let txt = document.createElement("span");
+txt.className = "text";
+txt.style.flex = 1;
+
+// ✅ MOBILE → kein Text
+if (b.guests === "BLOCK") {
+  txt.innerHTML = "🚫 BLOCKIERT";
+}
+else {
+  if (isMobile) {
+    txt.innerHTML = "";
+  } else {
+    txt.innerHTML = `${b.guests} ${b.name || b.group}${frText}${commentText}`;
+  }
+}
 
           let pr = document.createElement("span");
           pr.className = "price";
@@ -2723,21 +2774,20 @@ ${
           l.className = "handle left";
 
           l.onmousedown = (e) => {
-  if(isMobile) return;
-  if (f) return;
+            if (isMobile) return;
+            if (f) return;
 
-  e.stopPropagation();
-  e.preventDefault();
+            e.stopPropagation();
+            e.preventDefault();
 
-  // ✅ DAS ist der entscheidende Fix:
-  e.stopImmediatePropagation();
+            // ✅ DAS ist der entscheidende Fix:
+            e.stopImmediatePropagation();
 
-  drag = null;
-  resizing = true;
+            drag = null;
+            resizing = true;
 
-  resize(e, i, -1);
-};
-
+            resize(e, i, -1);
+          };
 
           // ✅ nur noch rechter Handle
           // ✅ DRAG HANDLE (neu)
@@ -2792,25 +2842,56 @@ ${
             let rowEl = document.querySelectorAll("tr")[b.row + 1];
             let cell = rowEl.querySelector("td:not(.room)");
             let dayWidth = cell.getBoundingClientRect().width;
+            let cells = rowEl.querySelectorAll("td:not(.room)");
+            
+// ✅ echte Breite setzen (nicht geclippt)
+el.style.width = durationDays * dayWidth + "px";
 
-            // 👉 WICHTIG: echte Breite setzen
-            el.style.width = durationDays * dayWidth + "px";
+// 👉 echte LEFT korrigieren (Clipping rückgängig machen)
+let weekStart = normalizeDate(startOfWeek(current));
+let diffStart = Math.round((start - weekStart) / (1000 * 60 * 60 * 24));
 
-            // 👉 echte LEFT korrigieren (Clipping rückgängig machen)
-            let weekStart = normalizeDate(startOfWeek(current));
-            let diffStart = (start - weekStart) / (1000 * 60 * 60 * 24);
+let correctedLeft = rect.left - layerRect.left;
 
-            let correctedLeft = rect.left - layerRect.left;
+// ✅ wenn links abgeschnitten → nach links erweitern
+if (diffStart < 0) {
+  correctedLeft += diffStart * dayWidth;
+}
 
-            if (diffStart < 0) {
-              correctedLeft += diffStart * dayWidth; // 👈 zurück nach links erweitern
-            }
+el.style.left = correctedLeft + "px";
 
-            el.style.left = correctedLeft + "px";
+           
+let closestDay = 0;
+let closestDistance = Infinity;
 
+cells.forEach((cell, dayIndex) => {
+  let rect = cell.getBoundingClientRect();
+
+  let center = rect.left + rect.width / 2;
+
+  let dist = Math.abs(rect.left - rect.left); // gleich fix überschrieben unten
+});
+
+// ✅ besser:
+cells.forEach((cell, dayIndex) => {
+  let rect = cell.getBoundingClientRect();
+  let center = rect.left + rect.width / 2;
+
+  let dist = Math.abs(e.clientX - center);
+
+  if (dist < closestDistance) {
+    closestDistance = dist;
+    closestDay = dayIndex;
+  }
+});
+
+
+           
+           
             drag = {
               i: i,
-              mouseStartX: e.clientX
+              startDay: closestDay,
+              mouseStartX : e.clientX
             };
             resizing = false;
             document.body.style.userSelect = "none";
@@ -2835,6 +2916,7 @@ ${
             document.getElementById("toggleGroup").checked = false;
             document.getElementById("singleForm").style.display = "block";
             document.getElementById("groupForm").style.display = "none";
+            document.getElementById("f_breakfast").value = b.breakfast ? "true" : "false";
             document.querySelector(".switch-wrapper").style.display = "none";
 
             editIndex = i;
@@ -2973,21 +3055,48 @@ ${
 
         let rowEl = document.querySelectorAll("tr")[b.row + 1];
         let cell = rowEl.querySelector("td:not(.room)");
-
+        let cells = rowEl.querySelectorAll("td:not(.room)");
         let dayWidth = cell.getBoundingClientRect().width;
 
-        let moveDays = Math.round((event.clientX - currentDrag.mouseStartX) / dayWidth);
+        
+let mouseX = event.clientX;
+
+let closestDay = 0;
+let closestDistance = Infinity;
+
+cells.forEach((cell, dayIndex) => {
+  let rect = cell.getBoundingClientRect();
+  let center = rect.left + rect.width / 2;
+
+  let dist = Math.abs(mouseX - center);
+
+  if (dist < closestDistance) {
+    closestDistance = dist;
+    closestDay = dayIndex;
+  }
+});
+
+let moveDays = closestDay - drag.startDay;
 
         let changed = false;
         let oldStart = b.start;
         let oldEnd = b.end;
 
         if (moveDays !== 0) {
-          let newStart = new Date(b.start);
-          let newEnd = new Date(b.end);
+          let baseStart = new Date(b.start);
+          let baseEnd = new Date(b.end);
 
+          // ✅ Dauer exakt berechnen (in ms!)
+          let duration = baseEnd - baseStart;
+
+          // ✅ neuen Start berechnen
+          let newStart = new Date(baseStart);
           newStart.setDate(newStart.getDate() + moveDays);
-          newEnd.setDate(newEnd.getDate() + moveDays);
+
+          // ✅ Ende IMMER aus Dauer neu berechnen
+          let newEnd = new Date(newStart.getTime() + duration);
+          newStart.setHours(12, 0, 0, 0);
+          newEnd.setHours(12, 0, 0, 0);
 
           if (!overlapDates(b.row, newStart, newEnd, currentDrag.i)) {
             saveHistory();
@@ -3067,16 +3176,17 @@ ${
         let weekStart = normalizeDate(startOfWeek(current));
         let baseStart = new Date(b.start);
         let baseEnd = new Date(b.end);
+        let lastMouseX = e.clientX;
 
-       if (dir === -1) {
-  let base = normalizeDate(baseStart);
-  let week = normalizeDate(weekStart);
+        if (dir === -1) {
+          let base = normalizeDate(baseStart);
+          let week = normalizeDate(weekStart);
 
-  // ✅ nur blockieren wenn wirklich VOR der Woche
-  if (base < week) {
-    return;
-  }
-}
+          // ✅ nur blockieren wenn wirklich VOR der Woche
+          if (base < week) {
+            return;
+          }
+        }
         // ✅ sichtbaren Start berechnen
         let visibleStart = baseStart < weekStart ? new Date(weekStart) : new Date(baseStart);
 
@@ -3101,21 +3211,23 @@ ${
         if (!el) return;
 
         const resizeMove = (ev) => {
-          if (!resizing) return;
+  if (!resizing) return;
 
-          let deltaX = ev.clientX - resizeState.mouseStartX;
+  lastMouseX = ev.clientX; // ✅ HIER!
 
-          el.style.transform = "none";
+  let deltaX = ev.clientX - resizeState.mouseStartX;
 
-          if (dir === 1) {
-            el.style.width = resizeState.startWidth + deltaX + "px";
-          }
+  el.style.transform = "none";
 
-          if (dir === -1) {
-            el.style.left = resizeState.startLeft + deltaX + "px";
-            el.style.width = resizeState.startWidth - deltaX + "px";
-          }
-        };
+  if (dir === 1) {
+    el.style.width = resizeState.startWidth + deltaX + "px";
+  }
+
+  if (dir === -1) {
+    el.style.left = resizeState.startLeft + deltaX + "px";
+    el.style.width = resizeState.startWidth - deltaX + "px";
+  }
+};
 
         const resizeEnd = async (ev) => {
           saveHistory();
@@ -3124,60 +3236,107 @@ ${
           drag = null;
           document.body.style.userSelect = "auto";
 
-          let deltaX = ev.clientX - resizeState.mouseStartX;
+       let weekStart = normalizeDate(startOfWeek(current));
 
-          let moveDays = Math.round(deltaX / dayWidth);
+let rowEl = document.querySelectorAll("tr")[b.row + 1];
+let cells = rowEl.querySelectorAll("td:not(.room)");
+
+let mouseX = lastMouseX;
+
+let closestSlot = 0;
+let closestDistance = Infinity;
+
+// ✅ 14 Slots berechnen (2 pro Tag)
+cells.forEach((cell, dayIndex) => {
+  let rect = cell.getBoundingClientRect();
+
+  for (let half = 0; half < 2; half++) {
+    let center;
+
+    if (half === 0) {
+      center = rect.left + rect.width * 0.25;
+    } else {
+      center = rect.left + rect.width * 0.75;
+    }
+
+    let slotIndex = dayIndex * 2 + half;
+    let distance = Math.abs(mouseX - center);
+
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closestSlot = slotIndex;
+    }
+  }
+});
 
           
-if (moveDays === 0) {
-  // ✅ VISUELL RESETTEN
-  el.style.transform = "none";
-  el.style.left = "";
-  el.style.width = "";
+let currentStartSlot = getSlotFromDate(b.start, weekStart, false);
+let currentEndSlot = getSlotFromDate(b.end, weekStart, true);
 
-  document.removeEventListener("mousemove", resizeMove);
 
-  resizing = false;
-  drag = null;
-
-  return;
+// ✅ PARITÄT ZUERST (ganz wichtig!)
+if (dir === -1 && closestSlot % 2 === 1) {
+  closestSlot--;
 }
 
+if (dir === 1 && closestSlot % 2 === 0) {
+  closestSlot++;
+}
 
-          if (dir === 1) {
-            let newEnd = new Date(baseEnd);
-            newEnd.setDate(baseEnd.getDate() + moveDays);
+// ✅ Mindestabstand erzwingen (JETZT, nicht vorher!)
+if (dir === -1 && currentEndSlot - closestSlot < 2) {
+  closestSlot = currentEndSlot - 2;
+}
 
-            if (newEnd <= baseStart) return;
+if (dir === 1 && closestSlot - currentStartSlot < 2) {
+  closestSlot = currentStartSlot + 2;
+}
 
-            if (!overlapDates(b.row, baseStart, newEnd, i)) {
-              let oldEnd = b.end;
+// ✅ PARITÄT NOCHMAL SICHERN (weil wir Slot verändert haben!)
+if (dir === -1 && closestSlot % 2 === 1) {
+  closestSlot--;
+}
 
-              b.end = newEnd.toISOString();
+if (dir === 1 && closestSlot % 2 === 0) {
+  closestSlot++;
+}
 
-              render();
+// ✅ CLAMP GANZ ZUM SCHLUSS
+closestSlot = Math.max(0, Math.min(13, closestSlot));
+          
+if (dir === -1) {
 
-              await logChange(b.id, "end", oldEnd, b.end);
-              await supa.from("bookings").update({ end: b.end }).eq("id", b.id);
-            }
-          }
-          if (dir === -1) {
-            let newStart = new Date(baseStart);
-            newStart.setDate(baseStart.getDate() + moveDays);
+  let newStart = new Date(weekStart);
+  newStart.setDate(weekStart.getDate() + Math.floor(closestSlot / 2));
 
-            if (newStart >= baseEnd) return;
+  if (!overlapDates(b.row, newStart, baseEnd, i)) {
+    let oldStart = b.start;
 
-            if (!overlapDates(b.row, newStart, baseEnd, i)) {
-              let oldStart = b.start;
+    b.start = newStart.toISOString();
 
-              b.start = newStart.toISOString();
+    render();
 
-              render();
+    await logChange(b.id, "start", oldStart, b.start);
+    await supa.from("bookings").update({ start: b.start }).eq("id", b.id);
+  }
+}
 
-              await logChange(b.id, "start", oldStart, b.start);
-              await supa.from("bookings").update({ start: b.start }).eq("id", b.id);
-            }
-          }
+if (dir === 1) {
+
+  let newEnd = new Date(weekStart);
+  newEnd.setDate(weekStart.getDate() + Math.floor(closestSlot / 2));
+
+  if (!overlapDates(b.row, baseStart, newEnd, i)) {
+    let oldEnd = b.end;
+
+    b.end = newEnd.toISOString();
+
+    render();
+
+    await logChange(b.id, "end", oldEnd, b.end);
+    await supa.from("bookings").update({ end: b.end }).eq("id", b.id);
+  }
+}
 
           // ✅ RESET
 
@@ -3185,6 +3344,7 @@ if (moveDays === 0) {
           el.style.left = "";
           el.style.width = "";
 
+          
           document.removeEventListener("mousemove", resizeMove);
 
           resizing = false;
@@ -3329,6 +3489,17 @@ if (moveDays === 0) {
         pal.appendChild(d);
       });
 
+function getSlotFromDate(date, weekStart, isEnd = false) {
+  let diff = Math.floor((normalizeDate(date) - weekStart) / (1000 * 60 * 60 * 24));
+
+  let slot = diff * 2;
+
+  if (isEnd) slot += 1;
+
+  return slot;
+}
+
+      
       function drawLegend() {
         let l = document.getElementById("legend");
         l.innerHTML = "";
