@@ -4232,6 +4232,55 @@ function getSlotFromDate(date, weekStart, isEnd = false) {
   }
 
 }, true); // ✅ CAPTURE bleibt!
+      
+      let resizeTimeout;
+
+function redrawBookingsOnResize() {
+  document.querySelectorAll(".booking").forEach(e => e.remove());
+  document.querySelectorAll(".booking-half").forEach(e => e.remove());
+  draw();
+}
+
+window.addEventListener("resize", debounce(redrawBookingsOnResize, 100));
+
+function debounce(fn, delay) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), delay);
+  };
+}
+      
+      let touchStartX = 0;
+let touchEndX = 0;
+
+
+const calendar = document.getElementById("calendar");
+
+calendar.addEventListener("touchstart", (e) => {
+  touchStartX = e.changedTouches[0].screenX;
+});
+
+calendar.addEventListener("touchend", (e) => {
+  touchEndX = e.changedTouches[0].screenX;
+  handleSwipe();
+});
+
+function handleSwipe() {
+  let diff = touchStartX - touchEndX;
+
+  // ✅ Mindestdistanz (verhindert Mini-Wischer)
+  if (Math.abs(diff) < 50) return;
+
+  if (diff > 0) {
+    // 👉 nach links gewischt → nächste Woche
+    changeWeek(1);
+  } else {
+    // 👉 nach rechts gewischt → vorherige Woche
+    changeWeek(-1);
+  }
+}
+
     </script>
   </body>
 </html>
