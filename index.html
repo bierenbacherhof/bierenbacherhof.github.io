@@ -475,7 +475,7 @@ position: sticky;
       
         #calendar td {
           position: relative;
-          height: 32px; /* kannst du anpassen */
+          height: 50px; /* kannst du anpassen */
         }
 
         
@@ -5171,7 +5171,7 @@ function handleRealtimeUpdate(payload) {
       function handleSwipe() {
         let diff = touchStartX - touchEndX;
 
-        if (Math.abs(diff) < 50) return;
+        if (Math.abs(diff) < 120) return;
 
         if (diff > 0) {
           changeWeek(1);
