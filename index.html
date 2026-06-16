@@ -588,8 +588,8 @@ position: sticky;
         padding: 20px;
         border: 1px solid #ccc;
         z-index: 60000;
-       max-width: 95vw;
-       width: 95vw;
+       max-width: 30vw;
+       width: 30vw;
         max-height: 500px;
         overflow-y: auto;
         display: none;
@@ -4045,6 +4045,28 @@ div.addEventListener("click", () => {
   return stats;
 }
       
+      async function deleteGroupFile(fileId, fileName, groupId) {
+
+  if (!confirm(`Sind Sie sicher, dass Sie die Datei "${fileName}" aus der Gruppe entfernen wollen?`)) {
+    return;
+  }
+
+  // ✅ Datei-Datensatz aus DB entfernen
+  const { error } = await supa
+    .from("group_files")
+    .delete()
+    .eq("id", fileId);
+
+  if (error) {
+    console.error(error);
+    alert("Fehler beim Löschen der Datei");
+    return;
+  }
+
+  // ✅ Ansicht neu laden
+  openGroupInfo(groupId);
+}
+      
       async function openGroupInfo(groupId) {
 
   let box = document.getElementById("groupInfoBox");
@@ -4095,13 +4117,33 @@ let info = `
   } else {
     let html = "";
 
-    data.forEach(f => {
-      html += `
-        <div style="margin-bottom:6px">
-          <a href="${f.url}" target="_blank">${f.name}</a>
-        </div>
-      `;
-    });
+   data.forEach(f => {
+  html += `
+    <div style="
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:6px;
+    ">
+      <a href="${f.url}" target="_blank">
+        ${f.name}
+      </a>
+
+      <span 
+        onclick="deleteGroupFile('${f.id}', '${f.name}', '${groupId}')"
+        style="
+          cursor:pointer;
+          color:red;
+          font-weight:bold;
+          padding:4px;
+        "
+      >
+        ✖
+      </span>
+    </div>
+  `;
+});
+
 
     fileContainer.innerHTML = info + html;
   }
@@ -4149,36 +4191,52 @@ if (isMobile || !isEditAllowed()) {
     handleFiles(e.dataTransfer.files, groupId);
   };
 }
+      
+      
+function sanitizeFileName(name) {
+  return name
+    .normalize("NFD")                
+    .replace(/[\u0300-\u036f]/g, "")  
+    .replace(/[^a-zA-Z0-9.\-_]/g, "_"); 
+}
+
       async function handleFiles(files, groupId) {
 
-  for (let file of files) {
+        for (let file of files) {
 
-    let filePath = `${groupId}/${Date.now()}_${file.name}`;
+  let cleanName = sanitizeFileName(file.name);
+  let filePath = `${groupId}/${Date.now()}_${cleanName}`;
 
-    const { data, error } = await supa.storage
-      .from("group-files")
-      .upload(filePath, file);
+  // ✅ Upload
+  const { data: uploadData, error: uploadError } = await supa.storage
+    .from("group-files")
+    .upload(filePath, file);
 
-    if (error) {
-      console.error(error);
-      continue;
-    }
-
-    // ✅ öffentliche URL holen
-    const { data: publicData } = supa
-      .storage
-      .from("group-files")
-      .getPublicUrl(filePath);
-
-    let url = publicData.publicUrl;
-
-    // ✅ DB speichern
-    await supa.from("group_files").insert([{
-      group_id: groupId,
-      name: file.name,
-      url: url
-    }]);
+  if (uploadError) {
+    console.error("Upload Fehler:", uploadError);
+    continue;
   }
+
+  // ✅ Signed URL holen
+  const { data: urlData, error: urlError } = await supa
+    .storage
+    .from("group-files")
+    .createSignedUrl(filePath, 60 * 60);
+
+  if (urlError) {
+    console.error("Signed URL Fehler:", urlError);
+    continue;
+  }
+
+  let url = urlData.signedUrl;
+
+  // ✅ DB speichern
+  await supa.from("group_files").insert([{
+    group_id: groupId,
+    name: file.name,
+    url: url
+  }]);
+}
 
   // ✅ neu laden
   openGroupInfo(groupId);
@@ -4933,72 +4991,6 @@ function handleRealtimeUpdate(payload) {
         render();
       };
 
-   document.addEventListener(
-  "mousedown",
-  function (e) {
-    if (isMobile) return;
-
-    const info = document.getElementById("bookingInfo");
-    const form = document.getElementById("bookingForm");
-    const backup = document.getElementById("backupList");
-    const log = document.getElementById("logOverview");
-    const overlay = document.getElementById("overlay");
-    const groupBox = document.getElementById("groupInfoBox");
-
-    let blocked = false;
-
-    // ✅ INFO BOX
-    if (info && info.style.display === "block") {
-      if (!info.contains(e.target)) {
-        closeInfo();
-        blocked = true;
-      }
-    }
-
-    // ✅ FORM
-    if (form && form.style.display === "block") {
-      if (!form.contains(e.target)) {
-        closeForm();
-        blocked = true;
-      }
-    }
-
-    // ✅ BACKUP
-    if (backup && backup.style.display === "block") {
-      if (!backup.contains(e.target)) {
-        backup.style.display = "none";
-        if (overlay) overlay.style.display = "none";
-        blocked = true;
-      }
-    }
-
-    // ✅ LOG
-    if (log && log.style.display === "block") {
-      if (!log.contains(e.target)) {
-        log.style.display = "none";
-        if (overlay) overlay.style.display = "none";
-        blocked = true;
-      }
-    }
-
-    // ✅ GROUP BOX
-    if (groupBox && groupBox.style.display === "block") {
-      if (!groupBox.contains(e.target)) {
-        closeGroupInfo();
-        blocked = true;
-      }
-    }
-
-    // ✅ 👉 GANZ WICHTIG: Klick komplett blockieren
-    if (blocked) {
-      e.stopPropagation();
-      e.preventDefault();
-      lastTapTime = Date.now();
-      return false;
-    }
-  },
-  true // ✅ CAPTURE PHASE
-);
       let resizeTimeout;
 
       async function autoPlaceGroup() {
@@ -5179,7 +5171,72 @@ function handleRealtimeUpdate(payload) {
           changeWeek(-1);
         }
       }
+function handleGlobalClose(e) {
+  const info = document.getElementById("bookingInfo");
+  const form = document.getElementById("bookingForm");
+  const backup = document.getElementById("backupList");
+  const log = document.getElementById("logOverview");
+  const overlay = document.getElementById("overlay");
+  const groupBox = document.getElementById("groupInfoBox");
 
+  let blocked = false;
+
+  // ✅ INFO
+  if (info && info.style.display === "block") {
+    if (!info.contains(e.target)) {
+      closeInfo();
+      blocked = true;
+    }
+  }
+
+  // ✅ FORM
+  if (form && form.style.display === "block") {
+    if (!form.contains(e.target)) {
+      closeForm();
+      blocked = true;
+    }
+  }
+
+  // ✅ BACKUP
+  if (backup && backup.style.display === "block") {
+    if (!backup.contains(e.target)) {
+      backup.style.display = "none";
+      overlay.style.display = "none";
+      blocked = true;
+    }
+  }
+
+  // ✅ LOG
+  if (log && log.style.display === "block") {
+    if (!log.contains(e.target)) {
+      log.style.display = "none";
+      overlay.style.display = "none";
+      blocked = true;
+    }
+  }
+
+  // ✅ GROUP BOX
+  if (groupBox && groupBox.style.display === "block") {
+    if (!groupBox.contains(e.target)) {
+      closeGroupInfo();
+      blocked = true;
+    }
+  }
+
+  // ✅ BLOCKIERT WEITERLEITUNG
+  if (blocked) {
+    e.stopPropagation();
+    e.preventDefault();
+    lastTapTime = Date.now();
+    return false;
+  }
+}
+
+// ✅ DESKTOP
+document.addEventListener("mousedown", handleGlobalClose, true);
+
+// ✅ MOBILE (WICHTIG!)
+document.addEventListener("touchstart", handleGlobalClose, true);
       
     </script>
   </body>
