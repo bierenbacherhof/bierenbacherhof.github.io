@@ -455,6 +455,16 @@
           top: 81px; /* angepasst */
         }
 
+        #stickyHeader{
+          
+ position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 10000;
+    background: white;
+
+        }
         #calendar td {
           position: relative;
           height: 32px; /* kannst du anpassen */
@@ -4153,10 +4163,56 @@ if (isMobile || !isEditAllowed()) {
           ) {
             return;
           }
-          await checkAuth();
-        })
-        .subscribe();
+          supa
+  .channel("live-bookings")
+  .on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "bookings" },
+    (payload) => {
+      if (
+        isRestoring ||
+        isUndoing ||
+        isDeleting ||
+        isDraggingUpdate ||
+        isLocalInsert ||
+        Date.now() - lastChangeTime < 500
+      ) {
+        return;
+      }
 
+      handleRealtimeUpdate(payload);
+    }
+  )
+  .subscribe();
+       
+        function handleRealtimeUpdate(payload) {
+  const { eventType, new: newRow, old: oldRow } = payload;
+
+  // ✅ INSERT
+  if (eventType === "INSERT") {
+    bookings.push({
+      ...newRow,
+      row: Number(newRow.row)
+    });
+  }
+
+  // ✅ UPDATE
+  if (eventType === "UPDATE") {
+    bookings = bookings.map((b) =>
+      b.id === newRow.id
+        ? { ...newRow, row: Number(newRow.row) }
+        : b
+    );
+  }
+
+  // ✅ DELETE
+  if (eventType === "DELETE") {
+    bookings = bookings.filter((b) => b.id !== oldRow.id);
+  }
+
+  render();
+}
+        
       async function addBookingToDB(b) {
         let tempId = "tmp_" + Date.now();
 
