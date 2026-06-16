@@ -17,12 +17,11 @@
       }
 
       #controls {
-        padding: 10px;
-        position: sticky; /* ✅ DAS IST DER FIX */
-        top: 0; /* ✅ GANZ WICHTIG */
-        background: #fff;
-        width: 100%;
-        z-index: 2001;
+       
+padding: 10px;
+  position: relative; 
+  background: #fff;
+
       }
 
       table {
@@ -276,7 +275,7 @@
       }
 
       #calendar {
-        margin-top: 93px;
+        margin-top: 94px;
       }
 
       #palette {
@@ -422,12 +421,14 @@
 }
 
       #stickyHeader {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 2000;
-        background: #fff;
+      
+position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 10000;
+  background: white;
+
       }
 
       #logoutBtn {
@@ -455,16 +456,7 @@
           top: 81px; /* angepasst */
         }
 
-        #stickyHeader{
-          
- position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    z-index: 10000;
-    background: white;
-
-        }
+      
         #calendar td {
           position: relative;
           height: 32px; /* kannst du anpassen */
@@ -4149,21 +4141,7 @@ if (isMobile || !isEditAllowed()) {
           console.error("Supabase Fehler:", error);
         }
       }
-
-      supa
-        .channel("live-bookings")
-        .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, async () => {
-          if (
-            isRestoring ||
-            isUndoing ||
-            isDeleting ||
-            isDraggingUpdate ||
-            isLocalInsert ||
-            Date.now() - lastChangeTime < 1000
-          ) {
-            return;
-          }
-          supa
+supa
   .channel("live-bookings")
   .on(
     "postgres_changes",
@@ -4184,28 +4162,20 @@ if (isMobile || !isEditAllowed()) {
     }
   )
   .subscribe();
-       
-        function handleRealtimeUpdate(payload) {
+
+function handleRealtimeUpdate(payload) {
   const { eventType, new: newRow, old: oldRow } = payload;
 
-  // ✅ INSERT
   if (eventType === "INSERT") {
-    bookings.push({
-      ...newRow,
-      row: Number(newRow.row)
-    });
+    bookings.push({ ...newRow, row: Number(newRow.row) });
   }
 
-  // ✅ UPDATE
   if (eventType === "UPDATE") {
     bookings = bookings.map((b) =>
-      b.id === newRow.id
-        ? { ...newRow, row: Number(newRow.row) }
-        : b
+      b.id === newRow.id ? { ...newRow, row: Number(newRow.row) } : b
     );
   }
 
-  // ✅ DELETE
   if (eventType === "DELETE") {
     bookings = bookings.filter((b) => b.id !== oldRow.id);
   }
