@@ -467,7 +467,7 @@ position: fixed;
         thead th {
           
 position: sticky;
-    top: 78px; /* ✅ GLEICHER WERT */
+    top: 81px; /* ✅ GLEICHER WERT */
     z-index: 2000;
 
         }
@@ -475,7 +475,7 @@ position: sticky;
       
         #calendar td {
           position: relative;
-          height: 40px; /* kannst du anpassen */
+          height: 25px; /* kannst du anpassen */
         }
 
         
@@ -484,7 +484,7 @@ position: sticky;
     top: 0;
     left: 0;
     width: 100%;
-    height: 78px; /* ✅ fest definieren */
+    height: 81px; /* ✅ fest definieren */
     z-index: 10000;
     
   }
@@ -520,7 +520,7 @@ position: sticky;
 
         /* 👇 HIER NEU */
         #calendar {
-          margin-top: 78px;
+          margin-top: 81px;
           overflow-x: auto;
           position: relative;
           max-width: 100%;
@@ -5171,7 +5171,7 @@ function handleRealtimeUpdate(payload) {
       function handleSwipe() {
         let diff = touchStartX - touchEndX;
 
-        if (Math.abs(diff) < 120) return;
+        if (Math.abs(diff) < 150) return;
 
         if (diff > 0) {
           changeWeek(1);
