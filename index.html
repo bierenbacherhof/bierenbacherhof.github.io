@@ -400,6 +400,27 @@
         width: 8px;
       }
 
+      
+#loginBlocker {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(3px);
+
+  z-index: 9999;
+  display: none;
+}
+
+      
+#loginBox {
+  position: fixed;
+  z-index: 10000;
+}
+
       #stickyHeader {
         position: fixed;
         top: 0;
@@ -480,6 +501,16 @@
           width: 120px;
           font-size: 0;
         }
+        
+        
+.allowed {
+    display: none !important;
+  }
+
+  #logoutBtn {
+    display: inline-block !important;
+  }
+}
 
         .room::before {
           content: attr(data-room-number); /* ✅ zeigt nur Nummer */
@@ -490,6 +521,7 @@
   </head>
 
   <body>
+    <div id="loginBlocker"></div>
     <div
       id="loginBox"
       style="
@@ -548,9 +580,10 @@
         <button onclick="changeWeek(-1)" class="allowed">◀ Woche</button>
         <button onclick="changeWeek(1)" class="allowed">Woche ▶</button>
         <button onclick="undo()" title="Rückgängig (Strg+Z)">↶</button>
-        <button onclick="openBackupProtected()">Backup</button>
-        <input id="backupUpload" type="file" onchange="importData(event)" style="display: none" />
+        <button id="backupBtn" onclick="openBackupProtected()">Backup</button>
         <button
+          class="allowed"
+          id="newBookingBtn"
           onclick="event.stopPropagation(); openNewBooking()"
           style="position: absolute; left: 50%; transform: translateX(-50%)">
           Neue Buchung anlegen
@@ -776,7 +809,7 @@
         "201 - DZ B",
         "202 - DZ B",
         "203 - DZ B",
-        "204 - DZ B",
+        "204 - DZ B Twin",
         "205 - DZ B",
         "206 - kl. DZ",
         "207 - kl. DZ",
@@ -1401,17 +1434,23 @@
         let groupName = document.getElementById("g_name").value.trim();
 
         // ✅ WICHTIG: Gruppe jetzt ERSTELLEN
-        let group = await createGroup(groupName, color);
+        let stats = calculateGroupStats(JSON.parse(JSON.stringify(data)));
+
+let group = await createGroup(groupName, color, {
+  start,
+  end,
+  stats
+});
 
         if (!group) return;
 
-        groupPlacement = {
-          data,
-          start,
-          end,
-          groupId: group.id,
-          placed: []
-        };
+groupPlacement = {
+  data: JSON.parse(JSON.stringify(data)), // ✅ WICHTIG!
+  start,
+  end,
+  groupId: group.id,
+  placed: []
+};
 
         render();
         updatePlacementBox();
@@ -1549,6 +1588,7 @@
       }
 
       function updatePlacementBox() {
+        if (!groupPlacement) return;
         let box = document.getElementById("placementBox");
 
         if (!box) {
@@ -1716,35 +1756,44 @@
           data: { session }
         } = await supa.auth.getSession();
 
-        if (session) {
-          document.getElementById("loginBox").style.display = "none";
-          await loadGroups();
-          await loadUserRole();
-          await loadUserMap();
+       if (session) {
+  // ✅ Login erfolgreich → alles freigeben
+  document.getElementById("loginBox").style.display = "none";
+  document.getElementById("loginBlocker").style.display = "none"; // ✅ NEU
 
-          if (isAdmin()) {
-            // ✅ Admin darf immer Upload (egal ob Desktop oder Mobile)
-            document.getElementById("backupUpload").style.display = "inline-block";
+  await loadGroups();
+  await loadUserRole();
+  await loadUserMap();
 
-            // ✅ Log nur auf Desktop
-            document.getElementById("logOverviewBtn").style.display = isMobile ? "none" : "inline-block";
-          } else {
-            // ❌ kein Admin → GAR NICHTS
-            document.getElementById("backupUpload").style.display = "none";
-            document.getElementById("logOverviewBtn").style.display = "none";
-          }
+         
 
-          if (currentRole === "read" || isMobile) {
-            document.body.classList.add("readonly");
-          } else {
-            document.body.classList.remove("readonly");
-          }
+document.getElementById("newBookingBtn").style.display =
+  isEditAllowed() ? "inline-block" : "none";
 
-          await loadData();
-        } else {
-          document.getElementById("loginBox").style.display = "block";
-          render();
-        }
+
+  if (isAdmin()) {
+    document.getElementById("backupBtn").style.display = "inline-block";
+    document.getElementById("logOverviewBtn").style.display = "inline-block";
+  } else {
+    document.getElementById("backupBtn").style.display = "none";
+    document.getElementById("logOverviewBtn").style.display = "none";
+  }
+
+  if (currentRole === "read" || isMobile) {
+    document.body.classList.add("readonly");
+  } else {
+    document.body.classList.remove("readonly");
+  }
+
+  await loadData();
+
+} else {
+  // ❌ NICHT eingeloggt → alles sperren
+  document.getElementById("loginBox").style.display = "block";
+  document.getElementById("loginBlocker").style.display = "block"; // ✅ NEU
+
+  render();
+}
 
         // ✅ GANZ AM ENDE sichtbar machen
         document.body.style.visibility = "visible";
@@ -2211,24 +2260,15 @@
           id: "tmp_" + Date.now() + "_" + Math.random()
         };
 
-        if (!dry) {
-          bookings.push(temp);
-        }
+       
+if (dry) {
+  return temp;
+}
 
-        // ✅ count NUR extern reduzieren!
-        if (!dry) {
-          item.count--;
-        }
+bookings.push(temp);
 
-        // ✅ DRY → NICHTS MEHR MACHEN
-        if (dry) {
-          return temp; // 👈 wichtig!
-        }
+return temp;
 
-        // ✅ NORMALER MODUS
-        // (dein alter DB Code bleibt hier)
-
-        return temp;
       }
 
       function isAnyDZ(room) {
@@ -3885,6 +3925,7 @@ div.addEventListener("click", () => {
 
 
           div.oncontextmenu = async (e) => {
+             if (!isEditAllowed()) return;
             e.preventDefault();
 
             if (!confirm(`Alle Buchungen der Gruppe "${g.name}" in dieser Woche löschen?`)) {
@@ -4020,19 +4061,39 @@ if (isMobile || !isEditAllowed()) {
   document.getElementById("groupInfoBox").style.display = "none";
 }
       
-      async function createGroup(name, color) {
-        const { data, error } = await supa.from("groups").insert([{ name, color }]).select().single();
+      async function createGroup(name, color, extra = {}) {
+  let insertObj = {
+    name,
+    color
+  };
 
-        if (error) {
-          console.error(error);
-          alert("Gruppe konnte nicht erstellt werden");
-          return null;
-        }
+  if (extra.start) insertObj.start = extra.start.toISOString().slice(0, 10);
+  if (extra.end) insertObj.end = extra.end.toISOString().slice(0, 10);
 
-        groupsMap[data.id] = data;
+  if (extra.stats) {
+    insertObj.count_ez = extra.stats.ez;
+    insertObj.count_dz = extra.stats.dz;
+    insertObj.count_3er = extra.stats.er3;
+    insertObj.count_4er = extra.stats.er4;
+    insertObj.guests_total = extra.stats.guests;
+  }
 
-        return data;
-      }
+  const { data, error } = await supa
+    .from("groups")
+    .insert([insertObj])
+    .select()
+    .single();
+
+  if (error) {
+    console.error(error);
+    alert("Gruppe konnte nicht erstellt werden");
+    return null;
+  }
+
+  groupsMap[data.id] = data;
+
+  return data;
+}
 
       function getUsedColorsInWeek() {
         let usedColors = new Set();
@@ -4129,36 +4190,47 @@ if (isMobile || !isEditAllowed()) {
         }
       }
 
-      async function importData(event) {
-        const user = (await supa.auth.getUser()).data.user;
 
-        if (!isAdmin()) {
-          alert("Keine Berechtigung!");
-          return;
-        }
 
-        const file = event.target.files[0];
-        if (!file) return;
+      function calculateGroupStats(data) {
+  let stats = {
+    ez: 0,
+    dz: 0,
+    er3: 0,
+    er4: 0,
+    guests: 0
+  };
 
-        const reader = new FileReader();
+  data.forEach((d) => {
+    let type = d.type;
+    let count = Number(d.count);
 
-        reader.onload = function (e) {
-          try {
-            const data = JSON.parse(e.target.result);
+    // ✅ EZ + EZ B
+    if (type === "EZ" || type === "EZ B") {
+      stats.ez += count;
+      stats.guests += count * 1;
+    }
 
-            bookings = data.bookings || [];
-            current = data.current ? new Date(data.current) : new Date();
+    // ✅ DZ + DZ B
+    else if (type === "DZ" || type === "DZ B") {
+      stats.dz += count;
+      stats.guests += count * 2;
+    }
 
-            render();
-            alert("Backup geladen");
-          } catch (err) {
-            alert("Fehler beim Laden der Datei");
-          }
-        };
+    else if (type === "3er") {
+      stats.er3 += count;
+      stats.guests += count * 3;
+    }
 
-        reader.readAsText(file);
-      }
+    else if (type === "4er") {
+      stats.er4 += count;
+      stats.guests += count * 4;
+    }
+  });
 
+  return stats;
+}
+    
       function saveLocalBackup(label = "") {
         if (history.length === 0) {
           console.log("❌ Backup ignoriert – keine History vorhanden");
@@ -4177,7 +4249,7 @@ if (isMobile || !isEditAllowed()) {
 
         backups.push(data);
 
-        if (backups.length > 168) {
+        if (backups.length > 30) {
           backups.shift();
         }
 
@@ -4378,6 +4450,7 @@ if (isMobile || !isEditAllowed()) {
       });
 
       async function deleteGroupInWeek(groupId) {
+        if (!isEditAllowed()) return;
         let weekStart = normalizeDate(startOfWeek(current));
         let weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 7);
@@ -4781,6 +4854,21 @@ if (isMobile || !isEditAllowed()) {
 
             return;
           }
+          
+          
+const groupBox = document.getElementById("groupInfoBox");
+
+if (groupBox && groupBox.style.display === "block") {
+  if (groupBox.contains(e.target)) return;
+
+  e.stopPropagation();
+  e.preventDefault();
+
+  closeGroupInfo();
+  lastTapTime = Date.now();
+
+  return;
+}
         },
         true
       );
@@ -4788,60 +4876,102 @@ if (isMobile || !isEditAllowed()) {
       let resizeTimeout;
 
       async function autoPlaceGroup() {
-        if (!groupPlacement) return;
-        let tempOccupied = new Set();
+  if (!groupPlacement || !groupPlacement.data) return;
 
-        let { start, end } = groupPlacement;
+  let { start, end } = groupPlacement;
 
-        let created = [];
+  let tempOccupied = new Set();
 
-        let order = ["4er", "3er", "DZ B", "DZ", "EZ B", "EZ"];
+  let order = ["4er", "3er", "DZ B", "DZ", "EZ B", "EZ"];
 
-        let sortedTypes = order.filter((t) => groupPlacement.data.some((d) => d.type === t && d.count > 0));
+  let somethingPlaced = true;
 
-        for (let type of sortedTypes) {
-          let item = groupPlacement.data.find((d) => d.type === type);
+  while (somethingPlaced && groupPlacement) {
+    somethingPlaced = false;
 
-          while (item && item.count > 0) {
-            let placed = false;
+    for (let type of order) {
+      let item = groupPlacement.data.find((d) => d.type === type);
 
-            for (let row = 0; row < rooms.length; row++) {
-              if (overlapDatesSim(row, start, end, -1, tempOccupied)) continue;
+      if (!item || item.count <= 0) continue;
 
-              let roomName = rooms[row];
+      for (let row = 0; row < rooms.length; row++) {
+        if (tempOccupied.has(row)) continue;
 
-              if (!canUseRoomSim(roomName, start, end, type, tempOccupied, row)) continue;
+        if (overlapDates(row, start, end, -1)) continue;
 
-              let booking = await assignRoom(row, {
-                dryRun: true,
-                tempOccupied: tempOccupied
-              });
+        let roomName = rooms[row];
 
-              if (booking) {
-                created.push(booking);
-                tempOccupied.add(row);
-                item.count--;
-                placed = true;
-                break;
-              }
-            }
+        if (!canUseRoom(roomName, start, end, type)) continue;
 
-            if (!placed) break;
-          }
-        }
+        let booking = await assignRoom(row, {
+          dryRun: false // ✅ WICHTIG!
+        });
 
-        render();
-        updatePlacementBox();
-
-        await saveBatchBookings(created);
-
-        let done = groupPlacement.data.every((d) => d.count === 0);
-
-        if (done) {
-          finishPlacement();
+        if (booking) {
+          tempOccupied.add(row);
+          item.count--;
+          somethingPlaced = true;
+          break;
         }
       }
+    }
+  }
 
+  render();
+  updatePlacementBox();
+
+  let done = groupPlacement && groupPlacement.data.every((d) => d.count === 0);
+
+  if (done && groupPlacement) {
+    await syncGroupToDB(); // ✅ NEU
+    finishPlacement();
+  }
+}
+
+
+      async function syncGroupToDB() {
+  let tempBookings = bookings.filter(b =>
+    String(b.id).startsWith("tmp_")
+  );
+
+  if (!tempBookings.length) return;
+
+  let clean = tempBookings.map(b => {
+    let copy = { ...b };
+    delete copy.id;
+    return copy;
+  });
+
+  isLocalInsert = true;
+
+  const { data, error } = await supa
+    .from("bookings")
+    .insert(clean)
+    .select();
+
+  isLocalInsert = false;
+
+  if (error) {
+    console.error(error);
+    alert("Fehler beim Speichern der Gruppe");
+    return;
+  }
+
+  // ✅ TMP → echt ersetzen
+  let realIndex = 0;
+
+  for (let i = 0; i < bookings.length; i++) {
+    if (String(bookings[i].id).startsWith("tmp_")) {
+      if (data[realIndex]) {
+        bookings[i] = data[realIndex];
+        realIndex++;
+      }
+    }
+  }
+
+  render();
+}
+      
       async function saveBatchBookings(list) {
         if (!list.length) return;
 
@@ -4863,21 +4993,23 @@ if (isMobile || !isEditAllowed()) {
           return;
         }
 
-        if (data) {
-          let tmpIndex = 0;
+   if (data) {
+  let realIndex = 0;
 
-          bookings = bookings.map((b) => {
-            if (b.id && String(b.id).startsWith("tmp_")) {
-              let real = data[tmpIndex++];
-              return real || b;
-            }
+  for (let i = 0; i < bookings.length; i++) {
+    if (bookings[i].id && String(bookings[i].id).startsWith("tmp_")) {
+      if (data[realIndex]) {
+        bookings[i] = data[realIndex];
+        realIndex++;
+      }
+    }
+  }
 
-            return b;
-          });
+  console.log("✅ DB sync fertig:", data);
 
-          render();
-          isLocalInsert = false;
-        }
+  render();
+  isLocalInsert = false;
+}
       }
 
       function redrawBookingsOnResize() {
@@ -4922,6 +5054,7 @@ if (isMobile || !isEditAllowed()) {
         }
       }
 
+      
     </script>
   </body>
 </html>
