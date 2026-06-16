@@ -38,16 +38,28 @@ padding: 10px;
       }
 
       thead th {
-        position: sticky;
-        top: 94px; /* Höhe von #controls */
-        z-index: 1000;
-        background: #eee;
+        
+position: sticky;
+  top: 95px; /* genau gleiche Höhe wie Header */
+  z-index: 2000;
+  background: #eee;
+        
       }
 
       th {
         background: transparent;
         pointer-events: auto;
       }
+
+thead th::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -1px;
+  width: 2px;
+  height: 100%;
+  background: #eee;
+}
 
       html,
       body {
@@ -453,7 +465,11 @@ position: fixed;
 
       @media (max-width: 768px) {
         thead th {
-          top: 45px; /* angepasst */
+          
+position: sticky;
+    top: 90px; /* ✅ GLEICHER WERT */
+    z-index: 2000;
+
         }
 
       
@@ -461,6 +477,17 @@ position: fixed;
           position: relative;
           height: 32px; /* kannst du anpassen */
         }
+
+        
+ #stickyHeader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 81px; /* ✅ fest definieren */
+    z-index: 10000;
+    
+  }
 
         .booking {
           top: 2px !important;
@@ -493,7 +520,7 @@ position: fixed;
 
         /* 👇 HIER NEU */
         #calendar {
-          margin-top: 45px;
+          margin-top: 81px;
           overflow-x: auto;
           position: relative;
           max-width: 100%;
@@ -722,6 +749,10 @@ position: fixed;
 
         <label>Name</label><br />
         <input type="text" id="f_name" /><br /><br />
+
+        
+<label>Firma</label><br />
+<input type="text" id="f_company" /><br /><br />
 
         <label>Anreise</label><br />
         <input type="date" id="f_start" /><br /><br />
@@ -1118,6 +1149,7 @@ position: fixed;
         document.getElementById("formTitle").innerText = "Neue Buchung";
 
         document.getElementById("f_name").value = "";
+        document.getElementById("f_company").value = "";
         document.getElementById("f_price").value = "";
         document.getElementById("f_comment").value = "";
 
@@ -2516,6 +2548,7 @@ return temp;
         }
 
         let name = document.getElementById("f_name").value;
+        let company = document.getElementById("f_company").value.trim();
         let start = new Date(document.getElementById("f_start").value);
         let end = new Date(document.getElementById("f_end").value);
         let price = document.getElementById("f_price").value;
@@ -2540,6 +2573,7 @@ return temp;
               start,
               end,
               name,
+              company,
               price,
               comment,
               guests,
@@ -2557,6 +2591,7 @@ return temp;
             start: start.toISOString(),
             end: end.toISOString(),
             name: name,
+            company: company,
             price: price,
             comment: comment,
             guests: guests,
@@ -2626,6 +2661,7 @@ return temp;
           b.start = newStart;
           b.end = newEnd;
           b.name = name;
+          b.company = company;
           b.price = price;
           b.comment = comment;
           b.guests = guests;
@@ -2642,6 +2678,7 @@ return temp;
               start: newStart,
               end: newEnd,
               name,
+              company,
               price,
               comment,
               guests,
@@ -2827,11 +2864,12 @@ return temp;
         let html = `
     <b>👥 Zimmerkategorie:</b>${b.guests || "-"}<br><br>
     <b>✏️ Name:</b>${b.name || "-"}<br><br>
+    <b>🏢 Firma:</b>${b.company || "-"}<br><br>
     <b>📅 Anreise:</b>${start}<br>
     <b>📅 Abreise:</b>${end}<br><br>
     <b>💲 Preis:</b>${b.price || "-"}<br><br>
     <b>💬 Kommentar:</b>${b.comment || "-"}<br><br>
-    <b>🥐 Frühstück:</b>${b.breakfast !== false ? "Ja" : "Nein"}<br><br>
+    <b>☕ Frühstück:</b>${b.breakfast !== false ? "Ja" : "Nein"}<br><br>
 
 
 <b>🎨 Gruppe:</b>
@@ -2842,29 +2880,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
     <b>🏨 Check-in:</b>${b.checkin ? "🟢" : "🔴"}
   `;
 
-        const user = (await supa.auth.getUser()).data.user;
-
-        // ✅ Button anzeigen / verstecken
-        if (user && isAdmin()) {
-          document.getElementById("logBtn").style.display = "inline-block";
-        } else {
-          document.getElementById("logBtn").style.display = "none";
-        }
-
-        // ✅ Logs laden aber nicht anzeigen
-        const { data } = await supa
-          .from("booking_logs")
-          .select("*")
-          .eq("booking_id", b.id)
-          .order("created_at", { ascending: false });
-
-        window.currentLogs = data || [];
-
         document.getElementById("infoContent").innerHTML = html;
-
-        document.getElementById("logContent").style.display = "none";
-        document.getElementById("logContent").innerHTML = "";
-
         document.getElementById("bookingInfo").style.display = "block";
       }
 
@@ -3112,7 +3128,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
           // ✅ TEXT
           let commentText = b.comment ? " - " + b.comment : "";
           let frText = b.breakfast === false ? " <span class='no-breakfast-icon'><span>☕</span></span>" : "";
-
+          let companyText = b.company ? ` 🏢 ${b.company}` : "";
           let txt = document.createElement("span");
 
           txt.className = "text";
@@ -3128,7 +3144,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
             if (b.guests === "BLOCK") {
               txt.innerHTML = "🚫 BLOCKIERT";
             } else {
-              txt.innerHTML = `${b.guests} ${b.name || (group ? group.name : "")}${frText}${commentText}`;
+              txt.innerHTML = `${b.guests} ${b.name || (group ? group.name : "")}${companyText}${frText}${commentText}`;
             }
           }
 
@@ -3752,37 +3768,78 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         }
 
         if (e.key === "Escape") {
-          // ✅ Gruppenplatzierung abbrechen
+  let closedSomething = false;
 
-          if (groupPlacement) {
-            let ids = groupPlacement.placed;
+  const info = document.getElementById("bookingInfo");
+  const form = document.getElementById("bookingForm");
+  const backup = document.getElementById("backupList");
+  const log = document.getElementById("logOverview");
+  const overlay = document.getElementById("overlay");
+  const groupBox = document.getElementById("groupInfoBox");
 
-            if (ids.length) {
-              await supa.from("bookings").delete().in("id", ids);
+  // ✅ Gruppenplatzierung abbrechen (dein bestehender Code)
+  if (groupPlacement) {
+    let ids = groupPlacement.placed;
 
-              bookings = bookings.filter((b) => !ids.includes(b.id));
-            }
+    if (ids.length) {
+      await supa.from("bookings").delete().in("id", ids);
+      bookings = bookings.filter((b) => !ids.includes(b.id));
+    }
 
-            groupPlacement.placed = [];
-            groupPlacement = null;
-            isGroupCreating = false;
+    groupPlacement.placed = [];
+    groupPlacement = null;
+    isGroupCreating = false;
 
-            document.getElementById("placementBox")?.remove();
+    document.getElementById("placementBox")?.remove();
+    render();
 
-            render();
+    return;
+  }
 
-            return;
-          }
+  // ✅ INFO
+  if (info && info.style.display === "block") {
+    closeInfo();
+    closedSomething = true;
+  }
 
-          closeInfo();
-          closeForm();
-          selected = [];
-          document.getElementById("palette").style.display = "none";
-          f = false;
-          document.body.classList.remove("select-mode");
+  // ✅ FORM
+  if (form && form.style.display === "block") {
+    closeForm();
+    closedSomething = true;
+  }
 
-          render();
-        }
+  // ✅ BACKUP
+  if (backup && backup.style.display === "block") {
+    backup.style.display = "none";
+    if (overlay) overlay.style.display = "none";
+    closedSomething = true;
+  }
+
+  // ✅ VERLAUF
+  if (log && log.style.display === "block") {
+    log.style.display = "none";
+    if (overlay) overlay.style.display = "none";
+    closedSomething = true;
+  }
+
+  // ✅ GROUP INFO
+  if (groupBox && groupBox.style.display === "block") {
+    closeGroupInfo();
+    closedSomething = true;
+  }
+
+  // ✅ Wenn etwas geschlossen wurde → nichts anderes ausführen
+  if (closedSomething) {
+    selected = [];
+    document.getElementById("palette").style.display = "none";
+    f = false;
+    document.body.classList.remove("select-mode");
+
+    render();
+    return;
+  }
+}
+
 
         if (
           document.activeElement.tagName === "INPUT" ||
@@ -3948,6 +4005,46 @@ div.addEventListener("click", () => {
         });
       }
 
+      function calculateGroupStatsFromBookings(groupId) {
+  let stats = {
+    ez: 0,
+    dz: 0,
+    er3: 0,
+    er4: 0,
+    guests: 0
+  };
+
+  bookings.forEach((b) => {
+    if (b.group_id !== groupId) return;
+
+    let type = b.guests;
+
+    // ✅ EZ + EZ B
+    if (type === "EZ" || type === "EZ B") {
+      stats.ez++;
+      stats.guests += 1;
+    }
+
+    // ✅ DZ + DZ B
+    else if (type === "DZ" || type === "DZ B") {
+      stats.dz++;
+      stats.guests += 2;
+    }
+
+    else if (type === "3er") {
+      stats.er3++;
+      stats.guests += 3;
+    }
+
+    else if (type === "4er") {
+      stats.er4++;
+      stats.guests += 4;
+    }
+  });
+
+  return stats;
+}
+      
       async function openGroupInfo(groupId) {
 
   let box = document.getElementById("groupInfoBox");
@@ -3957,8 +4054,29 @@ div.addEventListener("click", () => {
   let group = groupsMap[groupId];
 
   title.innerText = group.name;
-  fileContainer.innerHTML = "Lade...";
+  let stats = calculateGroupStatsFromBookings(groupId);
 
+let info = `
+  <div style="
+    margin-bottom:10px;
+    padding:10px;
+    background:#f5f5f5;
+    border-radius:8px;
+  ">
+    <b>📅 Anreise:</b> ${group.start || "-"}<br>
+    <b>📅 Abreise:</b> ${group.end || "-"}<br><br>
+
+    <b>🛏️ Zimmer:</b><br>
+    EZ: ${stats.ez}<br>
+    DZ: ${stats.dz}<br>
+    3er: ${stats.er3}<br>
+    4er: ${stats.er4}<br><br>
+
+    <b>👥 Personen:</b> ${stats.guests}
+  </div>
+`;
+
+ fileContainer.innerHTML = info + "Lade...";
   box.style.display = "block";
 
   // ✅ Dateien aus DB holen
@@ -3968,12 +4086,12 @@ div.addEventListener("click", () => {
     .eq("group_id", groupId);
 
   if (error) {
-    fileContainer.innerHTML = "Fehler beim Laden";
+    fileContainer.innerHTML = info + "Fehler beim Laden";
     return;
   }
 
   if (!data.length) {
-    fileContainer.innerHTML = "<i>Keine Dateien</i>";
+    fileContainer.innerHTML = info + "<i>Keine Dateien</i>";
   } else {
     let html = "";
 
@@ -3985,7 +4103,7 @@ div.addEventListener("click", () => {
       `;
     });
 
-    fileContainer.innerHTML = html;
+    fileContainer.innerHTML = info + html;
   }
 
 
@@ -4222,47 +4340,6 @@ function handleRealtimeUpdate(payload) {
           render();
         }
       }
-
-
-
-      function calculateGroupStats(data) {
-  let stats = {
-    ez: 0,
-    dz: 0,
-    er3: 0,
-    er4: 0,
-    guests: 0
-  };
-
-  data.forEach((d) => {
-    let type = d.type;
-    let count = Number(d.count);
-
-    // ✅ EZ + EZ B
-    if (type === "EZ" || type === "EZ B") {
-      stats.ez += count;
-      stats.guests += count * 1;
-    }
-
-    // ✅ DZ + DZ B
-    else if (type === "DZ" || type === "DZ B") {
-      stats.dz += count;
-      stats.guests += count * 2;
-    }
-
-    else if (type === "3er") {
-      stats.er3 += count;
-      stats.guests += count * 3;
-    }
-
-    else if (type === "4er") {
-      stats.er4 += count;
-      stats.guests += count * 4;
-    }
-  });
-
-  return stats;
-}
     
       function saveLocalBackup(label = "") {
         if (history.length === 0) {
@@ -4856,56 +4933,72 @@ function handleRealtimeUpdate(payload) {
         render();
       };
 
-      document.addEventListener(
-        "mousedown",
-        function (e) {
-          if (isMobile) return;
-          const info = document.getElementById("bookingInfo");
-          const form = document.getElementById("bookingForm");
+   document.addEventListener(
+  "mousedown",
+  function (e) {
+    if (isMobile) return;
 
-          const clickedBooking = e.target.closest(".booking");
+    const info = document.getElementById("bookingInfo");
+    const form = document.getElementById("bookingForm");
+    const backup = document.getElementById("backupList");
+    const log = document.getElementById("logOverview");
+    const overlay = document.getElementById("overlay");
+    const groupBox = document.getElementById("groupInfoBox");
 
-          if (info && info.style.display === "block") {
-            if (info.contains(e.target)) return;
+    let blocked = false;
 
-            e.stopPropagation();
-            e.preventDefault();
+    // ✅ INFO BOX
+    if (info && info.style.display === "block") {
+      if (!info.contains(e.target)) {
+        closeInfo();
+        blocked = true;
+      }
+    }
 
-            closeInfo();
+    // ✅ FORM
+    if (form && form.style.display === "block") {
+      if (!form.contains(e.target)) {
+        closeForm();
+        blocked = true;
+      }
+    }
 
-            lastTapTime = Date.now();
+    // ✅ BACKUP
+    if (backup && backup.style.display === "block") {
+      if (!backup.contains(e.target)) {
+        backup.style.display = "none";
+        if (overlay) overlay.style.display = "none";
+        blocked = true;
+      }
+    }
 
-            return;
-          }
+    // ✅ LOG
+    if (log && log.style.display === "block") {
+      if (!log.contains(e.target)) {
+        log.style.display = "none";
+        if (overlay) overlay.style.display = "none";
+        blocked = true;
+      }
+    }
 
-          if (form && form.style.display === "block") {
-            if (form.contains(e.target)) return;
+    // ✅ GROUP BOX
+    if (groupBox && groupBox.style.display === "block") {
+      if (!groupBox.contains(e.target)) {
+        closeGroupInfo();
+        blocked = true;
+      }
+    }
 
-            closeForm();
-
-            lastTapTime = Date.now();
-
-            return;
-          }
-          
-          
-const groupBox = document.getElementById("groupInfoBox");
-
-if (groupBox && groupBox.style.display === "block") {
-  if (groupBox.contains(e.target)) return;
-
-  e.stopPropagation();
-  e.preventDefault();
-
-  closeGroupInfo();
-  lastTapTime = Date.now();
-
-  return;
-}
-        },
-        true
-      );
-
+    // ✅ 👉 GANZ WICHTIG: Klick komplett blockieren
+    if (blocked) {
+      e.stopPropagation();
+      e.preventDefault();
+      lastTapTime = Date.now();
+      return false;
+    }
+  },
+  true // ✅ CAPTURE PHASE
+);
       let resizeTimeout;
 
       async function autoPlaceGroup() {
