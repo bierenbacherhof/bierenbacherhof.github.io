@@ -524,6 +524,7 @@
                 overflow-x: auto;
                 position: relative;
                 max-width: 100%;
+                will-change: transform;
               }
 
               .room {
@@ -938,6 +939,11 @@
       let isLocalInsert = false;
       let lastChangeTime = 0;
       let justClosedOverlay = false;
+      
+let isSwiping = false;
+let swipeStartX = 0;
+let currentOffsetX = 0;
+
 
       history = JSON.parse(localStorage.getItem("hotel_history") || "[]");
       
@@ -5201,15 +5207,57 @@ async function saveBatchBookings(list) {
 
       const calendar = document.getElementById("calendar");
 
-      calendar.addEventListener("touchstart", (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-      });
+    
+calendar.addEventListener("touchstart", (e) => {
+  isSwiping = true;
+  swipeStartX = e.touches[0].clientX;
+  calendar.style.transition = "none";
+});
 
-      calendar.addEventListener("touchend", (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        handleSwipe();
-      });
+      calendar.addEventListener("touchmove", (e) => {
+  if (!isSwiping) return;
 
+  let currentX = e.touches[0].clientX;
+  currentOffsetX = currentX - swipeStartX;
+
+  calendar.style.transform = `translateX(${currentOffsetX}px)`;
+});
+     calendar.addEventListener("touchend", () => {
+  if (!isSwiping) return;
+
+  isSwiping = false;
+
+  let threshold = 120;
+
+  calendar.style.transition = "transform 0.25s ease";
+
+  if (currentOffsetX < -threshold) {
+    // 👉 nach rechts gewischt → nächste Woche
+    calendar.style.transform = "translateX(-100%)";
+
+    setTimeout(() => {
+      changeWeek(1);
+      calendar.style.transition = "none";
+      calendar.style.transform = "translateX(0)";
+    }, 250);
+
+  } else if (currentOffsetX > threshold) {
+    // 👉 nach links gewischt → vorherige Woche
+    calendar.style.transform = "translateX(100%)";
+
+    setTimeout(() => {
+      changeWeek(-1);
+      calendar.style.transition = "none";
+      calendar.style.transform = "translateX(0)";
+    }, 250);
+
+  } else {
+    // 👉 zurückspringen
+    calendar.style.transform = "translateX(0)";
+  }
+
+  currentOffsetX = 0;
+});
       function handleSwipe() {
         let diff = touchStartX - touchEndX;
 
