@@ -486,6 +486,9 @@ body.logged-in button.weekBtn {
   display: none !important;
 }
 
+         .logOverviewBtn{
+           right: 120px;
+         }
          
   #swipeHint {
     position: fixed;
@@ -568,7 +571,7 @@ body.logged-in button.weekBtn {
   /* ✅ Zimmer-Spalte */
   .room {
     width: 160px;
-    font-size: 0;
+    font-size: 22px;
   }
 
   .room::before {
@@ -1009,12 +1012,17 @@ body.logged-in button.weekBtn {
       let lastChangeTime = 0;
       let justClosedOverlay = false;
       let openingPicker = false;
-let isSwiping = false;
-let swipeStartX = 0;
-let currentOffsetX = 0;
-      
-let touchStartY = 0;
-let isMultiTouch = false;
+      let isSwiping = false;
+      let swipeStartX = 0;
+      let currentOffsetX = 0;      
+      let touchStartY = 0;
+      let isMultiTouch = false;
+      let savedWeek = localStorage.getItem("calendar_current_week");
+
+      if (savedWeek) {
+        current = new Date(savedWeek);
+      }
+
 
 
 
@@ -2345,6 +2353,7 @@ rooms.forEach((r, row) => {
 
       function changeWeek(n) {
         current.setDate(current.getDate() + 7 * n);
+         localStorage.setItem("calendar_current_week", current.toISOString());
         render();
       }
 
