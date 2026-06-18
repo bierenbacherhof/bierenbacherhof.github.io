@@ -620,6 +620,7 @@
       <div id="controls">
         <button onclick="changeWeek(-1)" class="allowed">◀ Woche</button>
         <button onclick="changeWeek(1)" class="allowed">Woche ▶</button>
+        <button onclick="openDatePicker(event)" style="margin-left:8px;" class="allowed">📅</button>
         <button onclick="undo()" title="Rückgängig (Strg+Z)">↶</button>
         <button id="backupBtn" onclick="alert('Backup kommt später')">Backup</button>
         <button
@@ -844,7 +845,11 @@
       <br />
       <button onclick="closeInfo()">Schließen</button>
     </div>
-
+<input 
+  type="date" 
+  id="datePicker" 
+  style="position:fixed; top:10px; left:10px; opacity:0; z-index:99999;"
+>
     <script>
       const rooms = [
         "101 - DZ B",
@@ -939,7 +944,7 @@
       let isLocalInsert = false;
       let lastChangeTime = 0;
       let justClosedOverlay = false;
-      
+      let openingPicker = false;
 let isSwiping = false;
 let swipeStartX = 0;
 let currentOffsetX = 0;
@@ -1044,6 +1049,24 @@ let currentOffsetX = 0;
 
         renderLogList(allLogs);
       }
+
+      function openDatePicker(e) {
+  e.stopPropagation();
+
+  openingPicker = true;
+
+  const input = document.getElementById("datePicker");
+
+  try {
+    input.showPicker();
+  } catch {
+    input.click();
+  }
+
+  setTimeout(() => {
+    openingPicker = false;
+  }, 300);
+}
 
       async function openLogOverview() {
         const box = document.getElementById("logOverview");
@@ -5270,6 +5293,7 @@ calendar.addEventListener("touchstart", (e) => {
         }
       }
       function handleGlobalClose(e) {
+        if (openingPicker) return;
         const info = document.getElementById("bookingInfo");
         const form = document.getElementById("bookingForm");
         const backup = document.getElementById("backupList");
@@ -5332,7 +5356,12 @@ if (blocked) {
 }
 
       }
+document.getElementById("datePicker").addEventListener("change", (e) => {
+  const selectedDate = new Date(e.target.value);
 
+  current = startOfWeek(selectedDate);
+  render();              
+});
       document.addEventListener("mousedown", handleGlobalClose, true);
 
       document.addEventListener("touchstart", handleGlobalClose, true);
