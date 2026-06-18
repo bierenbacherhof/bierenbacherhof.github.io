@@ -486,9 +486,15 @@ body.logged-in button.weekBtn {
   display: none !important;
 }
 
-         .logOverviewBtn{
-           right: 120px;
-         }
+        
+#topRightButtons {
+  position: absolute;
+  top: 10px;
+  right: 20px;
+  display: flex;
+  gap: 10px;
+}
+
          
   #swipeHint {
     position: fixed;
@@ -571,7 +577,7 @@ body.logged-in button.weekBtn {
   /* ✅ Zimmer-Spalte */
   .room {
     width: 160px;
-    font-size: 22px;
+    font-size: 17px;
   }
 
   .room::before {
@@ -698,7 +704,7 @@ body.logged-in button.weekBtn {
           style="position: absolute; left: 50%; transform: translateX(-50%)">
           Neue Buchung anlegen
         </button>
-
+        <div id="topRightButtons">
         <button
                 class="auth-only"
           id="logOverviewBtn"
@@ -708,7 +714,7 @@ body.logged-in button.weekBtn {
         </button>
 
         <button id="logoutBtn" onclick="logout(); event.stopPropagation()" class="allowed auth-only">Logout</button>
-
+</div>
         <div
           id="backupList"
              class="overlay-box"
@@ -915,7 +921,7 @@ body.logged-in button.weekBtn {
 <input 
   type="date" 
   id="datePicker" 
-  style="position:fixed; top:10px; left:10px; opacity:0; z-index:99999; pointer-events:none;"
+  style="position:fixed; top:10px; left:10px; opacity:0; z-index:99999;"
 >
     <script>
       const rooms = [
@@ -1130,19 +1136,10 @@ body.logged-in button.weekBtn {
       function openDatePicker(e) {
   e.stopPropagation();
 
-  openingPicker = true;
-
   const input = document.getElementById("datePicker");
 
-  try {
-    input.showPicker();
-  } catch {
-    input.click();
-  }
-
-  setTimeout(() => {
-    openingPicker = false;
-  }, 300);
+  input.focus();   // ✅ wichtig für Mobile
+  input.click();   // ✅ triggert Picker
 }
 
       async function openLogOverview() {
