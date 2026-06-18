@@ -473,6 +473,17 @@
               }
 
 
+#calendarWrapper {
+  display: flex;
+  width: 300%; /* wichtig für 3 Ansichten */
+  transform: translateX(-100%);
+}
+
+.week {
+  width: 100%;
+  flex-shrink: 0;
+}
+
               #calendar td {
                 position: relative;
                 height: 25px; /* kannst du anpassen */
@@ -544,7 +555,7 @@
 
       #backupBtn,
         #logOverviewBtn,
-              #datePicker {
+              #datePickerBtn {
           display: inline-block !important;
         }
 
@@ -562,7 +573,11 @@
     <div id="loginBlocker"></div>
     
 
-    <div id="logOverview" class="overlay-box"></div>
+<div id="calendarWrapper">
+  <table id="calendar"></table>
+</div>
+
+  
 
     <div
       id="loginBox"
@@ -619,11 +634,11 @@
     </div>
     <div id="stickyHeader">
       <div id="controls">
-        <button onclick="changeWeek(-1); event.stopPropagation()" class="allowed">◀ Woche</button>
-        <button onclick="changeWeek(1); event.stopPropagation()" class="allowed">Woche ▶</button>
-        <button onclick="openDatePicker(event); event.stopPropagation()" style="margin-left:8px;">📅</button>
-        <button onclick="undo(); event.stopPropagation()" title="Rückgängig (Strg+Z)">↶</button>
-        <button id="backupBtn" onclick="alert('Backup kommt später'); event.stopPropagation()">Backup</button>
+        <button onclick="changeWeek(-1)" class="allowed">◀ Woche</button>
+        <button onclick="changeWeek(1)" class="allowed">Woche ▶</button>
+        <button id ="datePickerBtn" onclick="openDatePicker(event); event.stopPropagation()" style="margin-left:8px;">📅</button>
+        <button onclick="undo()" title="Rückgängig (Strg+Z)">↶</button>
+        <button id="backupBtn" onclick="alert('Backup kommt später')">Backup</button>
         <button
           class="allowed"
           id="newBookingBtn"
@@ -849,7 +864,7 @@
 <input 
   type="date" 
   id="datePicker" 
-  style="position:fixed; top:10px; left:10px; opacity:0; z-index:99999;"
+  style="position:fixed; top:10px; left:10px; opacity:0; z-index:99999; pointer-events:none;"
 >
     <script>
       const rooms = [
@@ -1011,7 +1026,75 @@ let currentOffsetX = 0;
 
         renderLogList(filtered);
       }
+      
+      function renderWeeks() {
+  const wrapper = document.getElementById("calendarWrapper");
+  wrapper.innerHTML = "";
 
+  const weeks = [-1, 0, 1];
+
+  weeks.forEach(offset => {
+    const container = document.createElement("div");
+    container.className = "week";
+
+    const table = document.createElement("table");
+
+    renderInto(table, offset); // 👈 neue Funktion
+
+    container.appendChild(table);
+    wrapper.appendChild(container);
+  });
+
+  wrapper.style.transform = "translateX(-100%)";
+}
+
+      
+function renderInto(table, offset) {
+
+  let t = table; // ✅ statt getElementById
+
+  t.innerHTML = "";
+
+  let date = new Date(current);
+  date.setDate(date.getDate() + offset * 7);
+
+  let s = startOfWeek(date);
+
+  let h = "<thead><tr><th>Zimmer</th>";
+
+  for (let i = 0; i < 7; i++) {
+    let d = new Date(s);
+    d.setDate(s.getDate() + i);
+    h += `<th>${["Mo","Di","Mi","Do","Fr","Sa","So"][i]}<br>${d.toLocaleDateString()}</th>`;
+  }
+
+  h += "</tr></thead><tbody>";
+  t.innerHTML += h;
+
+  rooms.forEach((r, row) => {
+    let tr = `<tr><td class='room'>${r}</td>`;
+
+    for (let d = 0; d < 7; d++) {
+
+      // ✅ WICHTIG: HIER MUSS date benutzt werden!
+      let weekStart = normalizeDate(startOfWeek(date));
+
+      let cellDate = new Date(weekStart);
+      cellDate.setDate(weekStart.getDate() + d);
+
+      tr += `<td class='half'></td>`;
+    }
+
+    t.innerHTML += tr + "</tr>";
+  });
+
+  t.innerHTML += "</tbody>";
+
+  // ✅ draw muss weiterhin funktionieren
+  draw();
+}
+
+      
       function renderLogList(logs) {
         const content = document.getElementById("logOverviewContent");
 
@@ -5238,50 +5321,49 @@ calendar.addEventListener("touchstart", (e) => {
   calendar.style.transition = "none";
 });
 
-      calendar.addEventListener("touchmove", (e) => {
+const wrapper = document.getElementById("calendarWrapper");
+
+calendar.addEventListener("touchmove", (e) => {
   if (!isSwiping) return;
 
   let currentX = e.touches[0].clientX;
   currentOffsetX = currentX - swipeStartX;
 
-  calendar.style.transform = `translateX(${currentOffsetX}px)`;
+  wrapper.style.transition = "none";
+  wrapper.style.transform = `translateX(${currentOffsetX - window.innerWidth}px)`;
 });
-     calendar.addEventListener("touchend", () => {
-  if (!isSwiping) return;
+      
+  calendar.addEventListener("touchend", () => {
+  let threshold = 100;
 
-  isSwiping = false;
-
-  let threshold = 120;
-
-  calendar.style.transition = "transform 0.25s ease";
+  wrapper.style.transition = "transform 0.25s ease";
 
   if (currentOffsetX < -threshold) {
-    // 👉 nach rechts gewischt → nächste Woche
-    calendar.style.transform = "translateX(-100%)";
+    // 👉 nächste Woche
+    wrapper.style.transform = "translateX(-200%)";
 
     setTimeout(() => {
-      changeWeek(1);
-      calendar.style.transition = "none";
-      calendar.style.transform = "translateX(0)";
+      current.setDate(current.getDate() + 7);
+      renderWeeks();
     }, 250);
 
   } else if (currentOffsetX > threshold) {
-    // 👉 nach links gewischt → vorherige Woche
-    calendar.style.transform = "translateX(100%)";
+    // 👉 vorherige Woche
+    wrapper.style.transform = "translateX(0%)";
 
     setTimeout(() => {
-      changeWeek(-1);
-      calendar.style.transition = "none";
-      calendar.style.transform = "translateX(0)";
+      current.setDate(current.getDate() - 7);
+      renderWeeks();
     }, 250);
 
   } else {
-    // 👉 zurückspringen
-    calendar.style.transform = "translateX(0)";
+    // 👉 zurück
+    wrapper.style.transform = "translateX(-100%)";
   }
 
   currentOffsetX = 0;
 });
+      
       function handleSwipe() {
         let diff = touchStartX - touchEndX;
 
