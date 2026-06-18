@@ -483,15 +483,35 @@ body.logged-in .auth-only {
               }
 
 
-#calendarWrapper {
-  display: flex;
-  width: 300%; /* wichtig für 3 Ansichten */
-  transform: translateX(-100%);
+              #swipeHint {
+  position: fixed;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  
+  font-size: 32px;
+  font-weight: bold;
+  text-align: center;
+
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+
+transition: opacity 0.2s;
+  opacity: 0;
+
+  padding: 20px 30px;
+  border-radius: 12px;
+
+  z-index: 50000;
+
+  display: none;
+  pointer-events: none;
 }
 
-.week {
-  width: 100%;
-  flex-shrink: 0;
+              
+#swipeHint.show {
+  display: block;
+  opacity: 1;
 }
 
               #calendar td {
@@ -554,8 +574,7 @@ body.logged-in .auth-only {
               }
 
 
-      .allowed,
-              .auth-only{
+      .allowed {
           display: none !important;
         }
 
@@ -583,10 +602,10 @@ body.logged-in .auth-only {
   <body>
     <div id="loginBlocker"></div>
     
+<div id="swipeHint"></div>
 
-<div id="calendarWrapper">
   <table id="calendar"></table>
-</div>
+
 
   
 
@@ -747,8 +766,6 @@ body.logged-in .auth-only {
       </div>
       <div id="legend"></div>
     </div>
-
-    <table id="calendar"></table>
     <div id="palette"></div>
     <div
       id="bookingForm"
@@ -1038,73 +1055,6 @@ let currentOffsetX = 0;
 
         renderLogList(filtered);
       }
-      
-      function renderWeeks() {
-  const wrapper = document.getElementById("calendarWrapper");
-  wrapper.innerHTML = "";
-
-  const weeks = [-1, 0, 1];
-
-  weeks.forEach(offset => {
-    const container = document.createElement("div");
-    container.className = "week";
-
-    const table = document.createElement("table");
-
-    renderInto(table, offset); // 👈 neue Funktion
-
-    container.appendChild(table);
-    wrapper.appendChild(container);
-  });
-
-  wrapper.style.transform = "translateX(-100%)";
-}
-
-      
-function renderInto(table, offset) {
-
-  let t = table; // ✅ statt getElementById
-
-  t.innerHTML = "";
-
-  let date = new Date(current);
-  date.setDate(date.getDate() + offset * 7);
-
-  let s = startOfWeek(date);
-
-  let h = "<thead><tr><th>Zimmer</th>";
-
-  for (let i = 0; i < 7; i++) {
-    let d = new Date(s);
-    d.setDate(s.getDate() + i);
-    h += `<th>${["Mo","Di","Mi","Do","Fr","Sa","So"][i]}<br>${d.toLocaleDateString()}</th>`;
-  }
-
-  h += "</tr></thead><tbody>";
-  t.innerHTML += h;
-
-  rooms.forEach((r, row) => {
-    let tr = `<tr><td class='room'>${r}</td>`;
-
-    for (let d = 0; d < 7; d++) {
-
-      // ✅ WICHTIG: HIER MUSS date benutzt werden!
-      let weekStart = normalizeDate(startOfWeek(date));
-
-      let cellDate = new Date(weekStart);
-      cellDate.setDate(weekStart.getDate() + d);
-
-      tr += `<td class='half'></td>`;
-    }
-
-    t.innerHTML += tr + "</tr>";
-  });
-
-  t.innerHTML += "</tbody>";
-
-  // ✅ draw muss weiterhin funktionieren
-  draw();
-}
 
       
       function renderLogList(logs) {
@@ -1980,82 +1930,44 @@ new_value: typeof newValue === "object"
         location.reload();
       }
 
-      function render() {
-        let t = document.getElementById("calendar");
-        t.innerHTML = "";
-        let s = startOfWeek(current);
+  
+        function render() {
+  let t = document.getElementById("calendar");
+  t.innerHTML = "";
 
-        let h = "<thead><tr><th>Zimmer</th>";
+  let s = startOfWeek(current);
 
-        for (let i = 0; i < 7; i++) {
-          let d = new Date(s);
-          d.setDate(s.getDate() + i);
-          h += `<th>${["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"][i]}<br>${d.toLocaleDateString()}</th>`;
-        }
+  let h = "<thead><tr><th>Zimmer</th>";
 
-        h += "</tr></thead><tbody>";
-        t.innerHTML += h;
+  for (let i = 0; i < 7; i++) {
+    let d = new Date(s);
+    d.setDate(s.getDate() + i);
+    h += `<th>${["Mo","Di","Mi","Do","Fr","Sa","So"][i]}<br>${d.toLocaleDateString()}</th>`;
+  }
 
-        rooms.forEach((r, row) => {
-          let roomNumber = r.split(" - ")[0];
+  h += "</tr></thead><tbody>";
+  t.innerHTML += h;
 
-          let tr = `<tr>
-  <td class='room' data-room-number="${roomNumber}">
-    ${r}
-  </td>`;
-          for (let d = 0; d < 7; d++) {
-            let weekStart = normalizeDate(startOfWeek(current));
-            let cellDate = new Date(weekStart);
-            cellDate.setDate(weekStart.getDate() + d);
+  rooms.forEach((r, row) => {
+    let tr = `<tr><td class="room">${r}</td>`;
 
-            let blocked = false;
+    for (let d = 0; d < 7; d++) {
+      let weekStart = normalizeDate(startOfWeek(current));
+      let cellDate = new Date(weekStart);
+      cellDate.setDate(weekStart.getDate() + d);
 
-            if (groupPlacement || singlePlacement) {
-              let start = groupPlacement ? groupPlacement.start : singlePlacement.start;
-              let end = groupPlacement ? groupPlacement.end : singlePlacement.end;
+      tr += `<td class="half"></td>`;
+    }
 
-              blocked = overlapDates(row, start, end, -1);
+    t.innerHTML += tr + "</tr>";
+  });
 
-              let roomName = rooms[row];
-              let allowedTypes = getGuestOptions(roomName);
+  t.innerHTML += "</tbody>";
 
-              let typeAllowed = true;
-
-              if (groupPlacement) {
-                typeAllowed = groupPlacement.data.some((d) => {
-                  return d.count > 0 && canUseRoom(roomName, groupPlacement.start, groupPlacement.end, d.type);
-                });
-              } else if (singlePlacement) {
-                typeAllowed = canUseRoom(roomName, singlePlacement.start, singlePlacement.end, singlePlacement.guests);
-              }
-
-              if (!typeAllowed) {
-                blocked = true;
-              }
-            }
-
-            tr += `<td class='half ${blocked ? "blocked" : ""}'
-       onclick='${blocked ? "" : `event.stopPropagation(); add(${row},${d}, event)`}'>
-     </td>`;
-          }
-          t.innerHTML += tr + "</tr>";
-        });
-        t.innerHTML += "</tbody>";
-
-        document.querySelectorAll("#calendar tbody tr").forEach((tr) => {
-          if (tr.querySelector(".booking-layer")) return;
-
-          let td = tr.querySelector("td.room");
-
-          let layer = document.createElement("div");
-          layer.className = "booking-layer";
-
-          td.appendChild(layer);
-        });
-
-        draw();
-        drawLegend();
-      }
+  draw();
+  drawLegend();
+}
+    
 
       function getCurrent3erLevel(start, end) {
         let ignore = shouldIgnoreFloorSeparation(start, end);
@@ -3186,11 +3098,11 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
           let renderEnd = endsAfterWeek ? 7 : visEnd;
           let endCell = cells[renderEnd] || cells[cells.length - 1];
-
+          if (!startCell || !endCell) return;
           let startRect = startCell.getBoundingClientRect();
           let endRect = endCell.getBoundingClientRect();
 
-          let layer = rowEl.querySelector(".booking-layer");
+          let layer = rowEl.querySelector(".booking-layer") || rowEl;
           let layerRect = layer.getBoundingClientRect();
 
           let dayWidth = startRect.width;
@@ -5321,72 +5233,52 @@ async function saveBatchBookings(list) {
         };
       }
 
-      let touchStartX = 0;
-      let touchEndX = 0;
+const calendar = document.getElementById("calendar");
+const hint = document.getElementById("swipeHint");
 
-      const calendar = document.getElementById("calendar");
+let touchStartX = 0;
+let touchEndX = 0;
 
-    
 calendar.addEventListener("touchstart", (e) => {
-  isSwiping = true;
-  swipeStartX = e.touches[0].clientX;
-  calendar.style.transition = "none";
+  touchStartX = e.touches[0].clientX;
 });
-
-const wrapper = document.getElementById("calendarWrapper");
 
 calendar.addEventListener("touchmove", (e) => {
-  if (!isSwiping) return;
-
   let currentX = e.touches[0].clientX;
-  currentOffsetX = currentX - swipeStartX;
+  let diff = currentX - touchStartX;
 
-  wrapper.style.transition = "none";
-  wrapper.style.transform = `translateX(${currentOffsetX - window.innerWidth}px)`;
-});
-      
-  calendar.addEventListener("touchend", () => {
-  let threshold = 100;
-
-  wrapper.style.transition = "transform 0.25s ease";
-
-  if (currentOffsetX < -threshold) {
-    // 👉 nächste Woche
-    wrapper.style.transform = "translateX(-200%)";
-
-    setTimeout(() => {
-      current.setDate(current.getDate() + 7);
-      renderWeeks();
-    }, 250);
-
-  } else if (currentOffsetX > threshold) {
-    // 👉 vorherige Woche
-    wrapper.style.transform = "translateX(0%)";
-
-    setTimeout(() => {
-      current.setDate(current.getDate() - 7);
-      renderWeeks();
-    }, 250);
-
-  } else {
-    // 👉 zurück
-    wrapper.style.transform = "translateX(-100%)";
+  if (Math.abs(diff) < 30) {
+    hint.classList.remove("show");
+    return;
   }
 
-  currentOffsetX = 0;
+  hint.classList.add("show");
+
+  if (diff < 0) {
+    hint.innerHTML = "Nächste<br>Woche";
+  } else {
+    hint.innerHTML = "Vorherige<br>Woche";
+  }
 });
-      
-      function handleSwipe() {
-        let diff = touchStartX - touchEndX;
 
-        if (Math.abs(diff) < 150) return;
+calendar.addEventListener("touchend", (e) => {
+  hint.classList.remove("show");
 
-        if (diff > 0) {
-          changeWeek(1);
-        } else {
-          changeWeek(-1);
-        }
-      }
+  touchEndX = e.changedTouches[0].clientX;
+  handleSwipe();
+});
+
+function handleSwipe() {
+  let diff = touchStartX - touchEndX;
+
+  if (Math.abs(diff) < 150) return;
+
+  if (diff > 0) {
+    changeWeek(1);
+  } else {
+    changeWeek(-1);
+  }
+}
       function handleGlobalClose(e) {
         if (openingPicker) return;
         
