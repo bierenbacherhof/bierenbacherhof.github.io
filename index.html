@@ -543,7 +543,8 @@
 
 
       #backupBtn,
-        #logOverviewBtn {
+        #logOverviewBtn,
+              #datePicker {
           display: inline-block !important;
         }
 
@@ -620,7 +621,7 @@
       <div id="controls">
         <button onclick="changeWeek(-1)" class="allowed">◀ Woche</button>
         <button onclick="changeWeek(1)" class="allowed">Woche ▶</button>
-        <button onclick="openDatePicker(event)" style="margin-left:8px;" class="allowed">📅</button>
+        <button onclick="openDatePicker(event)" style="margin-left:8px;">📅</button>
         <button onclick="undo()" title="Rückgängig (Strg+Z)">↶</button>
         <button id="backupBtn" onclick="alert('Backup kommt später')">Backup</button>
         <button
