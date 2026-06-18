@@ -486,7 +486,35 @@ body.logged-in .auth-only {
   display: flex;
   gap: 12px;
 }
-    
+    #calendarContainer {
+  position: relative;
+  overflow: hidden;
+}
+
+#calendar {
+  position: relative;
+  z-index: 2;
+  transition: transform 0.2s ease;
+}
+
+/* Hintergrund Text */
+#swipeBackground {
+  position: absolute;
+  inset: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 40px;
+  font-weight: bold;
+
+  color: rgba(0,0,0,0.4);
+
+  z-index: 1;
+  pointer-events: none;
+}
+
 
             #logContent::-webkit-scrollbar {
               width: 6px;
@@ -548,7 +576,7 @@ body.logged-in button.weekBtn {
 
   #calendar td {
     position: relative;
-    height: 27px; /* ✅ etwas größer */
+    height: 40px; /* ✅ etwas größer */
   }
 
   /* ✅ HEADER doppelt so groß */
@@ -651,7 +679,12 @@ body.logged-in button.weekBtn {
     
 <div id="swipeHint"></div>
 
+ 
+<div id="calendarContainer">
   <table id="calendar"></table>
+  <div id="swipeBackground"></div>
+</div>
+
 
 
   
@@ -1035,7 +1068,7 @@ body.logged-in button.weekBtn {
       let touchStartY = 0;
       let isMultiTouch = false;
       let savedWeek = localStorage.getItem("calendar_current_week");
-
+      let startX = 0;
       if (savedWeek) {
         current = new Date(savedWeek);
       }
@@ -5252,6 +5285,12 @@ async function saveBatchBookings(list) {
 
   isLocalInsert = false;
 }
+      
+      function resetCalendarPosition() {
+  calendar.style.transition = "none";
+  calendar.style.transform = "translateX(0)";
+}
+      
       function redrawBookingsOnResize() {
         document.querySelectorAll(".booking").forEach((e) => e.remove());
         document.querySelectorAll(".booking-half").forEach((e) => e.remove());
@@ -5268,77 +5307,78 @@ async function saveBatchBookings(list) {
         };
       }
 
+
 const calendar = document.getElementById("calendar");
-const hint = document.getElementById("swipeHint");
-
-let touchStartX = 0;
-let touchEndX = 0;
-
+const bg = document.getElementById("swipeBackground");
 
 calendar.addEventListener("touchstart", (e) => {
+  isSwiping = true;
+  startX = e.touches[0].clientX;
 
-  isMultiTouch = e.touches.length > 1; // ✅ Zoom erkennen
-
-  touchStartX = e.touches[0].clientX;
-  touchStartY = e.touches[0].clientY;
+  calendar.style.transition = "none";
 });
 
 
 calendar.addEventListener("touchmove", (e) => {
 
-  if (isMultiTouch) return; // ✅ KEIN Hint bei Zoom
+  if (!isSwiping) return;
 
   let currentX = e.touches[0].clientX;
-  let currentY = e.touches[0].clientY;
+  let diff = currentX - startX;
 
-  let diffX = currentX - touchStartX;
-  let diffY = currentY - touchStartY;
+  // 👉 Bewegung anzeigen
+  calendar.style.transform = `translateX(${diff}px)`;
 
-  // ✅ Wenn mehr vertikale Bewegung → kein Swipe
-  if (Math.abs(diffY) > Math.abs(diffX)) {
-    hint.classList.remove("show");
-    return;
-  }
-
-  // ✅ zu kleine Bewegung → kein Swipe
-  if (Math.abs(diffX) < 30) {
-    hint.classList.remove("show");
-    return;
-  }
-
-  hint.classList.add("show");
-
-  if (diffX < 0) {
-    hint.innerHTML = "Nächste<br>Woche";
+  // 👉 Hintergrund Text setzen
+  if (diff < 0) {
+    bg.innerHTML = "Nächste<br>Woche";
   } else {
-    hint.innerHTML = "Vorherige<br>Woche";
+    bg.innerHTML = "Vorherige<br>Woche";
   }
 
 });
 
 
-calendar.addEventListener("touchend", (e) => {
+calendar.addEventListener("touchend", () => {
 
-  hint.classList.remove("show");
+  isSwiping = false;
 
-  if (isMultiTouch) return; // ✅ kein Swipe nach Zoom
+  let transform = calendar.style.transform;
+  let diff = 0;
 
-  touchEndX = e.changedTouches[0].clientX;
-  handleSwipe();
+  if (transform.includes("translateX")) {
+    diff = parseFloat(transform.replace(/translateX\(([-0-9.]+)px\)/, "$1"));
+  }
+
+  let threshold = 500;
+
+  calendar.style.transition = "transform 0.2s ease";
+
+  if (diff < -threshold) {
+    // 👉 nach links verschwinden
+    calendar.style.transform = "translateX(-100%)";
+
+    setTimeout(() => {
+      changeWeek(1);
+      resetCalendarPosition();
+    }, 200);
+
+  } else if (diff > threshold) {
+    // 👉 nach rechts verschwinden
+    calendar.style.transform = "translateX(100%)";
+
+    setTimeout(() => {
+      changeWeek(-1);
+      resetCalendarPosition();
+    }, 200);
+
+  } else {
+    // 👉 zurückspringen
+    calendar.style.transform = "translateX(0)";
+  }
+
 });
 
-
-function handleSwipe() {
-  let diff = touchStartX - touchEndX;
-
-  if (Math.abs(diff) < 250) return;
-
-  if (diff > 0) {
-    changeWeek(1);
-  } else {
-    changeWeek(-1);
-  }
-}
       function handleGlobalClose(e) {
           
  if (e.target.closest(".overlay-box")) return;
