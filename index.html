@@ -438,7 +438,7 @@
         top: 0;
         left: 0;
         width: 100%;
-        z-index: 10000;
+        z-index: 12000;
         background: white;
 
             }
@@ -485,7 +485,7 @@
           left: 0;
           width: 100%;
           height: 81px; /* ✅ fest definieren */
-          z-index: 10000;
+          z-index: 12000;
 
         }
 
@@ -619,11 +619,11 @@
     </div>
     <div id="stickyHeader">
       <div id="controls">
-        <button onclick="changeWeek(-1)" class="allowed">◀ Woche</button>
-        <button onclick="changeWeek(1)" class="allowed">Woche ▶</button>
-        <button onclick="openDatePicker(event)" style="margin-left:8px;">📅</button>
-        <button onclick="undo()" title="Rückgängig (Strg+Z)">↶</button>
-        <button id="backupBtn" onclick="alert('Backup kommt später')">Backup</button>
+        <button onclick="changeWeek(-1); event.stopPropagation()" class="allowed">◀ Woche</button>
+        <button onclick="changeWeek(1); event.stopPropagation()" class="allowed">Woche ▶</button>
+        <button onclick="openDatePicker(event); event.stopPropagation()" style="margin-left:8px;">📅</button>
+        <button onclick="undo(); event.stopPropagation()" title="Rückgängig (Strg+Z)">↶</button>
+        <button id="backupBtn" onclick="alert('Backup kommt später'); event.stopPropagation()">Backup</button>
         <button
           class="allowed"
           id="newBookingBtn"
@@ -634,12 +634,12 @@
 
         <button
           id="logOverviewBtn"
-          onclick="openLogOverview()"
+          onclick="openLogOverview(); event.stopPropagation()"
           style="position: absolute; top: 10px; right: 90px; /* ✅ Abstand zum Logout */ display: none">
           Verlauf
         </button>
 
-        <button id="logoutBtn" onclick="logout()" class="allowed">Logout</button>
+        <button id="logoutBtn" onclick="logout(); event.stopPropagation()" class="allowed">Logout</button>
 
         <div
           id="backupList"
@@ -5295,6 +5295,12 @@ calendar.addEventListener("touchstart", (e) => {
       }
       function handleGlobalClose(e) {
         if (openingPicker) return;
+        
+ if (e.target.closest(".overlay-box")) return;
+
+  // ✅ Klick auf Buttons → NICHT sofort schließen
+  if (e.target.closest("button")) return;
+
         const info = document.getElementById("bookingInfo");
         const form = document.getElementById("bookingForm");
         const backup = document.getElementById("backupList");
@@ -5342,19 +5348,20 @@ calendar.addEventListener("touchstart", (e) => {
         }
 
       
+
 if (blocked) {
   justClosedOverlay = true;
 
   e.stopPropagation();
-  e.stopImmediatePropagation();
-  e.preventDefault();
+  lastTapTime = Date.now();
 
   setTimeout(() => {
     justClosedOverlay = false;
-  }, 200);
+  }, 150);
 
   return;
 }
+
 
       }
 document.getElementById("datePicker").addEventListener("change", (e) => {
