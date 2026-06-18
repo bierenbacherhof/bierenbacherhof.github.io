@@ -168,6 +168,16 @@
               line-height: 16px;
             }
 
+      
+.auth-only {
+  display: none !important;
+}
+
+/* ✅ wenn eingeloggt */
+body.logged-in .auth-only {
+  display: inline-block !important;
+}
+
             .no-breakfast-icon::after {
               content: "";
               position: absolute;
@@ -634,13 +644,13 @@
     </div>
     <div id="stickyHeader">
       <div id="controls">
-        <button onclick="changeWeek(-1)" class="allowed">◀ Woche</button>
-        <button onclick="changeWeek(1)" class="allowed">Woche ▶</button>
-        <button id ="datePickerBtn" onclick="openDatePicker(event); event.stopPropagation()" style="margin-left:8px;">📅</button>
-        <button onclick="undo()" title="Rückgängig (Strg+Z)">↶</button>
-        <button id="backupBtn" onclick="alert('Backup kommt später')">Backup</button>
+        <button onclick="changeWeek(-1)" class="allowed auth-only">◀ Woche</button>
+        <button onclick="changeWeek(1)" class="allowed auth-only">Woche ▶</button>
+        <button id ="datePickerBtn" onclick="openDatePicker(event); event.stopPropagation()" class="allowed auth-only" style="margin-left:8px;">📅</button>
+        <button onclick="undo()" class="auth-only" title="Rückgängig (Strg+Z)">↶</button>
+        <button id="backupBtn" onclick="alert('Backup kommt später')" class="auth-only">Backup</button>
         <button
-          class="allowed"
+          class="auth-only"
           id="newBookingBtn"
           onclick="event.stopPropagation(); openNewBooking()"
           style="position: absolute; left: 50%; transform: translateX(-50%)">
@@ -648,13 +658,14 @@
         </button>
 
         <button
+                class="auth-only"
           id="logOverviewBtn"
           onclick="openLogOverview(); event.stopPropagation()"
           style="position: absolute; top: 10px; right: 90px; /* ✅ Abstand zum Logout */ display: none">
           Verlauf
         </button>
 
-        <button id="logoutBtn" onclick="logout(); event.stopPropagation()" class="allowed">Logout</button>
+        <button id="logoutBtn" onclick="logout(); event.stopPropagation()" class="allowed auth-only">Logout</button>
 
         <div
           id="backupList"
@@ -1927,19 +1938,17 @@ new_value: typeof newValue === "object"
         } = await supa.auth.getSession();
 
         if (session) {
+          document.body.classList.add("logged-in");
           document.getElementById("loginBox").style.display = "none";
           document.getElementById("loginBlocker").style.display = "none";
-
+           
           await loadGroups();
           await loadUserRole();
           await loadUserMap();
 
           document.getElementById("newBookingBtn").style.display = isEditAllowed() ? "inline-block" : "none";
 
-          if (isAdmin()) {
-            document.getElementById("backupBtn").style.display = "inline-block";
-            document.getElementById("logOverviewBtn").style.display = "inline-block";
-          } else {
+          if (!isAdmin()) {
             document.getElementById("backupBtn").style.display = "none";
             document.getElementById("logOverviewBtn").style.display = "none";
           }
@@ -1952,9 +1961,10 @@ new_value: typeof newValue === "object"
 
           await loadData();
         } else {
+           document.body.classList.remove("logged-in");
           document.getElementById("loginBox").style.display = "block";
           document.getElementById("loginBlocker").style.display = "block"; // ✅ NEU
-
+          
           render();
         }
 
@@ -1965,6 +1975,7 @@ new_value: typeof newValue === "object"
 
       async function logout() {
         await supa.auth.signOut();
+        document.body.classList.remove("logged-in");
         location.reload();
       }
 
