@@ -1948,8 +1948,12 @@ new_value: typeof newValue === "object"
   h += "</tr></thead><tbody>";
   t.innerHTML += h;
 
-  rooms.forEach((r, row) => {
-    let tr = `<tr><td class="room">${r}</td>`;
+ 
+rooms.forEach((r, row) => {
+  let tr = `<tr>
+    <td class="room">${r}
+      <div class="booking-layer"></div>
+    </td>`;
 
     for (let d = 0; d < 7; d++) {
       let weekStart = normalizeDate(startOfWeek(current));
@@ -3098,11 +3102,11 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
           let renderEnd = endsAfterWeek ? 7 : visEnd;
           let endCell = cells[renderEnd] || cells[cells.length - 1];
-          if (!startCell || !endCell) return;
+         
           let startRect = startCell.getBoundingClientRect();
           let endRect = endCell.getBoundingClientRect();
 
-          let layer = rowEl.querySelector(".booking-layer") || rowEl;
+          let layer = rowEl.querySelector(".booking-layer");
           let layerRect = layer.getBoundingClientRect();
 
           let dayWidth = startRect.width;
