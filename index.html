@@ -3,7 +3,7 @@
   <head>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=0.5, maximum-scale=1.0" />
     <title>Hotel Belegungsplan</title>
 
     <style>
@@ -481,9 +481,11 @@ body.logged-in .auth-only {
     z-index: 2000;
   }
 
-         .weekBtn{
-            display: none !important;
-         }
+       
+body.logged-in button.weekBtn {
+  display: none !important;
+}
+
          
   #swipeHint {
     position: fixed;
@@ -1010,6 +1012,10 @@ body.logged-in .auth-only {
 let isSwiping = false;
 let swipeStartX = 0;
 let currentOffsetX = 0;
+      
+let touchStartY = 0;
+let isMultiTouch = false;
+
 
 
       history = JSON.parse(localStorage.getItem("hotel_history") || "[]");
@@ -5260,39 +5266,64 @@ const hint = document.getElementById("swipeHint");
 let touchStartX = 0;
 let touchEndX = 0;
 
+
 calendar.addEventListener("touchstart", (e) => {
+
+  isMultiTouch = e.touches.length > 1; // ✅ Zoom erkennen
+
   touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
 });
 
-calendar.addEventListener("touchmove", (e) => {
-  let currentX = e.touches[0].clientX;
-  let diff = currentX - touchStartX;
 
-  if (Math.abs(diff) < 30) {
+calendar.addEventListener("touchmove", (e) => {
+
+  if (isMultiTouch) return; // ✅ KEIN Hint bei Zoom
+
+  let currentX = e.touches[0].clientX;
+  let currentY = e.touches[0].clientY;
+
+  let diffX = currentX - touchStartX;
+  let diffY = currentY - touchStartY;
+
+  // ✅ Wenn mehr vertikale Bewegung → kein Swipe
+  if (Math.abs(diffY) > Math.abs(diffX)) {
+    hint.classList.remove("show");
+    return;
+  }
+
+  // ✅ zu kleine Bewegung → kein Swipe
+  if (Math.abs(diffX) < 30) {
     hint.classList.remove("show");
     return;
   }
 
   hint.classList.add("show");
 
-  if (diff < 0) {
+  if (diffX < 0) {
     hint.innerHTML = "Nächste<br>Woche";
   } else {
     hint.innerHTML = "Vorherige<br>Woche";
   }
+
 });
 
+
 calendar.addEventListener("touchend", (e) => {
+
   hint.classList.remove("show");
+
+  if (isMultiTouch) return; // ✅ kein Swipe nach Zoom
 
   touchEndX = e.changedTouches[0].clientX;
   handleSwipe();
 });
 
+
 function handleSwipe() {
   let diff = touchStartX - touchEndX;
 
-  if (Math.abs(diff) < 150) return;
+  if (Math.abs(diff) < 250) return;
 
   if (diff > 0) {
     changeWeek(1);
