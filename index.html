@@ -538,6 +538,12 @@ body.logged-in .auth-only {
     z-index: 2000;
   }
 
+ #datePickerWrapper {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
        
 body.logged-in button.weekBtn {
   display: none !important;
@@ -762,7 +768,7 @@ body.logged-in button.weekBtn {
           Neue Buchung anlegen
         </button>
   <div id="topRightButtons">
-  <button id="logOverviewBtn" class="auth-only">Verlauf</button>
+  <button id="logOverviewBtn" onclick="event.stopPropagation(); toggleLog();" class="auth-only">Verlauf</button>
   <button id="logoutBtn" class="auth-only">Logout</button>
 </div>
         <div
@@ -5350,31 +5356,31 @@ calendar.addEventListener("touchend", () => {
     diff = parseFloat(transform.replace(/translateX\(([-0-9.]+)px\)/, "$1"));
   }
 
-  let threshold = 500;
+  let threshold = 120;
 
   calendar.style.transition = "transform 0.2s ease";
 
   if (diff < -threshold) {
-    // 👉 nach links verschwinden
     calendar.style.transform = "translateX(-100%)";
 
     setTimeout(() => {
       changeWeek(1);
       resetCalendarPosition();
+      bg.innerHTML = ""; // ✅ hier auch sicherheitshalber
     }, 200);
 
   } else if (diff > threshold) {
-    // 👉 nach rechts verschwinden
     calendar.style.transform = "translateX(100%)";
 
     setTimeout(() => {
       changeWeek(-1);
       resetCalendarPosition();
+      bg.innerHTML = ""; // ✅ hier auch
     }, 200);
 
   } else {
-    // 👉 zurückspringen
     calendar.style.transform = "translateX(0)";
+    bg.innerHTML = ""; // ✅ hier wichtig
   }
 
 });
@@ -5384,7 +5390,13 @@ calendar.addEventListener("touchend", () => {
  if (e.target.closest(".overlay-box")) return;
 
   // ✅ Klick auf Buttons → NICHT sofort schließen
-  if (e.target.closest("button")) return;
+  
+if (
+  e.target.closest("button") ||
+  e.target.closest("#logOverviewBtn") ||
+  e.target.closest("#topRightButtons")
+) return;
+
 
         const info = document.getElementById("bookingInfo");
         const form = document.getElementById("bookingForm");
