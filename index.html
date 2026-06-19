@@ -430,6 +430,7 @@ body.logged-in .auth-only {
 #datePickerWrapper button {
   position: relative;
   z-index: 1;
+  cursor: pointer;
 }
 
 /* INPUT MUSS oben liegen */
@@ -444,7 +445,7 @@ body.logged-in .auth-only {
   opacity: 0;
 
   z-index: 9999999; /* ✅ WICHTIG */
-  cursor: pointer;
+  pointer-events: none;
 }
 
 
@@ -488,7 +489,7 @@ body.logged-in .auth-only {
 }
     #calendarContainer {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 #calendar {
@@ -768,7 +769,7 @@ body.logged-in button.weekBtn {
           Neue Buchung anlegen
         </button>
   <div id="topRightButtons">
-  <button id="logOverviewBtn" onclick="event.stopPropagation(); toggleLog();" class="auth-only">Verlauf</button>
+  <button id="logOverviewBtn" onclick="event.stopPropagation(); openLogOverview();" class="auth-only">Verlauf</button>
   <button id="logoutBtn" class="auth-only">Logout</button>
 </div>
         <div
@@ -1063,7 +1064,6 @@ body.logged-in button.weekBtn {
       let userMap = {};
       let allLogs = [];
       let isDraggingUpdate = false;
-      let lastTapTime = 0;
       let groupsMap = {};
       let isLocalInsert = false;
       let lastChangeTime = 0;
@@ -2029,7 +2029,7 @@ rooms.forEach((r, row) => {
       let cellDate = new Date(weekStart);
       cellDate.setDate(weekStart.getDate() + d);
 
-      tr += `<td class="half"></td>`;
+     tr += `<td class="half" onclick="add(${row}, ${d}, event)"></td>`;
     }
 
     t.innerHTML += tr + "</tr>";
@@ -2551,11 +2551,7 @@ if (!user) return false;
         }
 
         let now = Date.now();
-
-        if (now - lastTapTime < 300) {
-          return;
-        }
-
+    
         lastTapTime = now;
 
         if (singlePlacement) {
@@ -5108,18 +5104,47 @@ document.getElementById("overlay").onclick = () => {
         }
       });
 
-      window.addEventListener("DOMContentLoaded", () => {
-        document.getElementById("toggleGroup").onchange = function () {
-          let isGroup = this.checked;
+  window.addEventListener("DOMContentLoaded", () => {
 
-          document.getElementById("singleForm").style.display = isGroup ? "none" : "block";
-          document.getElementById("groupForm").style.display = isGroup ? "block" : "none";
+  document.getElementById("toggleGroup").onchange = function () {
+    let isGroup = this.checked;
 
-          if (isGroup) {
-            buildGroupForm();
-          }
-        };
-      });
+    document.getElementById("singleForm").style.display = isGroup ? "none" : "block";
+    document.getElementById("groupForm").style.display = isGroup ? "block" : "none";
+
+    if (isGroup) {
+      buildGroupForm();
+    }
+  };
+
+  // ✅ DATEPICKER FIX HIER
+  document.querySelector("#datePickerWrapper button").addEventListener("click", () => {
+  const input = document.getElementById("datePicker");
+
+  try {
+    if (input.showPicker) {
+      input.showPicker();
+    } else {
+      input.focus();
+      input.click();
+    }
+  } catch (e) {
+    input.focus();
+    input.click();
+  }
+});
+
+ document.getElementById("logoutBtn").addEventListener("click", (e) => {
+    e.stopPropagation();
+   
+if (!confirm("Sind Sie sicher, dass Sie sich ausloggen wollen?")) {
+    return; // ✅ abgebrochen
+  }
+
+    logout();
+  });
+
+});
 
       window.onload = () => {
         render();
@@ -5387,6 +5412,15 @@ calendar.addEventListener("touchend", () => {
 
       function handleGlobalClose(e) {
           
+const overlayOpen =
+  document.getElementById("bookingForm").style.display === "block" ||
+  document.getElementById("bookingInfo").style.display === "block" ||
+  document.getElementById("logOverview").style.display === "block" ||
+  document.getElementById("backupList").style.display === "block" ||
+  document.getElementById("groupInfoBox").style.display === "block";
+
+if (!overlayOpen) return;
+
  if (e.target.closest(".overlay-box")) return;
 
   // ✅ Klick auf Buttons → NICHT sofort schließen
@@ -5446,18 +5480,20 @@ if (
 
       
 
+
+
 if (blocked) {
   justClosedOverlay = true;
 
-  e.stopPropagation();
-  lastTapTime = Date.now();
 
-  setTimeout(() => {
+  requestAnimationFrame(() => {
     justClosedOverlay = false;
-  }, 150);
+  });
 
   return;
 }
+
+
 
 
       }
@@ -5467,9 +5503,9 @@ document.getElementById("datePicker").addEventListener("change", (e) => {
   current = startOfWeek(selectedDate);
   render();              
 });
-      document.addEventListener("mousedown", handleGlobalClose, true);
+      document.addEventListener("mousedown", handleGlobalClose);
 
-      document.addEventListener("touchstart", handleGlobalClose, true);
+      document.addEventListener("touchstart", handleGlobalClose);
     </script>
   </body>
 </html>
