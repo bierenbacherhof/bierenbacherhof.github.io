@@ -533,6 +533,7 @@ body.logged-in .auth-only {
 
        @media (pointer: coarse) {
 
+         
   thead th {
     position: sticky;
     top: 120px; /* ✅ vorher 81px → jetzt doppelt */
@@ -772,9 +773,9 @@ body.logged-in button.weekBtn {
         <button onclick="changeWeek(-1)" class="weekBtn allowed auth-only">◀ Woche</button>
         <button onclick="changeWeek(1)" class="weekBtn allowed auth-only">Woche ▶</button>
 
-<div id="datePickerWrapper" class="dateBtn">
+<div id="datePickerWrapper">
   <input type="date" id="datePicker">
-  <button type="button">📅</button>
+  <button class="allowed" type="button">📅</button>
 </div>
 
         <button onclick="undo()" class="auth-only" title="Rückgängig (Strg+Z)">↶</button>
