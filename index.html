@@ -5529,6 +5529,16 @@ document.getElementById("datePicker").addEventListener("change", (e) => {
       document.addEventListener("mousedown", handleGlobalClose);
 
       document.addEventListener("touchstart", handleGlobalClose);
+      
+      
+window.addEventListener("load", () => {
+  const el = document.getElementById("datePickerWrapper");
+
+  if (el) {
+    el.style.display = "inline-block";
+  }
+});
+
     </script>
   </body>
 </html>
