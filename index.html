@@ -442,7 +442,7 @@ body.logged-in .auth-only {
   width: 100%;
   height: 100%;
 
-  opacity: 0;
+  opacity: 1;
 
   z-index: 9999999; /* ✅ WICHTIG */
   pointer-events: none;
@@ -642,8 +642,12 @@ body.logged-in button.weekBtn {
     padding: 6px 10px;
   }
 
-         .topbar button.allowed {
-           display: inline-block !important;
+.topbar button {
+  display: none;
+}
+
+.topbar .allowed {
+  display: inline-block !important
          }
   /* ✅ Kalender Abstand anpassen */
   #calendar {
@@ -773,7 +777,7 @@ body.logged-in button.weekBtn {
         <button onclick="changeWeek(-1)" class="weekBtn allowed auth-only">◀ Woche</button>
         <button onclick="changeWeek(1)" class="weekBtn allowed auth-only">Woche ▶</button>
 
-<div id="datePickerWrapper">
+<div id="datePickerWrapper" class="allowed">
   <input type="date" id="datePicker">
   <button class="allowed" type="button">📅</button>
 </div>
