@@ -538,6 +538,16 @@ body.logged-in .auth-only {
     top: 120px; /* ✅ vorher 81px → jetzt doppelt */
     z-index: 2000;
   }
+         
+  .room {
+    position: sticky;
+    left: 0; /* ✅ entscheidend */
+
+    z-index: 3000; /* ✅ höher als normale Zellen */
+
+    background: #fafafa; /* ✅ wichtig sonst transparent */
+  }
+
 
  #datePickerWrapper {
     display: inline-block !important;
