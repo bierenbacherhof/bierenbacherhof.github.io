@@ -539,14 +539,21 @@ body.logged-in .auth-only {
     z-index: 2000;
   }
          
- 
-.room {
-   
-   font-size: 0;
-    display: flex;
-    align-items: center;
+ body.logged-in #datePickerWrapper {
+  display: inline-block !important;
+}
 
-  }
+.room {
+  width: 80px !important; /* ✅ halb so breit */
+  min-width: 80px;
+  max-width: 80px;
+
+  font-size: 0; /* ✅ Text ausblenden (wie vorher) */
+
+  display: flex;
+  align-items: center;
+  justify-content: center; /* ✅ Nummer zentriert */
+}
 
   .room::before {
     font-size: 22px; /* ✅ deine große Nummer */
@@ -656,10 +663,18 @@ body.logged-in button.weekBtn {
     font-size: 20px; /* ✅ lesbarer */
   }
 
-  .booking-layer {
-    top: 0;
-    height: 100% !important;
-  }
+ 
+.booking-layer {
+  position: absolute;
+  top: 0;
+  left: 100%; /* ✅ bleibt so */
+  
+  width: calc(100vw - 80px); /* ✅ angepasst an neue room-Breite */
+  
+  height: 100%;
+  pointer-events: none;
+}
+
 
   #calendar tbody tr {
     position: relative !important;
