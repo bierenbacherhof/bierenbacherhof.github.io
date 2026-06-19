@@ -539,13 +539,23 @@ body.logged-in .auth-only {
     z-index: 2000;
   }
          
-  .room {
-    position: sticky;
-    left: 0; /* ✅ entscheidend */
+ 
+.room {
+   
+   font-size: 0;
+    display: flex;
+    align-items: center;
 
-    z-index: 3000; /* ✅ höher als normale Zellen */
+  }
 
-    background: #fafafa; /* ✅ wichtig sonst transparent */
+  .room::before {
+    font-size: 22px; /* ✅ deine große Nummer */
+  }
+
+
+         
+  #datePickerWrapper {
+    display: inline-block !important;
   }
 
 
@@ -637,17 +647,6 @@ body.logged-in button.weekBtn {
     position: relative;
     max-width: 100%;
     will-change: transform;
-  }
-
-  /* ✅ Zimmer-Spalte */
-  .room {
-    width: 160px;
-    font-size: 17px;
-  }
-
-  .room::before {
-    content: attr(data-room-number);
-    font-size: 22px;
   }
 
   .booking {
@@ -2029,10 +2028,15 @@ new_value: typeof newValue === "object"
 
  
 rooms.forEach((r, row) => {
-  let tr = `<tr>
-    <td class="room">${r}
-      <div class="booking-layer"></div>
-    </td>`;
+  
+let roomNumber = r.split(" - ")[0];
+
+let tr = `<tr>
+  <td class="room" data-room-number="${roomNumber}">
+    ${r}
+    <div class="booking-layer"></div>
+  </td>`;
+
 
     for (let d = 0; d < 7; d++) {
       let weekStart = normalizeDate(startOfWeek(current));
