@@ -3,7 +3,7 @@
   <head>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=0.5, maximum-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hotel Belegungsplan</title>
 
     <style>
@@ -524,33 +524,34 @@ body.logged-in .auth-only {
 
        @media (pointer: coarse) {
 
-         
- 
- 
- 
+
   #datePickerWrapper {
     display: inline-block;
   }
 
   #datePickerWrapper button {
-    display: none !important;  /* ✅ Button verstecken */
+    display: none !important;
   }
 
   #datePickerWrapper input {
-    display: inline-block;
+    display: inline-block !important;
 
     width: 44px;
     height: 44px;
 
-    font-size: 20px;
-    text-align: center;
+    font-size: 16px; /* ✅ wichtig für iOS */
 
     border: 1px solid #ccc;
     border-radius: 6px;
-    background: #fff;
+    background: white;
+
+    -webkit-appearance: auto; /* ✅ CRITICAL */
+    appearance: auto;
 
     cursor: pointer;
   }
+
+
 
 
 
