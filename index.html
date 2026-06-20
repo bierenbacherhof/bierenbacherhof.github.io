@@ -442,7 +442,7 @@ body.logged-in .auth-only {
   width: 100%;
   height: 100%;
 
-  opacity: 1;
+  opacity: 0;
 
   z-index: 9999999; /* ✅ WICHTIG */
   pointer-events: none;
@@ -539,10 +539,6 @@ body.logged-in .auth-only {
     top: 120px; /* ✅ vorher 81px → jetzt doppelt */
     z-index: 2000;
   }
-         
- body.logged-in #datePickerWrapper {
-  display: inline-block !important;
-}
 
 .room {
   width: 80px !important; /* ✅ halb so breit */
@@ -567,12 +563,37 @@ body.logged-in .auth-only {
     opacity: 1 !important;
   }
 
-       
+
+#datePickerWrapper input {
+  position: absolute;
+  inset: 0;
+
+  opacity: 1;
+
+  cursor: pointer;        /* ✅ wichtig */
+  pointer-events: auto;   /* ✅ DAS ist der Fix */
+}
+
 body.logged-in button.weekBtn {
   display: none !important;
 }
 
          
+ /* 🔴 alle Buttons erstmal aus */
+  #controls button {
+    display: none;
+  }
+
+  /* ✅ nur erlaubte anzeigen */
+  #controls button.allowed {
+    display: inline-block !important;
+  }
+
+  /* ✅ Datepicker immer sichtbar */
+  #datePickerWrapper {
+    display: inline-block !important;
+  }
+
   #swipeHint {
     position: fixed;
     top: 45%;
@@ -642,9 +663,6 @@ body.logged-in button.weekBtn {
     padding: 6px 10px;
   }
 
-.topbar button {
-  display: none;
-}
 
 .topbar .allowed {
   display: inline-block !important
@@ -681,6 +699,8 @@ body.logged-in button.weekBtn {
   #calendar tbody tr {
     position: relative !important;
   }
+
+
 
   #logoutBtn {
     display: inline-block !important;
