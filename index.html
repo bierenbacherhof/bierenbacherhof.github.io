@@ -433,7 +433,6 @@ body.logged-in .auth-only {
   cursor: pointer;
 }
 
-/* INPUT MUSS oben liegen */
 #datePickerWrapper input {
   position: absolute;
   top: 0;
@@ -443,9 +442,10 @@ body.logged-in .auth-only {
   height: 100%;
 
   opacity: 0;
+  z-index: 9999999;
 
-  z-index: 9999999; /* ✅ WICHTIG */
-  pointer-events: none;
+  pointer-events: auto; /* ✅ FIX */
+  cursor: pointer;      /* ✅ FIX */
 }
 
 
@@ -574,9 +574,6 @@ body.logged-in .auth-only {
   pointer-events: auto;   /* ✅ DAS ist der Fix */
 }
 
-body.logged-in button.weekBtn {
-  display: none !important;
-}
 
          
  /* 🔴 alle Buttons erstmal aus */
@@ -593,6 +590,10 @@ body.logged-in button.weekBtn {
   #datePickerWrapper {
     display: inline-block !important;
   }
+
+      #controls .weekBtn {
+  display: none !important;
+}
 
   #swipeHint {
     position: fixed;
@@ -5160,21 +5161,11 @@ document.getElementById("overlay").onclick = () => {
     }
   };
 
-  // ✅ DATEPICKER FIX HIER
-  document.querySelector("#datePickerWrapper button").addEventListener("click", () => {
+document.querySelector("#datePickerWrapper button").addEventListener("click", () => {
   const input = document.getElementById("datePicker");
 
-  try {
-    if (input.showPicker) {
-      input.showPicker();
-    } else {
-      input.focus();
-      input.click();
-    }
-  } catch (e) {
-    input.focus();
-    input.click();
-  }
+  input.focus();
+  input.click(); // ✅ reicht völlig
 });
 
  document.getElementById("logoutBtn").addEventListener("click", (e) => {
