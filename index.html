@@ -539,7 +539,7 @@ body.logged-in .auth-only {
 
   /* ✅ HEADER sticky oben */
   thead th {
-    top: 81px;
+    top: 120px;
     z-index: 2000;
     background: #eee;
   }
@@ -664,7 +664,7 @@ body.logged-in .auth-only {
          }
   /* ✅ Kalender Abstand anpassen */
   #calendar {
-    margin-top: 81px; /* ✅ MUSS gleich wie Header sein */
+    margin-top: 120px; /* ✅ MUSS gleich wie Header sein */
     overflow-x: auto;
     position: relative;
     max-width: 100%;
@@ -803,7 +803,7 @@ body.logged-in .auth-only {
           Neue Buchung anlegen
         </button>
   <div id="topRightButtons">
-  <button id="logOverviewBtn" onclick="event.stopPropagation(); openLogOverview();" class="auth-only">Verlauf</button>
+  <button id="logOverviewBtn" onclick="event.stopPropagation(); openLogOverview();" class="auth-only">🗑️ gelöschte Buchungen</button>
   <button id="logoutBtn" class="auth-only">Logout</button>
 </div>
         <div
@@ -1151,9 +1151,16 @@ body.logged-in .auth-only {
         let from = document.getElementById("logDateFrom").value;
         let to = document.getElementById("logDateTo").value;
 
-        let filtered = allLogs.filter((log) => {
-          let userName = (userMap[log.user_id] || "").toLowerCase();
-          let room = (log.room || "").toLowerCase();
+       
+let filtered = allLogs.filter((log) => {
+
+  // ✅ NUR gelöschte Buchungen
+  if (!(log.field === "booking" && log.new_value === "deleted")) {
+    return false;
+  }
+
+  let userName = (userMap[log.user_id] || "").toLowerCase();
+  let room = (log.room || "").toLowerCase();
 
           if (userFilter && !userName.includes(userFilter)) return false;
 
@@ -1236,9 +1243,14 @@ body.logged-in .auth-only {
           return;
         }
 
-        allLogs = logs || [];
+       allLogs = logs || [];
 
-        renderLogList(allLogs);
+// ✅ nur gelöschte Buchungen
+const deletedLogs = allLogs.filter(log =>
+  log.field === "booking" && log.new_value === "deleted"
+);
+
+renderLogList(deletedLogs);
       }
 
       function formatLogText(log) {
