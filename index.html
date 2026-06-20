@@ -864,17 +864,16 @@ body.admin .admin-only {
           ">
           <b>Verlauf</b><br /><br />
 
-          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px">
-            <input id="logUserFilter" placeholder="User" />
+         
+<div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px">
 
-            <input id="logRoomFilter" placeholder="Zimmer" />
+  <input id="logNameFilter" placeholder="Name" />
 
-            <input id="logDateFrom" type="date" />
-            <input id="logDateTo" type="date" />
+  <button onclick="applyLogFilter()">Filtern</button>
+  <button onclick="resetLogFilter()">Reset</button>
 
-            <button onclick="applyLogFilter()">Filtern</button>
-            <button onclick="resetLogFilter()">Reset</button>
-          </div>
+</div>
+
 
           <div id="logOverviewContent"></div>
 
@@ -1122,6 +1121,7 @@ body.admin .admin-only {
       let savedWeek = localStorage.getItem("calendar_current_week");
       let startX = 0;
       let colorPickerOpen = false
+       let singlePlacement = null;
       if (savedWeek) {
         current = new Date(savedWeek);
       }
@@ -1159,45 +1159,34 @@ body.admin .admin-only {
         location.reload();
       }
 
-      function applyLogFilter() {
-        let userFilter = document.getElementById("logUserFilter").value.toLowerCase();
-        let roomFilter = document.getElementById("logRoomFilter").value.toLowerCase();
+function applyLogFilter() {
 
-        let from = document.getElementById("logDateFrom").value;
-        let to = document.getElementById("logDateTo").value;
+  let search = document.getElementById("logNameFilter").value.toLowerCase();
 
-       
-let filtered = allLogs.filter((log) => {
+  let filtered = allLogs.filter(log => {
 
-  // ✅ NUR gelöschte Buchungen
-  if (!(log.field === "booking" && log.new_value === "deleted")) {
-    return false;
-  }
+    if (!(log.field === "booking" && log.new_value === "deleted")) {
+      return false;
+    }
 
-  let userName = (userMap[log.user_id] || "").toLowerCase();
-  let room = (log.room || "").toLowerCase();
+    let oldVal = {};
 
-          if (userFilter && !userName.includes(userFilter)) return false;
+    try {
+      oldVal = JSON.parse(log.old_value || "{}");
+    } catch(e) {}
 
-          if (roomFilter && !room.includes(roomFilter)) return false;
+    let name = (oldVal.name || "").toLowerCase();
+    let company = (oldVal.company || "").toLowerCase();
 
-          if (from) {
-            let d = normalizeDate(log.created_at);
-            if (normalizeDate(d) < normalizeDate(from)) return false;
-          }
+    if (search && !name.includes(search) && !company.includes(search)) {
+      return false;
+    }
 
-          if (to) {
-            let d = normalizeDate(log.created_at);
-            let toDate = normalizeDate(to);
+    return true;
+  });
 
-            if (d > toDate) return false;
-          }
-
-          return true;
-        });
-
-        renderLogList(filtered);
-      }
+  renderLogList(filtered);
+}
 
       
       function renderLogList(logs) {
@@ -1217,27 +1206,36 @@ let filtered = allLogs.filter((log) => {
           let dt = new Date(log.created_at + "Z");
           let time = dt.toLocaleString("de-DE");
 
-          html += `
-      <div style="margin-bottom:8px;border-bottom:1px solid #eee;padding:5px">
-        <small>
-          <b>${room}</b><br>
-          ${userName} – ${time}<br>
-          ${formatLogText(log)}
-        </small>
-      </div>
-    `;
+       
+let oldVal = {};
+try {
+  oldVal = JSON.parse(log.old_value || "{}");
+} catch(e) {}
+
+let name = oldVal.name || "-";
+let company = oldVal.company || "";
+
+html += `
+  <div style="margin-bottom:8px;border-bottom:1px solid #eee;padding:5px">
+    <small>
+      <b>${name} ${company ? " – " + company : ""}</b><br>
+      ${room}<br>
+      🗑️ Buchung gelöscht von ${userName} – ${time}<br>
+    </small>
+  </div>
+`;
+
         });
         content.innerHTML = html;
       }
 
-      function resetLogFilter() {
-        document.getElementById("logUserFilter").value = "";
-        document.getElementById("logRoomFilter").value = "";
-        document.getElementById("logDateFrom").value = "";
-        document.getElementById("logDateTo").value = "";
+function resetLogFilter() {
 
-        renderLogList(allLogs);
-      }
+  document.getElementById("logNameFilter").value = "";
+
+  renderLogList(allLogs);
+}
+
 
       async function openLogOverview() {
         const box = document.getElementById("logOverview");
@@ -1260,8 +1258,13 @@ const { data: logs, error } = await supa
           return;
         }
 
-       allLogs = logs || [];
-       renderLogList(allLogs);
+     
+allLogs = (logs || []).filter(log =>
+  log.field === "booking" && log.new_value === "deleted"
+);
+
+renderLogList(allLogs);
+
       }
 
       function formatLogText(log) {
@@ -2034,11 +2037,7 @@ function isLightColor(color) {
         if (session) {
           document.body.classList.add("logged-in");
           
-if (isAdmin()) {
-  document.body.classList.add("admin");
-} else {
-  document.body.classList.remove("admin");
-}
+
 
           document.getElementById("loginBox").style.display = "none";
           document.getElementById("loginBlocker").style.display = "none";
@@ -2046,7 +2045,13 @@ if (isAdmin()) {
           await loadGroups();
           await loadUserRole();
           await loadUserMap();
-
+          if (isAdmin()) {
+  document.body.classList.add("admin");
+} else {
+  document.body.classList.remove("admin");
+}
+        
+          
           document.getElementById("newBookingBtn").style.display = isEditAllowed() ? "inline-block" : "none";
 
           if (currentRole === "read" || isMobile) {
@@ -2105,13 +2110,75 @@ let tr = `<tr>
   </td>`;
 
 
-    for (let d = 0; d < 7; d++) {
-      let weekStart = normalizeDate(startOfWeek(current));
-      let cellDate = new Date(weekStart);
-      cellDate.setDate(weekStart.getDate() + d);
+for (let d = 0; d < 7; d++) {
 
-     tr += `<td class="half" onclick="add(${row}, ${d}, event)"></td>`;
+  let weekStart = normalizeDate(startOfWeek(current));
+  let cellDate = new Date(weekStart);
+  cellDate.setDate(weekStart.getDate() + d);
+
+  let isBlocked = false;
+
+  // ✅ NUR im Placement-Modus prüfen!
+  if (groupPlacement || singlePlacement) {
+
+    // 1️⃣ Belegt?
+    let occupied = bookings.some((b) => {
+      if (b.row !== row) return false;
+
+      let s = normalizeDate(b.start);
+      let e = normalizeDate(b.end);
+
+      return cellDate >= s && cellDate < e;
+    });
+
+    if (occupied) {
+      isBlocked = true;
     }
+
+    // 2️⃣ Gruppenmodus
+    if (groupPlacement && !occupied) {
+
+      let roomName = rooms[row];
+
+      let possible = groupPlacement.data.some((item) => {
+        if (item.count <= 0) return false;
+
+        return canUseRoom(
+          roomName,
+          groupPlacement.start,
+          groupPlacement.end,
+          item.type
+        );
+      });
+
+      if (!possible) {
+        isBlocked = true;
+      }
+    }
+
+    // 3️⃣ Einzelmodus
+    if (singlePlacement && !occupied) {
+
+      let roomName = rooms[row];
+
+      let possible = canUseRoom(
+        roomName,
+        singlePlacement.start,
+        singlePlacement.end,
+        singlePlacement.guests
+      );
+
+      if (!possible) {
+        isBlocked = true;
+      }
+    }
+  }
+
+  let cls = "half";
+  if (isBlocked) cls += " blocked";
+
+  tr += `<td class="${cls}" onclick="add(${row}, ${d}, event)"></td>`;
+}
 
     t.innerHTML += tr + "</tr>";
   });
@@ -2470,11 +2537,19 @@ let tr = `<tr>
         });
       }
 
-      function changeWeek(n) {
-        current.setDate(current.getDate() + 7 * n);
-         localStorage.setItem("calendar_current_week", current.toISOString());
-        render();
-      }
+   async function changeWeek(n) {
+
+  current.setDate(current.getDate() + 7 * n);
+  localStorage.setItem("calendar_current_week", current.toISOString());
+
+  // ✅ FIX: Placement zurücksetzen
+  groupPlacement = null;
+  singlePlacement = null;
+ await loadUserRole();
+  document.getElementById("placementBox")?.remove();
+
+  render();
+}
 
       function overlapDates(row, start, end, ignoreIndex) {
         const s = normalizeDate(start);
@@ -2623,6 +2698,7 @@ if (!user) return false;
       }
 
       async function add(row, day, e) {
+
         if (isMobile) {
           if (e) {
             e.preventDefault();
@@ -2630,7 +2706,7 @@ if (!user) return false;
           }
           return;
         }
-
+if (e?.target?.classList.contains("blocked")) return;
         let now = Date.now();
     
         lastTapTime = now;
@@ -2718,51 +2794,37 @@ if (!user) return false;
         groupSelect.appendChild(optNone);
 
         let groups = getGroupsInWeek();
+        
+      
+      groups.forEach((g) => {
+  let opt = document.createElement("option");
 
-        groups.forEach((g) => {
-          let opt = document.createElement("option");
-          opt.value = g.id;
-          opt.text = g.name;
-          opt.dataset.color = g.color;
-          groupSelect.appendChild(opt);
-        });
+  opt.value = g.id;
+  opt.textContent = g.name;
+  opt.dataset.color = g.color;
 
-        let optNew = document.createElement("option");
-        optNew.value = "__new__";
-        optNew.text = "➕ Neue Gruppe...";
-        groupSelect.appendChild(optNew);
+  // ✅ FARBE setzen
+  opt.style.background = g.color;
+  opt.style.color = isLightColor(g.color) ? "black" : "white";
 
+  groupSelect.appendChild(opt);
+        
+});
+      
         groupSelect.onchange = (e) => {
           let selected = e.target.options[e.target.selectedIndex];
-
-          if (selected.value === "__new__") {
-            let name = prompt("Neue Gruppe eingeben:");
-
-            if (!name) {
-              groupSelect.value = "";
-              return;
-            }
-
-            let opt = document.createElement("option");
-            opt.value = name;
-            opt.text = name;
-            opt.dataset.color = "";
-            groupSelect.add(opt);
-
-            groupSelect.value = name;
-          }
 
           let color = selected.dataset.color;
 
           groupSelect.style.background = color || "white";
-          groupSelect.style.color =
-            color === "yellow" || color === "orange" || color === "pink" || color === "lightgray" ? "black" : "white";
-        };
+         groupSelect.style.color = isLightColor(color) ? "black" : "white";
 
-        document.getElementById("bookingForm").style.display = "block";
+        
+      };
+         document.getElementById("bookingForm").style.display = "block";
         document.getElementById("f_name").focus();
       }
-
+      
       async function saveBooking() {
         
 
@@ -2980,7 +3042,7 @@ if (Object.keys(changes).length > 0) {
         closeForm();
       }
 
-      let singlePlacement = null;
+     
 
       function startSinglePlacement(data) {
         window.balconyWarningShown = false;
@@ -3678,15 +3740,46 @@ await logBookingAction({
 
             // ✅ 3. Logging
            
+
 await logBookingAction({
   bookingId: id,
   action: "delete",
   field: "booking",
-  oldValue: "exists",
+
+  oldValue: {
+    name: b.name || "",
+    company: b.company || "",
+    guests: b.guests || ""
+  },
+
   newValue: "deleted",
+
   room: rooms[b.row]
 });
 
+
+if (b.group_id) {
+
+  const groupId = b.group_id;
+
+  const { data: remaining, error } = await supa
+    .from("bookings")
+    .select("id")
+    .eq("group_id", groupId)
+    .limit(1);
+
+  if (error) {
+    console.error("Fehler bei Gruppenprüfung:", error);
+  } else {
+    if (!remaining || remaining.length === 0) {
+
+      await supa.from("groups").delete().eq("id", groupId);
+
+      delete groupsMap[groupId];
+
+    }
+  }
+}
 
             isDeleting = false;
           };
@@ -4747,108 +4840,146 @@ document.getElementById("overlay").onclick = () => {
 };
 
 
-      async function deleteGroupInWeek(groupId) {
-        if (!isEditAllowed()) return;
-        let weekStart = normalizeDate(startOfWeek(current));
-        let weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 7);
+   async function deleteGroupInWeek(groupId) {
+  if (!isEditAllowed()) return;
 
-        let toDelete = bookings.filter((b) => {
-          if (b.group_id !== groupId) return false;
+  let weekStart = normalizeDate(startOfWeek(current));
+  let weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 7);
 
-          let s = new Date(b.start);
-          let e = new Date(b.end);
+  let toDelete = bookings.filter((b) => {
+    if (b.group_id !== groupId) return false;
 
-          return s < weekEnd && e > weekStart;
-        });
+    let s = new Date(b.start);
+    let e = new Date(b.end);
 
-        if (toDelete.length === 0) {
-          alert("Keine Buchungen in dieser Woche");
-          return;
-        }
+    return s < weekEnd && e > weekStart;
+  });
 
-        saveHistory();
+  if (toDelete.length === 0) {
+    alert("Keine Buchungen in dieser Woche");
+    return;
+  }
 
-        let ids = toDelete.map((b) => b.id);
+  saveHistory();
 
-        bookings = bookings.filter((b) => !ids.includes(b.id));
+  let ids = toDelete.map((b) => b.id);
 
-        render();
+  // ✅ lokal entfernen
+  bookings = bookings.filter((b) => !ids.includes(b.id));
 
-        await supa.from("bookings").delete().in("id", ids);
-      }
+  render();
+
+  // ✅ DB: Buchungen löschen
+  await supa.from("bookings").delete().in("id", ids);
+
+  // ✅ NEU: prüfen ob Gruppe noch Buchungen hat
+  const { data: remaining, error } = await supa
+    .from("bookings")
+    .select("id")
+    .eq("group_id", groupId)
+    .limit(1);
+
+  if (error) {
+    console.error("Fehler beim Prüfen der Gruppe:", error);
+    return;
+  }
+
+  // ✅ wenn KEINE Buchungen mehr → Gruppe löschen
+  if (!remaining || remaining.length === 0) {
+    await supa.from("groups").delete().eq("id", groupId);
+
+    // ✅ auch lokal entfernen
+    delete groupsMap[groupId];
+
+  }
+}
 
 document.addEventListener("keydown", async (e) => {
 
-  // ✅ Inputs blockieren (außer ESC!)
   const active = document.activeElement;
+
   if (
     e.key !== "Escape" &&
+    e.key !== "Enter" &&
     active &&
     ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName)
   ) {
     return;
   }
 
-  // ✅ UNDO
+  // ✅ ENTER
+  if (e.key === "Enter") {
+
+    const loginBox = document.getElementById("loginBox");
+    if (loginBox && loginBox.style.display !== "none") {
+      login();
+      return;
+    }
+
+    const form = document.getElementById("bookingForm");
+    if (form && form.style.display === "block") {
+      saveBooking();
+      return;
+    }
+  }
+
+  // ✅ CTRL+Z
   if (e.ctrlKey && e.key.toLowerCase() === "z") {
     e.preventDefault();
     undo();
     return;
   }
 
-  // ✅ SELECT MODE (F)
+  // ✅ F SELECT MODE
   if (e.key.toLowerCase() === "f") {
     f = true;
     document.body.classList.add("select-mode");
     return;
   }
 
-document.addEventListener("keydown", async (e) => {
+  // ✅ ESC
+  if (e.key === "Escape") {
 
-  if (e.key !== "Escape") return;
+    e.preventDefault();
 
- 
-  // ✅ DAS IST DER GAMECHANGER
-  e.preventDefault();
-  e.stopImmediatePropagation();
+    // Palette
+    const palette = document.getElementById("palette");
+    if (palette && palette.style.display === "block") {
+      selected = [];
+      palette.style.display = "none";
+      render();
+      return;
+    }
 
-const palette = document.getElementById("palette");
+    // ColorPicker
+    if (document.getElementById("colorPicker")) {
+      closeColorPicker();
+      return;
+    }
 
-if (palette && palette.style.display === "block") {
-  selected = []; // optional
-  palette.style.display = "none";
-  render();
-  return;
-}
+    // Form
+    const form = document.getElementById("bookingForm");
+    if (form && form.style.display === "block") {
+      closeForm();
+      return;
+    }
 
-  
-if (document.getElementById("colorPicker")) {
-  closeColorPicker();
-  return;
-}
+    // Info
+    const info = document.getElementById("bookingInfo");
+    if (info && info.style.display === "block") {
+      closeInfo();
+      return;
+    }
 
-  // ✅ danach alles andere
-
-  const form = document.getElementById("bookingForm");
-  if (form && form.style.display === "block") {
-    closeForm();
-    return;
+    // Log
+    const log = document.getElementById("logOverview");
+    if (log && log.style.display === "block") {
+      log.style.display = "none";
+      return;
+    }
   }
 
-  const info = document.getElementById("bookingInfo");
-  if (info && info.style.display === "block") {
-    closeInfo();
-    return;
-  }
-
-  const log = document.getElementById("logOverview");
-  if (log && log.style.display === "block") {
-    log.style.display = "none";
-    return;
-  }
-
-}, true); // 💥💥💥 DAS IST DER FIX
 });
       function overlapDatesSim(row, start, end, ignoreIndex, tempOccupied) {
         if (tempOccupied.has(row)) return true;
@@ -5002,35 +5133,41 @@ if (document.getElementById("colorPicker")) {
       }
 
       function getGroupsInWeek() {
-        let groups = [];
 
-        let weekStart = normalizeDate(startOfWeek(current));
-        let weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 7);
+  let result = [];
+  let seen = new Set();
 
-        bookings.forEach((b) => {
-          let group = groupsMap[b.group_id];
-          if (!group) return;
+  let weekStart = normalizeDate(startOfWeek(current));
+  let weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 7);
 
-          let s = new Date(b.start);
-          let e = new Date(b.end);
+  bookings.forEach((b) => {
 
-          s.setHours(0, 0, 0, 0);
-          e.setHours(0, 0, 0, 0);
+    if (!b.group_id) return;
 
-          if (s < weekEnd && e > weekStart) {
-            if (!groups.find((g) => g.id === group.id)) {
-              groups.push({
-                id: group.id,
-                name: group.name,
-                color: group.color
-              });
-            }
-          }
+    if (seen.has(b.group_id)) return;
+
+    let s = normalizeDate(b.start);
+    let e = normalizeDate(b.end);
+
+    if (s < weekEnd && e > weekStart) {
+
+      let g = groupsMap[b.group_id];
+
+      if (g) {
+        result.push({
+          id: g.id,
+          name: g.name,
+          color: g.color
         });
 
-        return groups;
+        seen.add(b.group_id);
       }
+    }
+  });
+
+  return result;
+}
 
       function toggleLog() {
         const box = document.getElementById("logContent");
@@ -5569,11 +5706,19 @@ if (blocked) {
 
 
       }
-document.getElementById("datePicker").addEventListener("change", (e) => {
+document.getElementById("datePicker").addEventListener("change", async (e) => {
+
   const selectedDate = new Date(e.target.value);
 
   current = startOfWeek(selectedDate);
-  render();              
+
+  // ✅ FIX hier auch!
+  groupPlacement = null;
+  singlePlacement = null;
+  await loadUserRole();
+  document.getElementById("placementBox")?.remove();
+
+  render();
 });
       document.addEventListener("mousedown", handleGlobalClose);
 
