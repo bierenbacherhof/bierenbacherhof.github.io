@@ -5664,17 +5664,17 @@ calendar.addEventListener("touchmove", (e) => {
   if (diffX < 0) {
     bg.innerHTML = `<span style="
       position:absolute;
-      right:${width - Math.abs(diffX)}px;
-      font-size:40px;
-      font-weight:bold;
-    ">Nächste Woche</span>`;
-  } else {
-    bg.innerHTML = `<span style="
-      position:absolute;
       left:${width - Math.abs(diffX)}px;
       font-size:40px;
       font-weight:bold;
-    ">Vorherige Woche</span>`;
+    ">Nächste<br>Woche</span>`;
+  } else {
+    bg.innerHTML = `<span style="
+      position:absolute;
+      right:${width - Math.abs(diffX)}px;
+      font-size:40px;
+      font-weight:bold;
+    ">Vorherige<br>Woche</span>`;
   }
 
 });
