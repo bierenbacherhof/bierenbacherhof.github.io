@@ -124,6 +124,19 @@ thead {
               pointer-events: auto;
             }
 
+      
+body:not(.logged-in) #stickyHeader {
+  display: none !important;
+}
+      
+      
+body:not(.logged-in) #calendar {
+  pointer-events: none;
+  filter: blur(2px);
+  opacity: 0.6;
+}
+
+
             .booking-layer {
               position: absolute;
               top: 0;
@@ -465,24 +478,37 @@ body.admin .admin-only {
   cursor: pointer;
 }
 
-      #loginBlocker {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
+#loginBlocker {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
 
-        background: rgba(0,0,0,0.4);
-        backdrop-filter: blur(3px);
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
 
-        z-index: 9999;
-        display: none;
-      }
+  z-index: 10000;
+
+  display: none;
+}
+
+/* ✅ wenn NICHT eingeloggt */
+body:not(.logged-in) #loginBlocker {
+  display: block;
+}
+
+
+body:not(.logged-in) {
+  overflow: hidden;
+  height: 100vh;
+  touch-action: none; /* ✅ blockiert Gesten */
+}
 
 
       #loginBox {
         position: fixed;
-        z-index: 10000;
+        z-index: 99999;
       }
 
             #stickyHeader {
@@ -3220,6 +3246,21 @@ if (Object.keys(changes).length > 0) {
 
       async function openInfo(index) {
         let b = bookings[index];
+        let lastUser = userMap[b.user_id] || "";
+        
+let lastEditTime = "-";
+
+if (b.updated_at) {
+  let dt = new Date(b.updated_at);
+
+  lastEditTime = dt.toLocaleString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
 
         let start = new Date(b.start).toLocaleDateString();
         let end = new Date(b.end).toLocaleDateString();
@@ -3242,6 +3283,16 @@ ${renderGroupBadge(groupsMap[b.group_id])}
     <b>💰 Bezahlt:</b>${b.paid ? "🟢" : "🔴"}<br>
     <b>🏨 Check-in:</b>${b.checkin ? "🟢" : "🔴"}
   `;
+        
+if (isAdmin()) {
+  html += `
+    <br><br>
+    <small style="color:#555">
+      Zuletzt bearbeitet von: <b>${lastUser}</b> (${lastEditTime})
+    </small>
+  `;
+}
+
 
         document.getElementById("infoContent").innerHTML = html;
         document.getElementById("bookingInfo").style.display = "block";
