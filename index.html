@@ -28,6 +28,7 @@
               border-collapse: collapse;
               border-spacing: 0;
               width: 100%;
+              position: relative;
             }
             th,
             td {
@@ -37,10 +38,16 @@
               overflow: visible;
             }
 
+      
+thead {
+  position: relative;
+  z-index: 2001;
+}
+
             thead th {
 
       position: sticky;
-        top: 95px; /* genau gleiche Höhe wie Header */
+        top: 117px; /* genau gleiche Höhe wie Header */
         z-index: 2000;
         background: #eee;
 
@@ -296,9 +303,7 @@ body.logged-in .auth-only {
               opacity: 0.5;
             }
 
-            #calendar {
-              margin-top: 94px;
-            }
+          
 
             #palette {
               position: fixed;
@@ -473,12 +478,19 @@ body.logged-in .auth-only {
       position: fixed;
         top: 0;
         left: 0;
+        height: 95px;
         width: 100%;
         z-index: 12000;
         background: white;
 
             }
 
+      
+#calendar {
+  margin-top: 117px; /* Desktop */
+}
+
+      
       #topRightButtons {
   position: absolute;
   top: 10px;
@@ -486,16 +498,7 @@ body.logged-in .auth-only {
   display: flex;
   gap: 12px;
 }
-    #calendarContainer {
-  position: relative;
-  overflow: visible;
-}
 
-#calendar {
-  position: relative;
-  z-index: 2;
-  transition: transform 0.2s ease;
-}
 
 /* Hintergrund Text */
 #swipeBackground {
@@ -532,46 +535,44 @@ body.logged-in .auth-only {
 
        @media (pointer: coarse) {
 
+
+
+  /* ✅ HEADER sticky oben */
   thead th {
-    position: sticky;
-    top: 120px; /* ✅ vorher 81px → jetzt doppelt */
+    top: 81px;
     z-index: 2000;
+    background: #eee;
   }
- 
-thead th:first-child {
-  position: sticky;
-  left: 0;
-  z-index: 4000;
-  background: #eee;
-}
 
-         
-.room {
-  position: sticky;
-  left: 0;
+  /* ✅ Zimmer-Spalte sticky links */
+  .room {
+    position: sticky;
+    left: 0;
 
-  width: 50px;
-  min-width: 50px;
-  max-width: 50px;
+    width: 50px;
+    min-width: 50px;
+    max-width: 50px;
 
-  background: #fafafa;
-  z-index: 3000;
+    background: #fafafa;
+    z-index: 3000;
 
-  font-size: 0;
-  text-align: center;
+    font-size: 0;
+    text-align: center;
+  }
 
-  white-space: nowrap;
-}
+  .room::after {
+    content: attr(data-room-number);
+    font-size: 18px;
+    font-weight: bold;
+    display: block;
+  }
 
-         
-.room::after {
-  content: attr(data-room-number);
-  
-  font-size: 18px;
-  font-weight: bold;
-  
-  display: block;
-}
+  /* ✅ Header erste Spalte */
+  thead th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 4000;
+  }
 
          
  /* 🔴 alle Buttons erstmal aus */
@@ -663,7 +664,7 @@ thead th:first-child {
          }
   /* ✅ Kalender Abstand anpassen */
   #calendar {
-    margin-top: 120px; /* ✅ MUSS gleich wie Header sein */
+    margin-top: 81px; /* ✅ MUSS gleich wie Header sein */
     overflow-x: auto;
     position: relative;
     max-width: 100%;
@@ -719,10 +720,9 @@ thead th:first-child {
 <div id="swipeHint"></div>
 
  
-<div id="calendarContainer">
-  <table id="calendar"></table>
-  <div id="swipeBackground"></div>
-</div>
+
+<table id="calendar"></table>
+
 
 
 
@@ -5156,15 +5156,14 @@ document.getElementById("overlay").onclick = () => {
     }
   };
 
+const pickerLabel = document.querySelector("#datePickerWrapper label");
 
-
-document.querySelector("#datePickerWrapper button").addEventListener("click", () => {
-  const input = document.getElementById("datePicker");
-
-  input.showPicker?.() || input.click();
-});
-
-
+if (pickerLabel) {
+  pickerLabel.addEventListener("click", () => {
+    const input = document.getElementById("datePicker");
+    input.showPicker?.() || input.click();
+  });
+}
 
  document.getElementById("logoutBtn").addEventListener("click", (e) => {
     e.stopPropagation();
