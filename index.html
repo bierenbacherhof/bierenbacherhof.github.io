@@ -726,6 +726,8 @@ body.logged-in.admin #controls button.admin-only {
     position: relative;
     max-width: 100%;
     will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   .booking {
@@ -5654,7 +5656,7 @@ calendar.addEventListener("touchmove", (e) => {
 
   if (!isSwiping) return;
 
-  calendar.style.transform = `translateX(${diffX}px)`;
+ calendar.style.transform = `translateX(${diffX}px) translateZ(0)`;
 
   // ✅ TEXT LOGIK
   let width = window.innerWidth;
@@ -5693,7 +5695,7 @@ calendar.addEventListener("touchend", () => {
 
   let threshold = 500;
 
-  calendar.style.transition = "transform 0.2s ease";
+  calendar.style.transition = "transform 0.2s ease-out";
 
   if (diff < -threshold) {
     calendar.style.transform = "translateX(-100%)";
