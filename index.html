@@ -537,22 +537,42 @@ body.logged-in .auth-only {
     top: 120px; /* ✅ vorher 81px → jetzt doppelt */
     z-index: 2000;
   }
-
-.room {
-  width: 80px !important; /* ✅ halb so breit */
-  min-width: 80px;
-  max-width: 80px;
-
-  font-size: 0; /* ✅ Text ausblenden (wie vorher) */
-
-  display: flex;
-  align-items: center;
-  justify-content: center; /* ✅ Nummer zentriert */
+ 
+thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 4000;
+  background: #eee;
 }
 
-  .room::before {
-    font-size: 22px; /* ✅ deine große Nummer */
-  }
+         
+.room {
+  position: sticky;
+  left: 0;
+
+  width: 50px;
+  min-width: 50px;
+  max-width: 50px;
+
+  background: #fafafa;
+  z-index: 3000;
+
+  font-size: 0;
+  text-align: center;
+
+  white-space: nowrap;
+}
+
+         
+.room::after {
+  content: attr(data-room-number);
+  
+  font-size: 18px;
+  font-weight: bold;
+  
+  display: block;
+}
+
          
  /* 🔴 alle Buttons erstmal aus */
   #controls button {
@@ -663,7 +683,7 @@ body.logged-in .auth-only {
   top: 0;
   left: 100%; /* ✅ bleibt so */
   
-  width: calc(100vw - 80px); /* ✅ angepasst an neue room-Breite */
+  width: calc(100vw - 50px); /* ✅ angepasst an neue room-Breite */
   
   height: 100%;
   pointer-events: none;
