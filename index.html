@@ -5635,67 +5635,49 @@ calendar.addEventListener("touchstart", (e) => {
 
 calendar.addEventListener("touchmove", (e) => {
 
- 
-let currentX = e.touches[0].clientX;
+  let currentX = e.touches[0].clientX;
   let currentY = e.touches[0].clientY;
 
   let diffX = currentX - startX;
   let diffY = currentY - startY;
 
+  // ✅ kleine Bewegungen ignorieren
   if (Math.abs(diffX) < 15) return;
-  // ✅ Erst hier entscheiden, ob Swipe erlaubt ist
+
+  // ✅ vertikales Scrollen blockt Swipe
   if (!isSwiping) {
+    if (Math.abs(diffY) > Math.abs(diffX)) return;
 
-    // 👉 mehr vertikal als horizontal → KEIN Swipe
-    if (Math.abs(diffY) > Math.abs(diffX)) {
-      return;
-    }
-
-    // 👉 horizontaler Swipe erkannt
     isSwiping = true;
-
     calendar.style.transition = "none";
   }
 
-  // ✅ nur wenn Swipe aktiv
   if (!isSwiping) return;
 
   calendar.style.transform = `translateX(${diffX}px)`;
 
-  // 👉 Hintergrund Text setzen
- let text = "";
+  // ✅ TEXT LOGIK
+  let width = window.innerWidth;
+  let progress = Math.min(Math.abs(diffX) / width, 1);
 
-if (diff < 0) {
-  text = "Nächste<br>Woche";
-} else {
-  text = "Vorherige<br>Woche";
-}
+  // 👉 Text setzen
+  if (diffX < 0) {
+    bg.innerHTML = `<span style="
+      position:absolute;
+      right:${width - Math.abs(diffX)}px;
+      font-size:40px;
+      font-weight:bold;
+    ">Nächste Woche</span>`;
+  } else {
+    bg.innerHTML = `<span style="
+      position:absolute;
+      left:${width - Math.abs(diffX)}px;
+      font-size:40px;
+      font-weight:bold;
+    ">Vorherige Woche</span>`;
+  }
 
-// 👉 nur neu setzen wenn geändert
-if (!bg.firstChild || bg.firstChild.innerText !== text) {
-  bg.innerHTML = `<span>${text}</span>`;
-}
-
-let span = bg.firstChild;
-
-// 👉 Slide-Position berechnen
-let width = window.innerWidth;
-
-// diff negativ → kommt von rechts
-if (diff < 0) {
-  let progress = Math.min(Math.abs(diff) / width, 1);
-  span.style.left = width + "px";
-  span.style.transform = `translateX(-${progress * width}px)`;
-}
-
-// diff positiv → kommt von links
-else {
-  let progress = Math.min(diff / width, 1);
-  span.style.left = "-300px";
-  span.style.transform = `translateX(${progress * width}px)`;
-}
 });
-
 
 calendar.addEventListener("touchend", () => {
 
