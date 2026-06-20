@@ -588,18 +588,32 @@ body.admin .admin-only {
 
          
  /* 🔴 alle Buttons erstmal aus */
-  #controls button {
-    display: none;
+ 
+#controls button {
+  display: none;
+}
+
+/* ✅ nur wenn eingeloggt UND erlaubt */
+body.logged-in #controls button.allowed.auth-only {
+  display: inline-block !important;
+}
+
+/* ✅ Admin nochmal extra */
+body.logged-in.admin #controls button.admin-only {
+  display: inline-block !important;
+}
+
+ 
+ .weekBtn,
+  .weekBtn.allowed {
+    display: none !important;
   }
 
-  /* ✅ nur erlaubte anzeigen */
-  #controls button.allowed {
-    display: inline-block !important;
+  /* Neue Buchung IMMER weg */
+  #newBookingBtn {
+    display: none !important;
   }
-  
-  .weekBtn {
-  display: none !important;
-}
+
 
   #swipeHint {
     position: fixed;
