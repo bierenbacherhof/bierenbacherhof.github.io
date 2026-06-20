@@ -526,18 +526,22 @@ body.logged-in .auth-only {
 
          
  
- #datePickerWrapper {
+ 
+  #datePickerWrapper {
     position: relative;
+    display: inline-block;
   }
 
   #datePickerWrapper button {
     width: 44px;
     height: 44px;
+    position: relative;
+    z-index: 1;
   }
 
   #datePickerWrapper input {
-    display: block;        /* ✅ WICHTIG für iOS */
-    
+    display: block;
+
     position: absolute;
     top: 0;
     left: 0;
@@ -545,11 +549,18 @@ body.logged-in .auth-only {
     width: 100%;
     height: 100%;
 
-    opacity: 0;            /* ✅ unsichtbar */
-    
-    pointer-events: auto;  /* ✅ MUSS */
-    z-index: 99999;           /* ✅ über Button */
+    z-index: 2;
+
+    /* ✅ WICHTIGER FIX: KEIN opacity */
+    opacity: 0.01;
+
+    /* ✅ iOS Trick */
+    appearance: none;
+    -webkit-appearance: none;
+
+    cursor: pointer;
   }
+
 
   thead th {
     position: sticky;
