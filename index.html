@@ -3,7 +3,7 @@
   <head>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=0.5, maximum-scale=1.0" />
     <title>Hotel Belegungsplan</title>
 
     <style>
@@ -524,34 +524,33 @@ body.logged-in .auth-only {
 
        @media (pointer: coarse) {
 
-
+         
+ 
+ 
+ 
   #datePickerWrapper {
     display: inline-block;
   }
 
   #datePickerWrapper button {
-    display: none !important;
+    display: none !important;  /* ✅ Button verstecken */
   }
 
   #datePickerWrapper input {
-    display: inline-block !important;
+    display: inline-block;
 
     width: 44px;
     height: 44px;
 
-    font-size: 16px; /* ✅ wichtig für iOS */
+    font-size: 20px;
+    text-align: center;
 
     border: 1px solid #ccc;
     border-radius: 6px;
-    background: white;
-
-    -webkit-appearance: auto; /* ✅ CRITICAL */
-    appearance: auto;
+    background: #fff;
 
     cursor: pointer;
   }
-
-
 
 
 
@@ -790,7 +789,7 @@ body.logged-in .auth-only {
         <button onclick="changeWeek(1)" class="weekBtn allowed auth-only">Woche ▶</button>
 
 <div id="datePickerWrapper" class="allowed">
-  <input type="date" id="datePicker">
+  <input type="date" class="allowed" id="datePicker">
   <button class="allowed" type="button">📅</button>
 </div>
 
