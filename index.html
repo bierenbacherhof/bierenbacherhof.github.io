@@ -514,7 +514,7 @@ body.admin .admin-only {
 
 
 #swipeBackground {
-  position: absolute;
+  position: fixed;
   inset: 0;
 
   display: flex;
@@ -523,9 +523,9 @@ body.admin .admin-only {
   font-size: 40px;
   font-weight: bold;
 
-  color: rgba(0,0,0,0.4);
+  color: black;
 
-  z-index: 1;
+  z-index: 15000;
   pointer-events: none;
 
   overflow: hidden;
@@ -5634,7 +5634,7 @@ calendar.addEventListener("touchend", () => {
     diff = parseFloat(transform.replace(/translateX\(([-0-9.]+)px\)/, "$1"));
   }
 
-  let threshold = 120;
+  let threshold = 500;
 
   calendar.style.transition = "transform 0.2s ease";
 
