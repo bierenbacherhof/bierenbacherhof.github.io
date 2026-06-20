@@ -433,20 +433,11 @@ body.logged-in .auth-only {
   cursor: pointer;
 }
 
+
 #datePickerWrapper input {
-  position: absolute;
-  top: 0;
-  left: 0;
-
-  width: 100%;
-  height: 100%;
-
-  opacity: 0;
-  z-index: 9999999;
-
-  pointer-events: auto; /* ✅ FIX */
-  cursor: pointer;      /* ✅ FIX */
+  display: none;
 }
+
 
 
       #loginBlocker {
@@ -5161,12 +5152,14 @@ document.getElementById("overlay").onclick = () => {
     }
   };
 
+
 document.querySelector("#datePickerWrapper button").addEventListener("click", () => {
   const input = document.getElementById("datePicker");
 
   input.focus();
-  input.click(); // ✅ reicht völlig
+  input.showPicker?.() || input.click();
 });
+
 
  document.getElementById("logoutBtn").addEventListener("click", (e) => {
     e.stopPropagation();
