@@ -181,10 +181,22 @@ thead {
 }
 
 /* ✅ wenn eingeloggt */
-body.logged-in .auth-only {
+
+body.logged-in .auth-only:not(.admin-only) {
   display: inline-block !important;
 }
 
+
+      
+.admin-only {
+  display: none !important;
+}
+
+body.admin .admin-only {
+  display: inline-block !important;
+}
+
+      
             .no-breakfast-icon::after {
               content: "";
               position: absolute;
@@ -794,7 +806,7 @@ body.logged-in .auth-only {
 
 
         <button onclick="undo()" class="auth-only" title="Rückgängig (Strg+Z)">↶</button>
-        <button id="backupBtn" onclick="alert('Backup kommt später')" class="auth-only">Backup</button>
+        <button id="backupBtn" onclick="alert('Backup kommt später')" class="auth-only admin-only">Backup</button>
         <button
           class="auth-only"
           id="newBookingBtn"
@@ -803,7 +815,7 @@ body.logged-in .auth-only {
           Neue Buchung anlegen
         </button>
   <div id="topRightButtons">
-  <button id="logOverviewBtn" onclick="event.stopPropagation(); openLogOverview();" class="auth-only">🗑️ gelöschte Buchungen</button>
+  <button id="logOverviewBtn" onclick="event.stopPropagation(); openLogOverview();" class="auth-only admin-only">🗑️ gelöschte Buchungen</button>
   <button id="logoutBtn" class="auth-only">Logout</button>
 </div>
         <div
@@ -1109,6 +1121,7 @@ body.logged-in .auth-only {
       let isMultiTouch = false;
       let savedWeek = localStorage.getItem("calendar_current_week");
       let startX = 0;
+      let colorPickerOpen = false
       if (savedWeek) {
         current = new Date(savedWeek);
       }
@@ -1117,7 +1130,9 @@ body.logged-in .auth-only {
 
 
       history = JSON.parse(localStorage.getItem("hotel_history") || "[]");
-      
+     
+    
+
       async function login() {
         let username = document.getElementById("login_email").value.trim();
         let password = document.getElementById("login_password").value;
@@ -1231,12 +1246,14 @@ let filtered = allLogs.filter((log) => {
         content.innerHTML = "Lade...";
         box.style.display = "block";
 
-        const { data: logs, error } = await supa
-          .from("booking_logs")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(500);
+   
+const { data: logs, error } = await supa
+  .from("booking_logs")
+  .select("*")
+  .order("created_at", { ascending: false })
+  .limit(50);
 
+        
         if (error) {
           content.innerHTML = "Fehler beim Laden";
           console.error(error);
@@ -1244,13 +1261,7 @@ let filtered = allLogs.filter((log) => {
         }
 
        allLogs = logs || [];
-
-// ✅ nur gelöschte Buchungen
-const deletedLogs = allLogs.filter(log =>
-  log.field === "booking" && log.new_value === "deleted"
-);
-
-renderLogList(deletedLogs);
+       renderLogList(allLogs);
       }
 
       function formatLogText(log) {
@@ -1363,8 +1374,6 @@ case "multi_update": {
         data.forEach((u) => {
           userMap[u.id] = u.username;
         });
-
-        console.log("UserMap:", userMap);
       }
 
       function openNewBooking(e) {
@@ -1608,6 +1617,9 @@ new_value: typeof newValue === "object"
       }
 
       function openColorPicker(data, start, end) {
+      colorPickerOpen = true;
+
+
         let overlay = document.createElement("div");
         overlay.id = "pickerOverlay";
 
@@ -1622,6 +1634,10 @@ new_value: typeof newValue === "object"
 `;
 
         document.body.appendChild(overlay);
+        
+overlay.onclick = () => {
+  closeColorPicker();
+};
 
         let used = getUsedColorsInRange(start, end);
 
@@ -1671,10 +1687,14 @@ new_value: typeof newValue === "object"
 
         box.innerHTML = html;
         document.body.appendChild(box);
+box.onclick = (e) => {
+  e.stopPropagation();
+};
 
         document.querySelectorAll(".colorChoice").forEach((el) => {
           el.onclick = () => {
             let color = el.dataset.color;
+            colorPickerOpen = false;
             document.getElementById("colorPicker").remove();
             document.getElementById("pickerOverlay")?.remove();
 
@@ -1683,9 +1703,10 @@ new_value: typeof newValue === "object"
         });
 
         document.getElementById("colorBack").onclick = () => {
+           colorPickerOpen = false;
           document.getElementById("colorPicker").remove();
           document.getElementById("pickerOverlay")?.remove();
-
+         
           document.getElementById("bookingForm").style.display = "block";
         };
       }
@@ -1841,6 +1862,15 @@ new_value: typeof newValue === "object"
         return false;
       }
 
+      
+function isLightColor(color) {
+  const light = [
+    "yellow","pink","orange","lightgray","turquoise",
+    "gold","lime","salmon","cyan","coral"
+  ];
+  return light.includes(color);
+}
+
       function updatePlacementBox() {
         if (!groupPlacement) return;
         let box = document.getElementById("placementBox");
@@ -1883,9 +1913,7 @@ new_value: typeof newValue === "object"
 
         box.style.background = color;
 
-        let lightColors = ["yellow", "pink", "orange", "lightgray", "turquoise"];
-
-        box.style.color = lightColors.includes(color) ? "#000" : "#fff";
+       box.style.color = isLightColor(color) ? "#000" : "#fff";
 
         box.style.border = "2px solid rgba(0,0,0,0.3)";
 
@@ -1979,7 +2007,7 @@ new_value: typeof newValue === "object"
           currentRole = data.role;
         }
 
-        console.log("Rolle geladen:", currentRole);
+        
       }
 
       function canEdit() {
@@ -2005,6 +2033,13 @@ new_value: typeof newValue === "object"
 
         if (session) {
           document.body.classList.add("logged-in");
+          
+if (isAdmin()) {
+  document.body.classList.add("admin");
+} else {
+  document.body.classList.remove("admin");
+}
+
           document.getElementById("loginBox").style.display = "none";
           document.getElementById("loginBlocker").style.display = "none";
            
@@ -2013,11 +2048,6 @@ new_value: typeof newValue === "object"
           await loadUserMap();
 
           document.getElementById("newBookingBtn").style.display = isEditAllowed() ? "inline-block" : "none";
-
-          if (!isAdmin()) {
-            document.getElementById("backupBtn").style.display = "none";
-            document.getElementById("logOverviewBtn").style.display = "none";
-          }
 
           if (currentRole === "read" || isMobile) {
             document.body.classList.add("readonly");
@@ -2470,7 +2500,7 @@ let tr = `<tr>
       }
 
       async function assignRoom(row, options = {}) {
-        
+        if (!groupPlacement) return false;
 const { data } = await supa.auth.getUser();
 const user = data.user;
 
@@ -2734,7 +2764,7 @@ if (!user) return false;
       }
 
       async function saveBooking() {
-        console.log("SAVE START");
+        
 
         if (!isEditAllowed()) return;
 
@@ -3092,7 +3122,7 @@ if (Object.keys(changes).length > 0) {
       function renderGroupBadge(group) {
         if (!group) return "-";
 
-        let light = ["yellow", "pink", "orange", "turquoise", "lightgray"].includes(group.color);
+       let light = isLightColor(group.color);
 
         return `
     <span style="
@@ -3275,10 +3305,8 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
           d.style.background = color;
 
-          d.style.color =
-            color == "yellow" || color == "turquoise" || color == "pink" || color == "orange" || color == "lightgray"
-              ? "black"
-              : "white";
+          d.style.color = isLightColor(color) ? "black" : "white";
+
 
           let flags = document.createElement("div");
           flags.className = "flags";
@@ -3634,7 +3662,7 @@ await logBookingAction({
 
             const { data, error } = await supa.from("bookings").delete().eq("id", id).select(); // ✅ GANZ WICHTIG
 
-            console.log("DELETE RESULT:", data, error);
+            
 
             if (error) {
               alert("Fehler beim Löschen");
@@ -4084,98 +4112,7 @@ await logBookingAction({
         document.addEventListener("mousemove", resizeMove);
       }
 
-      window.onkeydown = async (e) => {
-        // ✅ UNDO
-        if (e.ctrlKey && e.key.toLowerCase() === "z") {
-          e.preventDefault();
-          undo();
-          return;
-        }
-
-        if (e.key === "Escape") {
-          let closedSomething = false;
-
-          const info = document.getElementById("bookingInfo");
-          const form = document.getElementById("bookingForm");
-          const backup = document.getElementById("backupList");
-          const log = document.getElementById("logOverview");
-          const overlay = document.getElementById("overlay");
-          const groupBox = document.getElementById("groupInfoBox");
-
-          // ✅ Gruppenplatzierung abbrechen (dein bestehender Code)
-          if (groupPlacement) {
-            let ids = groupPlacement.placed;
-
-            if (ids.length) {
-              await supa.from("bookings").delete().in("id", ids);
-              bookings = bookings.filter((b) => !ids.includes(b.id));
-            }
-            groupPlacement = null;
-            isGroupCreating = false;
-
-            document.getElementById("placementBox")?.remove();
-            render();
-
-            return;
-          }
-
-          // ✅ INFO
-          if (info && info.style.display === "block") {
-            closeInfo();
-            closedSomething = true;
-          }
-
-          // ✅ FORM
-          if (form && form.style.display === "block") {
-            closeForm();
-            closedSomething = true;
-          }
-
-          // ✅ BACKUP
-          if (backup && backup.style.display === "block") {
-            backup.style.display = "none";
-            if (overlay) overlay.style.display = "none";
-            closedSomething = true;
-          }
-
-          // ✅ VERLAUF
-          if (log && log.style.display === "block") {
-            log.style.display = "none";
-            if (overlay) overlay.style.display = "none";
-            closedSomething = true;
-          }
-
-          // ✅ GROUP INFO
-          if (groupBox && groupBox.style.display === "block") {
-            closeGroupInfo();
-            closedSomething = true;
-          }
-
-          // ✅ Wenn etwas geschlossen wurde → nichts anderes ausführen
-          if (closedSomething) {
-            selected = [];
-            document.getElementById("palette").style.display = "none";
-            f = false;
-            document.body.classList.remove("select-mode");
-
-            render();
-            return;
-          }
-        }
-
-        if (
-          document.activeElement.tagName === "INPUT" ||
-          document.activeElement.tagName === "TEXTAREA" ||
-          document.activeElement.tagName === "SELECT"
-        ) {
-          return;
-        }
-
-        if (e.key.toLowerCase() === "f") {
-          f = true;
-          document.body.classList.add("select-mode");
-        }
-      };
+  
 
       window.onkeyup = (e) => {
         if (e.key.toLowerCase() === "f") {
@@ -4187,7 +4124,30 @@ await logBookingAction({
         }
       };
 
-      let colors = ["yellow", "orange", "pink", "red", "blue", "purple", "green", "brown", "turquoise", "lightgray"];
+    let colors = [
+  "yellow",
+  "orange",
+  "pink",
+  "red",
+  "blue",
+  "purple",
+  "green",
+  "brown",
+  "turquoise",
+  "lightgray",
+
+  // ✅ NEU (gut unterscheidbar)
+  "gold",
+  "teal",
+  "indigo",
+  "lime",
+  "salmon",
+  "cyan",
+  "magenta",
+  "darkgreen",
+  "navy",
+  "coral"
+];
       let pal = document.getElementById("palette");
 
       colors.forEach((c) => {
@@ -4195,53 +4155,83 @@ await logBookingAction({
         d.style.background = c;
 
         d.onclick = async (e) => {
-          e.stopPropagation();
+  e.stopPropagation();
 
-          if (!selected.length) return;
+  if (!selected.length) return;
 
-          let usedColors = getUsedColorsInWeek();
+  let usedColors = getUsedColorsInWeek();
 
-          if (usedColors.has(c)) {
-            alert("Farbe ist in dieser Woche bereits vergeben");
-            return;
-          }
+  if (usedColors.has(c)) {
+    alert("Farbe ist in dieser Woche bereits vergeben");
+    return;
+  }
 
-          saveHistory();
+  saveHistory();
 
-          let name = prompt("Gruppenname");
-          if (!name) return;
+  // ✅ STANDARDFARBEN (KEINE GRUPPE!)
+  const simpleColors = ["yellow", "pink", "orange"];
 
-          let group = await createGroup(name, c);
+  if (simpleColors.includes(c)) {
 
-          let ids = selected.map((i) => bookings[i].id);
+    for (const i of selected) {
+      let b = bookings[i];
 
-          for (const i of selected) {
-            bookings[i].group_id = group.id;
-          }
+      b.group_id = null;     // ✅ KEINE GRUPPE
+      b.color = c;           // ✅ nur Farbe setzen
+    }
 
-          await supa.from("bookings").update({ group_id: group.id }).in("id", ids);
+    let ids = selected.map(i => bookings[i].id);
 
-          for (const i of selected) {
-            let b = bookings[i];
-            
-await logBookingAction({
-  bookingId: b.id,
-  action: "update",
-  field: "group",
-  oldValue: null,
-  newValue: group.id,
-  room: rooms[b.row]
-});
+    await supa
+      .from("bookings")
+      .update({
+        group_id: null,
+        color: c
+      })
+      .in("id", ids);
 
-          }
+    selected = [];
+    pal.style.display = "none";
+    render();
+    return;
+  }
 
-          selected = [];
-          pal.style.display = "none";
-          render();
-        };
+  // ✅ NORMALE GRUPPEN (wie vorher)
+  let name = prompt("Gruppenname");
+  if (!name) return;
+
+  let group = await createGroup(name, c);
+
+  let ids = selected.map(i => bookings[i].id);
+
+  for (const i of selected) {
+    bookings[i].group_id = group.id;
+  }
+
+  await supa
+    .from("bookings")
+    .update({ group_id: group.id })
+    .in("id", ids);
+
+  selected = [];
+  pal.style.display = "none";
+  render();
+};
 
         pal.appendChild(d);
       });
+
+      
+
+function closeColorPicker() {
+  colorPickerOpen = false; 
+  document.getElementById("colorPicker")?.remove();
+  document.getElementById("pickerOverlay")?.remove();
+
+  const form = document.getElementById("bookingForm");
+  if (form) form.style.display = "block";
+}
+
 
       function getSlotFromDate(date, weekStart, isEnd = false) {
         let diff = Math.floor((normalizeDate(date) - weekStart) / (1000 * 60 * 60 * 24));
@@ -4301,14 +4291,7 @@ await logBookingAction({
 
           div.innerText = g.name;
           div.style.background = g.color;
-          div.style.color =
-            g.color == "yellow" ||
-            g.color == "pink" ||
-            g.color == "orange" ||
-            g.color == "turquoise" ||
-            g.color == "lightgray"
-              ? "black"
-              : "white";
+          div.style.color = isLightColor(g.color) ? "black" : "white";
           div.style.padding = "4px 8px";
           div.style.borderRadius = "6px";
           div.style.display = "inline-block";
@@ -4764,40 +4747,6 @@ document.getElementById("overlay").onclick = () => {
 };
 
 
-      document.addEventListener("keydown", function (e) {
-        const formOpen = document.getElementById("bookingForm").style.display === "block";
-        const infoOpen = document.getElementById("bookingInfo").style.display === "block";
-        const paletteOpen = document.getElementById("palette").style.display === "block";
-
-        const active = document.activeElement;
-        if (active && ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName)) {
-          return;
-        }
-
-        if (formOpen) {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            saveBooking();
-            return;
-          }
-
-          if (e.key === "Escape") {
-            closeForm();
-            return;
-          }
-
-          return;
-        }
-
-        if (e.key.toLowerCase() === "b") {
-          if (infoOpen || paletteOpen) return;
-          if (groupPlacement || singlePlacement) return;
-
-          openNewBooking();
-          return;
-        }
-      });
-
       async function deleteGroupInWeek(groupId) {
         if (!isEditAllowed()) return;
         let weekStart = normalizeDate(startOfWeek(current));
@@ -4829,6 +4778,78 @@ document.getElementById("overlay").onclick = () => {
         await supa.from("bookings").delete().in("id", ids);
       }
 
+document.addEventListener("keydown", async (e) => {
+
+  // ✅ Inputs blockieren (außer ESC!)
+  const active = document.activeElement;
+  if (
+    e.key !== "Escape" &&
+    active &&
+    ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName)
+  ) {
+    return;
+  }
+
+  // ✅ UNDO
+  if (e.ctrlKey && e.key.toLowerCase() === "z") {
+    e.preventDefault();
+    undo();
+    return;
+  }
+
+  // ✅ SELECT MODE (F)
+  if (e.key.toLowerCase() === "f") {
+    f = true;
+    document.body.classList.add("select-mode");
+    return;
+  }
+
+document.addEventListener("keydown", async (e) => {
+
+  if (e.key !== "Escape") return;
+
+ 
+  // ✅ DAS IST DER GAMECHANGER
+  e.preventDefault();
+  e.stopImmediatePropagation();
+
+const palette = document.getElementById("palette");
+
+if (palette && palette.style.display === "block") {
+  selected = []; // optional
+  palette.style.display = "none";
+  render();
+  return;
+}
+
+  
+if (document.getElementById("colorPicker")) {
+  closeColorPicker();
+  return;
+}
+
+  // ✅ danach alles andere
+
+  const form = document.getElementById("bookingForm");
+  if (form && form.style.display === "block") {
+    closeForm();
+    return;
+  }
+
+  const info = document.getElementById("bookingInfo");
+  if (info && info.style.display === "block") {
+    closeInfo();
+    return;
+  }
+
+  const log = document.getElementById("logOverview");
+  if (log && log.style.display === "block") {
+    log.style.display = "none";
+    return;
+  }
+
+}, true); // 💥💥💥 DAS IST DER FIX
+});
       function overlapDatesSim(row, start, end, ignoreIndex, tempOccupied) {
         if (tempOccupied.has(row)) return true;
 
@@ -5144,16 +5165,23 @@ document.getElementById("overlay").onclick = () => {
         box.innerHTML = html;
       }
 
-      document.addEventListener("keydown", function (e) {
-        const loginVisible = document.getElementById("loginBox").style.display !== "none";
+      
 
-        if (!loginVisible) return;
 
-        if (e.key === "Enter") {
-          e.preventDefault();
-          login();
-        }
-      });
+      document.addEventListener("keyup", (e) => {
+
+  if (e.key.toLowerCase() === "f") {
+    f = false;
+    document.body.classList.remove("select-mode");
+
+    if (selected.length) {
+      document.getElementById("palette").style.display = "block";
+    }
+  }
+
+});
+      
+
 
   window.addEventListener("DOMContentLoaded", () => {
 
@@ -5196,9 +5224,10 @@ if (!confirm("Sind Sie sicher, dass Sie sich ausloggen wollen?")) {
       let resizeTimeout;
 
       async function autoPlaceGroup() {
-        if (!groupPlacement || !groupPlacement.data) return;
-
-        let { start, end } = groupPlacement;
+         const placement = groupPlacement;
+        if (!placement || !placement.data) return;
+       
+        let { start, end } = placement;
 
         let tempOccupied = new Set();
 
@@ -5206,11 +5235,11 @@ if (!confirm("Sind Sie sicher, dass Sie sich ausloggen wollen?")) {
 
         let somethingPlaced = true;
 
-        while (somethingPlaced && groupPlacement) {
+        while (somethingPlaced && placement) {
           somethingPlaced = false;
 
           for (let type of order) {
-            let item = groupPlacement.data.find((d) => d.type === type);
+            let item = placement.data.find((d) => d.type === type);
 
             if (!item || item.count <= 0) continue;
 
@@ -5240,9 +5269,9 @@ if (!confirm("Sind Sie sicher, dass Sie sich ausloggen wollen?")) {
         render();
         updatePlacementBox();
 
-        let done = groupPlacement && groupPlacement.data.every((d) => d.count === 0);
+        let done = placement && placement.data.every((d) => d.count === 0);
 
-        if (done && groupPlacement) {
+        if (done && placement) {
           await syncGroupToDB(); // ✅ NEU
           finishPlacement();
         }
