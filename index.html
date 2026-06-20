@@ -512,14 +512,13 @@ body.admin .admin-only {
 }
 
 
-/* Hintergrund Text */
+
 #swipeBackground {
   position: absolute;
   inset: 0;
 
   display: flex;
   align-items: center;
-  justify-content: center;
 
   font-size: 40px;
   font-weight: bold;
@@ -528,7 +527,17 @@ body.admin .admin-only {
 
   z-index: 1;
   pointer-events: none;
+
+  overflow: hidden;
 }
+
+/* 👉 Text Element */
+#swipeBackground span {
+  position: absolute;
+  white-space: nowrap;
+  transition: transform 0.1s linear;
+}
+
 
 
             #logContent::-webkit-scrollbar {
@@ -603,14 +612,10 @@ body.logged-in.admin #controls button.admin-only {
   display: inline-block !important;
 }
 
- 
- .weekBtn,
-  .weekBtn.allowed {
-    display: none !important;
-  }
 
-  /* Neue Buchung IMMER weg */
-  #newBookingBtn {
+  #newBookingBtn,
+  #weekUp,
+  #weekDown {
     display: none !important;
   }
 
@@ -809,8 +814,8 @@ body.logged-in.admin #controls button.admin-only {
     </div>
     <div id="stickyHeader">
       <div id="controls">
-        <button onclick="changeWeek(-1)" class="weekBtn allowed auth-only">◀ Woche</button>
-        <button onclick="changeWeek(1)" class="weekBtn allowed auth-only">Woche ▶</button>
+        <button onclick="changeWeek(-1)" id="weekDown" class="allowed auth-only">◀ Woche</button>
+        <button onclick="changeWeek(1)" id="weekUp" class="allowed auth-only">Woche ▶</button>
 
 
 <div id="datePickerWrapper" class="allowed">
@@ -5584,12 +5589,37 @@ calendar.addEventListener("touchmove", (e) => {
   calendar.style.transform = `translateX(${diff}px)`;
 
   // 👉 Hintergrund Text setzen
-  if (diff < 0) {
-    bg.innerHTML = "Nächste<br>Woche";
-  } else {
-    bg.innerHTML = "Vorherige<br>Woche";
-  }
+ let text = "";
 
+if (diff < 0) {
+  text = "Nächste<br>Woche";
+} else {
+  text = "Vorherige<br>Woche";
+}
+
+// 👉 nur neu setzen wenn geändert
+if (!bg.firstChild || bg.firstChild.innerText !== text) {
+  bg.innerHTML = `<span>${text}</span>`;
+}
+
+let span = bg.firstChild;
+
+// 👉 Slide-Position berechnen
+let width = window.innerWidth;
+
+// diff negativ → kommt von rechts
+if (diff < 0) {
+  let progress = Math.min(Math.abs(diff) / width, 1);
+  span.style.left = width + "px";
+  span.style.transform = `translateX(-${progress * width}px)`;
+}
+
+// diff positiv → kommt von links
+else {
+  let progress = Math.min(diff / width, 1);
+  span.style.left = "-300px";
+  span.style.transform = `translateX(${progress * width}px)`;
+}
 });
 
 
