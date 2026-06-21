@@ -4996,6 +4996,57 @@ let insertObj = {
           handleRealtimeUpdate(payload);
         })
         .subscribe();
+      
+      
+supa
+  .channel("live-groups")
+  .on("postgres_changes", {
+    event: "*",
+    schema: "public",
+    table: "groups"
+  }, (payload) => {
+    console.log("Group Update", payload);
+
+    loadGroups().then(() => render());
+  })
+  .subscribe();
+      
+      
+supa
+  .channel("live-users")
+  .on("postgres_changes", {
+    event: "*",
+    schema: "public",
+    table: "user_roles"
+  }, () => {
+    loadUserMap();
+  })
+  .subscribe();
+
+
+supa
+  .channel("live-logs")
+  .on("postgres_changes", {
+    event: "*",
+    schema: "public",
+    table: "booking_logs"
+  }, async (payload) => {
+
+    const logBox = document.getElementById("logContent");
+
+    // ✅ nur wenn Log sichtbar ist
+    if (logBox && logBox.style.display === "block") {
+
+      // 👉 aktuelle Buchung ermitteln
+      const currentBookingId = window.currentLogs?.[0]?.booking_id;
+
+      if (currentBookingId) {
+        await loadBookingLogs(currentBookingId);
+      }
+    }
+  })
+  .subscribe();
+
 
       function handleRealtimeUpdate(payload) {
         const { eventType, new: newRow, old: oldRow } = payload;
