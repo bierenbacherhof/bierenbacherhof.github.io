@@ -728,13 +728,15 @@ body.logged-in.admin #controls button.admin-only {
     will-change: transform;
     transform: translateZ(0);
     backface-visibility: hidden;
+    z-index: 1;
   }
 
   .booking {
     top: 4px !important;
     height: calc(100% - 6px) !important;
     border-radius: 6px;
-    font-size: 20px; /* ✅ lesbarer */
+    font-size: 20px;
+    z-index: 10;
   }
 
  
@@ -747,6 +749,7 @@ body.logged-in.admin #controls button.admin-only {
   
   height: 100%;
   pointer-events: none;
+  z-index: 1;
 }
 
 
@@ -1126,7 +1129,44 @@ body.logged-in.admin #controls button.admin-only {
         "67 - kl. EZ B",
         "68 - kl EZ",
         "69 - DZ",
-        "70 - DZ/3"
+        "70 - DZ/3",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+         "",
+        "",
+        "",
+        "",
+        "",
+        "",
+         "",
+        "",
+        "",
+        "",
+        "",
+        "",
+         "",
+        "",
+        "",
+        "",
+        "",
+        "",
+         "",
+        "",
+        "",
+        "",
+        "",
+        "",
+         "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
       ];
 
       const SUPABASE_URL = "https://ansbdavzifbfjqbzdafn.supabase.co";
