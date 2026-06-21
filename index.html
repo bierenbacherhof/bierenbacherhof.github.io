@@ -587,9 +587,14 @@ body:not(.logged-in) {
   /* ✅ HEADER sticky oben */
   thead th {
     top: 120px;
-    z-index: 2000;
+    z-index:50000;
     background: #eee;
   }
+
+         
+thead {
+  z-index: 50000;
+}
 
   /* ✅ Zimmer-Spalte sticky links */
   .room {
@@ -618,7 +623,7 @@ body:not(.logged-in) {
   thead th:first-child {
     position: sticky;
     left: 0;
-    z-index: 4000;
+    z-index: 50001;
   }
 
          
