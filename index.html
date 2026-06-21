@@ -1232,6 +1232,7 @@ body.logged-in.admin #controls button.admin-only {
       let colorPickerOpen = false
        let singlePlacement = null;
       let blockNextClick = false;
+      let currentGroupId = null;
       if (savedWeek) {
         current = new Date(savedWeek);
       }
@@ -2848,6 +2849,7 @@ if (!user) return false;
         setTimeout(() => {
           alert("Gruppe erstellt !");
         }, 10);
+        resetGroupForm();
       }
 
       async function assignSingleRoom(row) {
@@ -4722,10 +4724,11 @@ function applyStats(stats, type, count) {
       }
 
       async function openGroupInfo(groupId) {
+        currentGroupId = groupId;
         let box = document.getElementById("groupInfoBox");
         let title = document.getElementById("groupInfoTitle");
         let fileContainer = document.getElementById("groupInfoFiles");
-
+        
         let group = groupsMap[groupId];
         
 let creator = userMap[group.user_id] || "Unbekannt";
@@ -4905,6 +4908,7 @@ let createdAt = group.created_at
 
       function closeGroupInfo() {
         document.getElementById("groupInfoBox").style.display = "none";
+        currentGroupId = null;
       }
 
       async function createGroup(name, color, extra = {}) {
@@ -5046,6 +5050,28 @@ supa
     }
   })
   .subscribe();
+      
+      
+
+supa
+  .channel("live-group-files")
+  .on("postgres_changes", {
+    event: "*",
+    schema: "public",
+    table: "group_files"
+  }, async () => {
+
+    const box = document.getElementById("groupInfoBox");
+
+    if (!box || box.style.display !== "block") return;
+
+    if (!window.currentGroupId) return;
+
+    await openGroupInfo(window.currentGroupId);
+  })
+  .subscribe();
+
+
 
 
       function handleRealtimeUpdate(payload) {
@@ -5065,6 +5091,18 @@ supa
 
         render();
       }
+      
+      
+function resetGroupForm() {
+  document.getElementById("g_name").value = "";
+  document.getElementById("g_start").value = "";
+  document.getElementById("g_end").value = "";
+
+  // Kategorien zurücksetzen
+  document.querySelectorAll(".g_count").forEach(el => el.value = "");
+  document.querySelectorAll(".g_price").forEach(el => el.value = "");
+}
+
 
       async function addBookingToDB(b) {
         const user = (await supa.auth.getUser()).data.user;
