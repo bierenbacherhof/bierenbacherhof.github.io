@@ -4988,8 +4988,7 @@ let insertObj = {
             isUndoing ||
             isDeleting ||
             isDraggingUpdate ||
-            isLocalInsert ||
-            Date.now() - lastChangeTime < 1500
+            isLocalInsert 
           ) {
             return;
           }
