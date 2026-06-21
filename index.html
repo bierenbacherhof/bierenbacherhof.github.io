@@ -736,7 +736,7 @@ body.logged-in.admin #controls button.admin-only {
     height: calc(100% - 6px) !important;
     border-radius: 6px;
     font-size: 20px;
-    z-index: 10;
+    z-index: 10; 
   }
 
  
@@ -912,7 +912,7 @@ body.logged-in.admin #controls button.admin-only {
             z-index: 20000;
             border-radius: 10px;
           ">
-          <b>Verlauf</b><br /><br />
+          <b>Gelöschte Buchungen</b><br /><br />
 
          
 <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px">
@@ -1050,7 +1050,7 @@ body.logged-in.admin #controls button.admin-only {
 
       <button id="logBtn" onclick="toggleLog()" style="display: none">Verlauf</button>
 
-      <br /><br />
+     
 
       <div
         id="logContent"
@@ -1067,7 +1067,7 @@ body.logged-in.admin #controls button.admin-only {
           border-radius: 6px;
         "></div>
 
-      <br />
+ 
       <button onclick="closeInfo()">Schließen</button>
     </div>
     <script>
@@ -1199,7 +1199,6 @@ body.logged-in.admin #controls button.admin-only {
       let groupsMap = {};
       let isLocalInsert = false;
       let lastChangeTime = 0;
-      let justClosedOverlay = false;
       let isSwiping = false;
       let swipeStartX = 0;
       let currentOffsetX = 0;      
@@ -1209,6 +1208,7 @@ body.logged-in.admin #controls button.admin-only {
       let startX = 0;
       let colorPickerOpen = false
        let singlePlacement = null;
+      let blockNextClick = false;
       if (savedWeek) {
         current = new Date(savedWeek);
       }
@@ -1585,14 +1585,14 @@ case "multi_update": {
 
         return options;
       }
-
-     async function logBookingAction({
+async function logBookingAction({
   bookingId,
   action,
   field = null,
   oldValue = null,
   newValue = null,
-  room = null
+  room = null,
+  bookingAt = null // ✅ NEU
 }) {
   const user = (await supa.auth.getUser()).data.user;
   if (!user) return;
@@ -1601,18 +1601,20 @@ case "multi_update": {
     await supa.from("booking_logs").insert([{
       booking_id: bookingId,
       user_id: user.id,
-      action: action, // create, update, delete
+      action: action,
       field: field,
-     
-old_value: typeof oldValue === "object"
-  ? JSON.stringify(oldValue)
-  : oldValue?.toString() || "",
 
-new_value: typeof newValue === "object"
-  ? JSON.stringify(newValue)
-  : newValue?.toString() || "",
+      old_value: typeof oldValue === "object"
+        ? JSON.stringify(oldValue)
+        : oldValue?.toString() || "",
 
-      room: room || "-"
+      new_value: typeof newValue === "object"
+        ? JSON.stringify(newValue)
+        : newValue?.toString() || "",
+
+      room: room || "-",
+
+      booking_at: bookingAt // ✅ HIER REIN
     }]);
   } catch (err) {
     console.error("Log fehlgeschlagen:", err);
@@ -2167,7 +2169,72 @@ function isLightColor(color) {
         location.reload();
       }
 
-  
+  async function loadBookingLogs(bookingId) {
+
+  const box = document.getElementById("logContent");
+  const btn = document.getElementById("logBtn");
+
+  box.style.display = "block";
+  box.innerHTML = "Lade...";
+
+  const { data, error } = await supa
+    .from("booking_logs")
+    .select("*")
+    .eq("booking_id", bookingId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    box.innerHTML = "Fehler beim Laden";
+    console.error(error);
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    box.innerHTML = "<small>Keine Einträge</small>";
+    return;
+  }
+
+  // ✅ speichern für toggleLog (optional)
+  window.currentLogs = data;
+
+  let html = "";
+
+  data.forEach(log => {
+
+    let userName = userMap[log.user_id] || "Unbekannt";
+
+    let dt = new Date(log.created_at + "Z");
+
+    let time = dt.toLocaleString("de-DE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+
+    html += `
+      <div style="margin-bottom:8px; border-bottom:1px solid #eee; padding:5px">
+        <small>
+          <b>${userName}</b> (${time})<br>
+          ${formatLogText(log)}
+        </small>
+      </div>
+    `;
+  });
+
+  box.innerHTML = html;
+}
+      async function toggleBookingLogs(bookingId) {
+  const box = document.getElementById("logContent");
+
+  if (box.style.display === "block") {
+    box.style.display = "none";
+    return;
+  }
+
+  await loadBookingLogs(bookingId);
+}
         function render() {
   let t = document.getElementById("calendar");
   t.innerHTML = "";
@@ -3113,7 +3180,8 @@ if (Object.keys(changes).length > 0) {
     newValue:Object.fromEntries(
         Object.entries(changes).map(([k, v]) => [k, v.new])
       ),
-    room: rooms[b.row]
+    room: rooms[b.row],
+    bookingAt: b.end
   });
 }
   });
@@ -3321,19 +3389,25 @@ if (b.updated_at) {
 <b>🎨 Gruppe:</b>
 ${renderGroupBadge(groupsMap[b.group_id])}
 <br><br>
-<br><br>
     <b>💰 Bezahlt:</b>${b.paid ? "🟢" : "🔴"}<br>
     <b>🏨 Check-in:</b>${b.checkin ? "🟢" : "🔴"}
   `;
         
-if (isAdmin()) {
+
   html += `
     <br><br>
     <small style="color:#555">
       Zuletzt bearbeitet von: <b>${lastUser}</b> (${lastEditTime})
     </small>
   `;
+
+if (isAdmin()) {
+  html += `
+    <br><br>
+    <button onclick="toggleBookingLogs(${b.id})">Verlauf</button>
+  `;
 }
+
 
 
         document.getElementById("infoContent").innerHTML = html;
@@ -3386,7 +3460,6 @@ if (isAdmin()) {
           d.dataset.index = i;
 
           d.onclick = (e) => {
-             if (justClosedOverlay) return;
             if (f) {
               e.stopPropagation();
 
@@ -3536,7 +3609,8 @@ if (isAdmin()) {
     field: "paid",
     oldValue: oldVal,
     newValue: newVal,
-    room: rooms[b.row]
+    room: rooms[b.row],
+    bookingAt: b.end
   });
 };
 
@@ -3591,7 +3665,8 @@ await logBookingAction({
   field: "checkin",
   oldValue: oldVal,
   newValue: newVal,
-  room: rooms[b.row]
+  room: rooms[b.row],
+  bookingAt: b.end
 });
 
 };
@@ -3865,10 +3940,10 @@ await logBookingAction({
   },
 
   newValue: "deleted",
+  room: rooms[b.row],
 
-  room: rooms[b.row]
+  bookingAt: b.end // ✅ NEU
 });
-
 
 if (b.group_id) {
 
@@ -4059,7 +4134,8 @@ if (b.group_id) {
       start: b.start,
       end: b.end
     },
-    room: rooms[b.row]
+    room: rooms[b.row],
+    bookingeAt: b.end
   });
 
   if (data && data[0]) {
@@ -4250,7 +4326,8 @@ await logBookingAction({
   field: "start",
   oldValue: oldStart,
   newValue: b.start,
-  room: rooms[b.row]
+  room: rooms[b.row],
+  bookingAt: b.end
 });
 
             }
@@ -4287,7 +4364,8 @@ await logBookingAction({
   field: "end",
   oldValue: oldEnd,
   newValue: b.end,
-  room: rooms[b.row]
+  room: rooms[b.row],
+  bookingAt: b.end
 });
 
             }
@@ -4600,12 +4678,24 @@ function applyStats(stats, type, count) {
         let fileContainer = document.getElementById("groupInfoFiles");
 
         let group = groupsMap[groupId];
+        
+let creator = userMap[group.user_id] || "Unbekannt";
+
+let createdAt = group.created_at
+  ? new Date(group.created_at).toLocaleString("de-DE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    })
+  : "-";
 
         title.innerText = group.name;
         let stats = calculateGroupStats(groupId, "bookings");
 
 
-        let info = `
+ let info = `
   <div style="
     margin-bottom:10px;
     padding:10px;
@@ -4621,9 +4711,13 @@ function applyStats(stats, type, count) {
     3er: ${stats.er3}<br>
     4er: ${stats.er4}<br><br>
 
-    <b>👥 Personen:</b> ${stats.guests}
+    <b>👥 Personen:</b> ${stats.guests}<br><br>
+
+    <b>👤 Angelegt von:</b> ${creator}<br>
+    <b>🕓 Erstellt am:</b> ${createdAt}
   </div>
 `;
+
 
         fileContainer.innerHTML = info + "Lade...";
         box.style.display = "block";
@@ -4765,10 +4859,16 @@ function applyStats(stats, type, count) {
       }
 
       async function createGroup(name, color, extra = {}) {
-        let insertObj = {
-          name,
-          color
-        };
+       
+const { data: userData } = await supa.auth.getUser();
+const user = userData.user;
+
+let insertObj = {
+  name,
+  color,
+  user_id: user?.id || null // ✅ NEU
+};
+
 
         if (extra.start) insertObj.start = extra.start.toISOString().slice(0, 10);
         if (extra.end) insertObj.end = extra.end.toISOString().slice(0, 10);
@@ -4904,13 +5004,16 @@ if (!user) {
 
         if (data && data[0]) {
           
+
 await logBookingAction({
-    bookingId: data[0].id,
-    action: "create",
-    field: "booking",
-    newValue: "created",
-    room: rooms[data[0].row]
-  });
+  bookingId: data[0].id,
+  action: "create",
+  field: "booking",
+  newValue: "created",
+  room: rooms[data[0].row],
+
+  bookingAt: data[0].end // ✅ NEU
+});
 
           bookings = bookings.map((x) => (x.id === tempId ? data[0] : x));
 
@@ -5834,16 +5937,15 @@ if (
 
 
 
+
 if (blocked) {
-  justClosedOverlay = true;
 
-
-  requestAnimationFrame(() => {
-    justClosedOverlay = false;
-  });
+  blockNextClick = true;
 
   return;
 }
+
+
 
 
 
@@ -5868,6 +5970,21 @@ document.getElementById("datePicker").addEventListener("change", async (e) => {
       document.addEventListener("touchstart", handleGlobalClose);
       
       
+document.addEventListener("click", (e) => {
+
+  if (blockNextClick) {
+
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    blockNextClick = false;
+
+    return false;
+  }
+
+}, true);
+
 window.addEventListener("load", () => {
   const el = document.getElementById("datePickerWrapper");
 
