@@ -47,7 +47,7 @@ thead {
             thead th {
 
       position: sticky;
-        top: 117px; /* genau gleiche Höhe wie Header */
+        top: 149px; /* genau gleiche Höhe wie Header */
         z-index: 2000;
         background: #eee;
 
@@ -516,7 +516,7 @@ body:not(.logged-in) {
       position: fixed;
         top: 0;
         left: 0;
-        height: 95px;
+        height: 130px;
         width: 100%;
         z-index: 12000;
         background: white;
@@ -525,7 +525,7 @@ body:not(.logged-in) {
 
       
 #calendar {
-  margin-top: 117px; /* Desktop */
+  margin-top: 149px; /* Desktop */
 }
 
       
@@ -586,7 +586,7 @@ body:not(.logged-in) {
 
   /* ✅ HEADER sticky oben */
   thead th {
-    top: 250px;
+    top: 400px;
     z-index:50000;
     background: #eee;
   }
@@ -693,7 +693,7 @@ body.logged-in.admin #controls button.admin-only {
     top: 0;
     left: 0;
     width: 100%;
-    height: 250px; /* ✅ vorher 81px → doppelt */
+    height: 400px; /* ✅ vorher 81px → doppelt */
     z-index: 12000;
   }
 
@@ -747,7 +747,7 @@ body.logged-in.admin #controls button.admin-only {
          }
   /* ✅ Kalender Abstand anpassen */
   #calendar {
-    margin-top: 250px; /* ✅ MUSS gleich wie Header sein */
+    margin-top: 400px; /* ✅ MUSS gleich wie Header sein */
     overflow-x: auto;
     position: relative;
     max-width: 100%;
@@ -2396,6 +2396,7 @@ for (let d = 0; d < 7; d++) {
 
       function is3erRoom(room) {
         let type = getRoomType(room);
+        if (!type) return false;
         return type.includes("3");
       }
 
@@ -2548,6 +2549,7 @@ for (let d = 0; d < 7; d++) {
 
       function isFourRoom(room) {
         let type = getRoomType(room);
+        if (!type) return false;
         return type.includes("4");
       }
 
@@ -2751,6 +2753,7 @@ for (let d = 0; d < 7; d++) {
       }
 
       function getRoomType(roomName) {
+        if (!roomName) return "";
         return roomName.split(" - ")[1];
       }
 
@@ -3267,25 +3270,25 @@ if (Object.keys(changes).length > 0) {
 
       function isNormalEZ(room) {
         let type = getRoomType(room);
-
+        if (!type) return false;
         return type.includes("EZ") && !type.includes("B") && !type.includes("kl");
       }
 
       function isDeluxeEZ(room) {
         let type = getRoomType(room);
-
+        if (!type) return false;
         return type.includes("EZ B");
       }
 
       function isSmallEZ(room) {
         let type = getRoomType(room);
-
+        if (!type) return false;
         return type.includes("kl. EZ");
       }
 
       function isNormalDZ(room) {
         let type = getRoomType(room);
-
+        if (!type) return false;
         return (
           type.includes("DZ") &&
           !type.includes("B") &&
@@ -3297,19 +3300,19 @@ if (Object.keys(changes).length > 0) {
 
       function isDeluxeDZ(room) {
         let type = getRoomType(room);
-
+        if (!type) return false;
         return type.includes("DZ") && type.includes("B") && !type.includes("3") && !type.includes("4");
       }
 
       function isMultiDZ(room) {
         let type = getRoomType(room);
-
+        if (!type) return false;
         return type.includes("3") || type.includes("4");
       }
 
       function isSmallDZ(room) {
         let type = getRoomType(room);
-
+        if (!type) return false;
         return type.includes("kl. DZ");
       }
 
