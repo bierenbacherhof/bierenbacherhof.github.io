@@ -2,6 +2,7 @@
 <html lang="de">
   <head>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=0.5, maximum-scale=1.0" />
     <title>Hotel Belegungsplan</title>
@@ -1569,6 +1570,23 @@ case "multi_update": {
         });
       }
 
+      
+
+function getTimestamp() {
+  const now = new Date();
+
+  return now
+    .toLocaleString("de-DE", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    })
+    .replace(/[.: ]/g, "-");
+}
+
+      
       function getGuestOptions(roomName) {
         let type = roomName.split(" - ")[1] || "";
 
@@ -5092,7 +5110,138 @@ supa
         render();
       }
       
+  function exportToExcel(bookingsData, groupsData) {
+
+  const workbook = XLSX.utils.book_new();
+
+  // ✅ 1️⃣ BOOKINGS SHEET
+  const bookingRows = bookingsData.map(b => ({
+    id: b.id ?? "",   
+    start: b.start ? new Date(b.start) : "",
+    end: b.end ? new Date(b.end) : "",
+    name: b.name ?? "",
+    company: b.company ?? "",
+    price: b.price ?? "",
+    comment: b.comment ?? "",
+    guests: b.guests ?? "",
+    color: b.color ?? "",
+    paid: b.paid ?? "",
+    checkin: b.checkin ?? "",
+    created_at: b.created_at ?? "",
+    breakfast: b.breakfast ?? "",
+    group_id: b.group_id ?? ""
+  }));
+
+  const bookingSheet = XLSX.utils.json_to_sheet(bookingRows);
+  XLSX.utils.book_append_sheet(workbook, bookingSheet, "Bookings");
+
+
+  // ✅ 2️⃣ GROUPS SHEET
+  const groupRows = groupsData.map(g => ({
+    id: g.id ?? "",
+    name: g.name ?? "",
+    color: g.color ?? "",    
+    start: g.start ? new Date(g.start) : "",
+    end: g.end ? new Date(g.end) : "",
+    created_at: g.created_at ?? "",
+    user_id: g.user_id ?? "",
+    count_ez: g.count_ez ?? "",
+    count_dz: g.count_dz ?? "",
+    count_3er: g.count_3er ?? "",
+    count_4er: g.count_4er ?? "",
+    guests_total: g.guests_total ?? ""
+  }));
+
+  const groupSheet = XLSX.utils.json_to_sheet(groupRows);
+  XLSX.utils.book_append_sheet(workbook, groupSheet, "Groups");
+
+
+  // ✅ Download
+  XLSX.writeFile(workbook, `backup_${getTimestamp()}.xlsx`);
+}
+``
+
       
+  async function createBackup() {
+
+  
+    const { data: bookingsData, error: bookingsError } = await supa.from("bookings").select("*");
+    const { data: groupsData, error: groupsError } = await supa.from("groups").select("*");
+
+ 
+if (bookingsError) {
+  console.error(bookingsError);
+  alert("Fehler beim Buchungen-Backup");
+  return;
+}
+
+if (groupsError) {
+  console.error(groupsError);
+  alert("Fehler beim Gruppen-Backup");
+  return;
+}
+
+
+  // ✅ JSON Backup (für Import später)
+  const jsonBlob = new Blob(
+    [JSON.stringify(bookingsData, null, 2)],
+    { type: "application/json" }
+  );
+
+  const jsonUrl = URL.createObjectURL(jsonBlob);
+
+  downloadFile(jsonUrl, `backup_${getTimestamp()}.json`);
+
+  // ✅ Excel Backup
+  exportToExcel(bookingsData, groupsData);
+}
+
+      
+      function downloadFile(url, filename) {
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+    
+      async function createBackupIfNeeded() {
+
+  const INTERVAL = 24 * 60 * 60 * 1000; 
+
+  // ✅ aktuellen Stand holen
+  const { data, error } = await supa
+    .from("backup_meta")
+    .select("*")
+    .eq("id", 1)
+    .single();
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  const last = new Date(data.last_backup).getTime();
+  const now = Date.now();
+
+  if (now - last < INTERVAL) {
+    console.log("⏭ Backup übersprungen (zentral)");
+    return;
+  }
+
+  console.log("💾 Backup wird erstellt");
+
+  await createBackup();
+
+  // ✅ Zeit aktualisieren (zentral!)
+  await supa
+    .from("backup_meta")
+    .update({
+      last_backup: new Date().toISOString()
+    })
+    .eq("id", 1);
+}
 function resetGroupForm() {
   document.getElementById("g_name").value = "";
   document.getElementById("g_start").value = "";
@@ -5708,6 +5857,11 @@ if (!confirm("Sind Sie sicher, dass Sie sich ausloggen wollen?")) {
 
       window.onload = () => {
         render();
+        
+createBackupIfNeeded();
+
+  setInterval(createBackupIfNeeded, 30 * 60 * 1000);
+
       };
 
 window.addEventListener("load", updateStickyPositions);
