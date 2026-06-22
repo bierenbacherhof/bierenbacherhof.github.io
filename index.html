@@ -50,6 +50,7 @@ thead {
       position: sticky;
         z-index: 2000;
         background: #eee;
+        border-right: 2px solid #4e4e4e !important;
 
             }
 
@@ -67,6 +68,11 @@ thead {
         height: 100%;
         background: #eee;
       }
+
+      
+thead th:last-child {
+  border-right: none !important;
+}
 
             html,
             body {
@@ -527,7 +533,15 @@ body:not(.logged-in) {
   margin-top: 0; /* Desktop */
 }
 
-      
+
+#calendar td {
+  border-right: 1px solid #4e4e4e;
+}
+
+#calendar td:last-child {
+  border-right: none;
+}
+
       #topRightButtons {
   position: absolute;
   top: 10px;
@@ -587,12 +601,13 @@ body:not(.logged-in) {
   thead th {
     z-index:50000;
     background: #eee;
-    font-size: 32px !important;
+    font-size: 40px !important;
     line-height: 1.2;
     padding: 12px 6px;
     white-space: normal;
     display: table-cell;
     height: 90px;
+    border-right: 3px solid #4e4e4e !important;
   }
 
          
@@ -702,7 +717,14 @@ body.logged-in.admin #controls button.admin-only {
   #calendar td {
     position: relative;
     height: 60px; /* ✅ etwas größer */
+    border-right: 2px solid #4e4e4e;
   }
+         
+         
+#calendar td:last-child {
+  border-right: none;
+}
+
 
   /* ✅ HEADER doppelt so groß */
   #stickyHeader {
@@ -2307,7 +2329,14 @@ function isLightColor(color) {
   for (let i = 0; i < 7; i++) {
     let d = new Date(s);
     d.setDate(s.getDate() + i);
-    h += `<th><div class="day">${["Mo","Di","Mi","Do","Fr","Sa","So"][i]}</div><div class="date">${d.toLocaleDateString()}</div></th>`;
+    h += `<th><div class="day">${["Mo","Di","Mi","Do","Fr","Sa","So"][i]}</div>
+    <div class="date">
+${d.toLocaleDateString("de-DE", {
+  day: "numeric",
+  month: "numeric",
+  year: "2-digit"
+})}
+</div></th>`;
   }
 
   h += "</tr></thead><tbody>";
