@@ -149,6 +149,12 @@ body:not(.logged-in) #calendar {
   opacity: 0.6;
 }
 
+      
+td.blocked {
+  background: #eee !important;
+  opacity: 0.6;
+}
+
 
             .booking-layer {
               position: absolute;
@@ -1908,7 +1914,7 @@ function calculateAvailability(start, end, data) {
             if (overlapDates(row, start, end, -1)) continue;
 
             let roomName = rooms[row];
-
+            
             if (!canUseRoomSimple(roomName, type)) continue;
 
             // ✅ Zählen wie echtes Auto
@@ -1943,7 +1949,7 @@ function calculateAvailability(start, end, data) {
           if (overlapDates(row, start, end, -1)) continue;
 
           let roomName = rooms[row];
-
+          if (!roomName || roomName.trim() === "") continue;
           if (!canUseRoom(roomName, start, end, type)) continue;
 
           item.count--;
@@ -2313,11 +2319,11 @@ ${d.toLocaleDateString("de-DE", {
 
  
 rooms.forEach((r, row) => {
-  
+  let isEmptyRoom = !r || r.trim() === "";
 let roomNumber = r.split(" - ")[0];
 
 let tr = `<tr>
-  <td class="room" data-room-number="${roomNumber}">
+  <td class="room ${isEmptyRoom ? 'blocked' : ''}" data-room-number="${roomNumber}">
     ${r}
     <div class="booking-layer"></div>
   </td>`;
@@ -2329,7 +2335,8 @@ for (let d = 0; d < 7; d++) {
   let cellDate = new Date(weekStart);
   cellDate.setDate(weekStart.getDate() + d);
 
-  let isBlocked = false;
+let isBlocked = isEmptyRoom;
+
 
   // ✅ NUR im Placement-Modus prüfen!
   if (groupPlacement || singlePlacement) {
@@ -2859,7 +2866,7 @@ if (!user) return false;
         }
 
         let roomName = rooms[row];
-
+        if (!roomName || roomName.trim() === "") return false;
        let item;
 
 if (forcedType) {
@@ -3009,6 +3016,9 @@ if (!canUse) return false;
       }
 
       async function add(row, day, e) {
+        
+if (!rooms[row] || rooms[row].trim() === "") return;
+
 
         if (isMobile) {
           if (e) {
@@ -6042,7 +6052,7 @@ if (placement.floorPriority) {
           if (overlapDates(row, start, end, -1)) continue;
 
           let roomName = rooms[row];
-
+          if (!roomName || roomName.trim() === "") continue;
          
 let canUse = placement.floorPriority
   ? canUseRoomSimple(roomName, type)
@@ -6091,7 +6101,7 @@ let booking = await assignRoom(row, type);
         if (overlapDates(row, start, end, -1)) continue;
 
         let roomName = rooms[row];
-
+        if (!roomName || roomName.trim() === "") continue;
         
 let canUse = placement.floorPriority
   ? canUseRoomSimple(roomName, type)
