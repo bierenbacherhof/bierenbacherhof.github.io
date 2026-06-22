@@ -59,16 +59,6 @@ thead {
               pointer-events: auto;
             }
 
-      thead th::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        right: -1px;
-        width: 2px;
-        height: 100%;
-        background: #eee;
-      }
-
       
 thead th:last-child {
   border-right: none !important;
@@ -535,7 +525,7 @@ body:not(.logged-in) {
 
 
 #calendar td {
-  border-right: 1px solid #4e4e4e;
+  border-right: 2px solid #4e4e4e;
 }
 
 #calendar td:last-child {
@@ -597,9 +587,9 @@ body:not(.logged-in) {
 
 
 
- html, body {
+ //*html, body {
     touch-action: manipulation;
-  }
+  }*/
 
   /* ✅ HEADER sticky oben */
   thead th {
@@ -721,7 +711,7 @@ body.logged-in.admin #controls button.admin-only {
   #calendar td {
     position: relative;
     height: 60px; /* ✅ etwas größer */
-    border-right: 2px solid #4e4e4e;
+    border-right: 3px solid #4e4e4e;
   }
          
          
