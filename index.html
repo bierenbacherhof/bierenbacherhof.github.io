@@ -587,11 +587,28 @@ body:not(.logged-in) {
   thead th {
     z-index:50000;
     background: #eee;
-    font-size: 32;
-    white-space: normal;    
+    font-size: 32px !important;
+    line-height: 1.2;
+    padding: 12px 6px;
+    white-space: normal;
+    display: table-cell;
+    height: 90px;
   }
 
          
+thead th .day {
+   
+    font-weight: bold;
+  }
+   
+thead th br {
+  content: "";
+}
+  
+thead th span {
+  display: block;
+}
+    
 thead {
   z-index: 50000;
 }
@@ -601,9 +618,9 @@ thead {
     position: sticky;
     left: 0;
 
-    width: 60px;
-    min-width: 60px;
-    max-width: 60px;
+    width: 70px;
+    min-width: 70px;
+    max-width: 70px;
 
     background: #fafafa;
     z-index: 3000;
@@ -684,7 +701,7 @@ body.logged-in.admin #controls button.admin-only {
 
   #calendar td {
     position: relative;
-    height: 40px; /* ✅ etwas größer */
+    height: 60px; /* ✅ etwas größer */
   }
 
   /* ✅ HEADER doppelt so groß */
@@ -2290,7 +2307,7 @@ function isLightColor(color) {
   for (let i = 0; i < 7; i++) {
     let d = new Date(s);
     d.setDate(s.getDate() + i);
-    h += `<th>${["Mo","Di","Mi","Do","Fr","Sa","So"][i]}<br>${d.toLocaleDateString()}</th>`;
+    h += `<th><div class="day">${["Mo","Di","Mi","Do","Fr","Sa","So"][i]}</div><div class="date">${d.toLocaleDateString()}</div></th>`;
   }
 
   h += "</tr></thead><tbody>";
