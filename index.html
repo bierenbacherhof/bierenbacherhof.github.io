@@ -1462,6 +1462,41 @@ case "multi_update": {
   `;
 
         document.getElementById("bookingForm").style.display = "block";
+        
+        
+let groupSelect = document.getElementById("f_group");
+groupSelect.innerHTML = "";
+
+let optNone = document.createElement("option");
+optNone.value = "";
+optNone.text = "– keine Gruppe –";
+groupSelect.appendChild(optNone);
+
+let groups = getGroupsInWeek();
+
+groups.forEach((g) => {
+  let opt = document.createElement("option");
+
+  opt.value = g.id;
+  opt.textContent = g.name;
+  opt.dataset.color = g.color;
+
+  opt.style.background = g.color;
+  opt.style.color = isLightColor(g.color) ? "black" : "white";
+
+  groupSelect.appendChild(opt);
+});
+
+// ✅ onchange Verhalten
+groupSelect.onchange = (e) => {
+  let selected = e.target.options[e.target.selectedIndex];
+
+  let color = selected.dataset.color;
+
+  groupSelect.style.background = color || "white";
+  groupSelect.style.color = isLightColor(color) ? "black" : "white";
+};
+
       }
 
       function hasFreePreferredRoom(start, end, type) {
@@ -5417,6 +5452,16 @@ document.addEventListener("keydown", async (e) => {
 
     e.preventDefault();
 
+    
+ if (groupPlacement || singlePlacement) {
+    groupPlacement = null;
+    singlePlacement = null;
+
+    document.getElementById("placementBox")?.remove();
+
+    render();
+    return;
+ }
     // Palette
     const palette = document.getElementById("palette");
     if (palette && palette.style.display === "block") {
