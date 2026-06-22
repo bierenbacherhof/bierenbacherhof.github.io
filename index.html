@@ -50,25 +50,30 @@ thead {
       position: sticky;
         z-index: 2000 !important;
         background: #eee;
-        border-right: 2px solid #4e4e4e !important;
-              
-box-sizing: border-box;
+        transform: translateZ(0);
+   }
 
-  overflow: hidden;               /* 🔥 WICHTIG */
-  background-clip: padding-box;  
+      
+thead th:not(:last-child)::before {
+  content: "";
+  position: absolute;
 
+  top: 0;
+  right: -1px;
+  width: 2px;
+  height: 100%;
 
-            }
+  background: #666;
+
+  z-index: 2001; /* ✅ ÜBER ALLEM */
+  pointer-events: none;
+}
 
             th {
               background: transparent;
               pointer-events: auto;
             }
 
-      
-thead th:last-child {
-  border-right: none !important;
-}
 
             html,
             body {
@@ -608,9 +613,12 @@ body:not(.logged-in) {
     white-space: normal;
     display: table-cell;
     height: 90px;
-    border-right: 3px solid #4e4e4e !important;
+    
   }
 
+         thead th:not(:last-child)::before{
+          width: 3px;
+         }
          
 thead th .day {
    
@@ -647,7 +655,7 @@ thead {
 
   .room::after {
     content: attr(data-room-number);
-    font-size: 36px;
+    font-size: 26px;
     font-weight: bold;
     display: block;
   }
@@ -738,8 +746,8 @@ body.logged-in.admin #controls button.admin-only {
 
   /* ✅ BUTTONS größer */
   #controls button {
-    font-size: 30px;
-    padding: 16px 24px;
+    font-size: 22px;
+    padding: 10px 14px;
     border-radius: 10px;
     color: black;
     background: #d7d7d7;
@@ -771,13 +779,13 @@ body.logged-in.admin #controls button.admin-only {
 
   /* ✅ Legende größer */
   #legend {
-    font-size: 32px;
+    font-size: 22px;
     z-index: 1050;
   }
 
   #legend div {
-    font-size: 32px;
-    padding: 14px 22px;
+    font-size: 20px;
+    padding: 8px 12px;
   }
 
 
