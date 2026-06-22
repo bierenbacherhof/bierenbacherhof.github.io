@@ -596,10 +596,6 @@ body:not(.logged-in) {
        @media (pointer: coarse) {
 
 
-html, body {
-  touch-action: none;
-}
-
 
   /* ✅ HEADER sticky oben */
   thead th {
@@ -6368,6 +6364,39 @@ window.addEventListener("load", () => {
   }
 });
 
+      
+let lastTouchEnd = 0;
+
+document.addEventListener("touchend", function (event) {
+  let now = Date.now();
+
+  if (now - lastTouchEnd <= 300) {
+    event.preventDefault(); // ✅ blockiert Double-Tap Zoom
+  }
+
+  lastTouchEnd = now;
+}, { passive: false });
+
+      
+document.addEventListener("touchmove", function (event) {
+  if (event.scale !== undefined && event.scale !== 1) {
+    event.preventDefault(); // ✅ blockiert Pinch Zoom
+  }
+}, { passive: false });
+
+    
+document.addEventListener("gesturestart", function (event) {
+  event.preventDefault();
+});
+
+document.addEventListener("gesturechange", function (event) {
+  event.preventDefault();
+});
+
+document.addEventListener("gestureend", function (event) {
+  event.preventDefault();
+});
+  
     </script>
   </body>
 </html>
