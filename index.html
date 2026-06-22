@@ -599,56 +599,33 @@ body:not(.logged-in) {
               border-radius: 4px;
             }
 
-       @media (max-width: 500px) {
+@media (max-width: 600px) {
 
-
-
- //*html, body {
-    touch-action: manipulation;
-  }*/
-
-  /* ✅ HEADER sticky oben */
-  thead th {
-    z-index:50000;
-    background: #eee;
-    font-size: 40px !important;
-    line-height: 1.2;
-    padding: 12px 6px;
-    white-space: normal;
-    display: table-cell;
-    height: 90px;
-    
-  }
-
-         thead th:not(:last-child)::before{
-          width: 3px;
-         }
-         
-thead th .day {
-   
-    font-weight: bold;
-  }
-   
-thead th br {
-  content: "";
-}
   
-thead th span {
-  display: block;
-}
-    
-thead {
-  z-index: 50000;
+body {
+  -webkit-tap-highlight-color: transparent;
 }
 
-  /* ✅ Zimmer-Spalte sticky links */
+  /* ✅ HEADER */
+  thead th {
+    font-size: 26px !important;
+    line-height: 1.2;
+    padding: 10px 4px;
+    height: 80px;
+  }
+
+  thead th:not(:last-child)::before {
+    width: 2px;
+  }
+
+  /* ✅ ZIMMER SPALTE */
   .room {
     position: sticky;
     left: 0;
 
-    width: 70px;
-    min-width: 70px;
-    max-width: 70px;
+    width: 65px;
+    min-width: 65px;
+    max-width: 65px;
 
     background: #fafafa;
     z-index: 3000;
@@ -659,191 +636,72 @@ thead {
 
   .room::after {
     content: attr(data-room-number);
-    font-size: 36px;
+    font-size: 24px;
     font-weight: bold;
-    display: block;
   }
 
-  /* ✅ Header erste Spalte */
-  thead th:first-child {
-    position: sticky;
-    left: 0;
-    z-index: 50001;
-  }
-
-         
- /* 🔴 alle Buttons erstmal aus */
- 
-#controls button {
-  display: none;
-}
-
-/* ✅ nur wenn eingeloggt UND erlaubt */
-body.logged-in #controls button.allowed.auth-only {
-  display: inline-block !important;
-}
-
-/* ✅ Admin nochmal extra */
-body.logged-in.admin #controls button.admin-only {
-  display: inline-block !important;
-}
-
-
-  #newBookingBtn,
-  #weekUp,
-  #weekDown,
-  #undo {
-    display: none !important;
-  }
-
-
-  #swipeHint {
-    position: fixed;
-    top: 45%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    
-    font-size: 64px; /* ✅ größer */
-    font-weight: bold;
-    text-align: center;
-
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-
-    transition: opacity 0.2s;
-    opacity: 0;
-
-    padding: 40px 60px; /* ✅ größer */
-    border-radius: 20px;
-
-    z-index: 50000;
-
-    display: none;
-    pointer-events: none;
-  }
-
-  #swipeHint.show {
-    display: block;
-    opacity: 1;
-  }
-
+  /* ✅ ZELLEN */
   #calendar td {
-    position: relative;
-    height: 60px; /* ✅ etwas größer */
-    border-right: 2px solid #4e4e4e;
-  }
-         
-         
-#calendar td:last-child {
-  border-right: none;
-}
-
-
-  /* ✅ HEADER doppelt so groß */
-  #stickyHeader {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    z-index: 12000;
+    height: 55px;
   }
 
-  /* ✅ BUTTONS größer */
-  #controls button {
-    font-size: 30px;
-    padding: 16px 24px;
-    border-radius: 10px;
-    color: black;
-    background: #d7d7d7;
+  /* ✅ BOOKINGS */
+  .booking {
+    font-size: 16px;
+    border-radius: 6px;
   }
-  
-  
-#controls button:active {
-  background: #828282;
-}
 
-#controls label {
-    font-size: 30px;
-    padding: 16px 24px;
-    border-radius: 10px;
-    color: black;
-    background: #d7d7d7;
-  }
-  
-  #controls label:active {
-  background: #828282;
-}
-
-  /* ✅ Controls allgemein */
+  /* ✅ CONTROLS CONTAINER */
   #controls {
-    padding: 10px;
-    z-index: 1100;
+    font-size: 16px;
+    padding: 8px;
+  }
+
+  /* ✅ BUTTONS */
+  #controls button {
+    font-size: 18px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: #d7d7d7;
+    color: black;
+  }
+
+  #controls label {
+    font-size: 18px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: #d7d7d7;
+  }
+
+  /* ✅ BUTTON ACTIVE */
+  #controls button:active,
+  #controls label:active {
+    background: #828282;
+  }
+
+  /* ✅ LEGENDE */
+  #legend {
     font-size: 18px;
   }
 
-  /* ✅ Legende größer */
-  #legend {
-    font-size: 32px;
-    z-index: 1050;
-  }
-
   #legend div {
+    font-size: 16px;
+    padding: 6px 10px;
+    margin: 3px;
+  }
+
+  /* ✅ SWIPE TEXT */
+  #swipeHint {
     font-size: 32px;
-    padding: 14px 22px;
+    padding: 20px 30px;
   }
 
-
-.topbar .allowed {
-  display: inline-block !important
-         }
-  /* ✅ Kalender Abstand anpassen */
-  #calendar {
-    margin-top: 0; /* ✅ MUSS gleich wie Header sein */
-    overflow-x: auto;
-    position: relative;
-    max-width: 100%;
-    z-index: 1;
-  }
-
-  .booking {
-    top: 4px !important;
-    height: calc(100% - 6px) !important;
-    border-radius: 6px;
-    font-size: 20px;
-    z-index: 10; 
-  }
-
- 
-.booking-layer {
-  position: absolute;
-  top: 0;
-  left: 100%; /* ✅ bleibt so */
-  
-  width: calc(100vw - 50px); /* ✅ angepasst an neue room-Breite */
-  
-  height: 100%;
-  pointer-events: none;
-  z-index: 1;
-}
-
-
-  #calendar tbody tr {
-    position: relative !important;
-  }
-
-
-
-  #logoutBtn {
-    display: inline-block !important;
-  }
-
-  #backupBtn,
-  #logOverviewBtn {
-    display: inline-block !important;
+  /* ✅ BOOKING LAYER BREITE */
+  .booking-layer {
+    width: calc(100vw - 65px);
   }
 
 }
-
 
              
             
