@@ -42,15 +42,21 @@
       
 thead {
   position: relative;
-  z-index: 2001;
+  z-index: 2001 !important;
    border-collapse: collapse;
 }
 
             thead th {
       position: sticky;
-        z-index: 2000;
+        z-index: 2000 !important;
         background: #eee;
         border-right: 2px solid #4e4e4e !important;
+              
+box-sizing: border-box;
+
+  overflow: hidden;               /* 🔥 WICHTIG */
+  background-clip: padding-box;  
+
 
             }
 
@@ -140,6 +146,7 @@ body:not(.logged-in) #calendar {
               width: calc(100vw - 180px); /* ✅ flexibel */
               height: 100%;
               pointer-events: none;
+              z-index: 0;
             }
 
             .booking.block {
@@ -711,7 +718,7 @@ body.logged-in.admin #controls button.admin-only {
   #calendar td {
     position: relative;
     height: 60px; /* ✅ etwas größer */
-    border-right: 3px solid #4e4e4e;
+    border-right: 2px solid #4e4e4e;
   }
          
          
@@ -6359,7 +6366,7 @@ window.addEventListener("load", () => {
 });
 
       
-let lastTouchEnd = 0;
+/*let lastTouchEnd = 0;
 
 document.addEventListener("touchend", function (event) {
   let now = Date.now();
@@ -6390,7 +6397,7 @@ document.addEventListener("gesturechange", function (event) {
 document.addEventListener("gestureend", function (event) {
   event.preventDefault();
 });
-  
+  */
     </script>
   </body>
 </html>
