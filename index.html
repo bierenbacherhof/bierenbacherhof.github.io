@@ -11,6 +11,7 @@
       
 html {
   -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
 }
 
             body {
@@ -83,7 +84,7 @@ thead th:not(:last-child)::before {
             body {
               margin: 0;
               padding: 0;
-              touch-action: manipulation;
+              
             }
 
             td {
@@ -680,17 +681,20 @@ body {
     background: #828282;
   }
   
+
   #controls button {
-  display: none;
-}
+    display: none;
+  }
 
-body.logged-in #controls button.allowed.auth-only {
-  display: inline-block !important;
-}
+  /* ✅ LOGIN OK */
+  body.logged-in #controls button.auth-only {
+    display: inline-block !important;
+  }
 
-body.logged-in.admin #controls button.admin-only {
-  display: inline-block !important;
-}
+  /* ✅ ADMIN */
+  body.logged-in.admin #controls button.admin-only {
+    display: inline-block !important;
+  }
 
   /* ✅ LEGENDE */
   #legend {
@@ -713,15 +717,15 @@ body.logged-in.admin #controls button.admin-only {
   .booking-layer {
     width: calc(100vw - 65px);
   }
-
-}
-      
+     
   #newBookingBtn,
   #weekUp,
   #weekDown,
   #undo {
     display: none !important;
   }
+}
+ 
              
             
     </style>
@@ -6262,8 +6266,6 @@ window.addEventListener("load", () => {
     e.preventDefault();
   }
 }, { passive: false });
-
-let lastTouchEnd = 0;
 
 
 let lastTouchEnd = 0;
