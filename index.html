@@ -912,7 +912,7 @@ body {
         background: #fff;
         padding: 20px;
         border: 1px solid #ccc;
-        z-index: 200;
+        z-index: 999999;
         display: none;
         width: 300px;
       ">
@@ -970,8 +970,13 @@ body {
         <input type="text" id="g_name" required /><br /><br />
 
         <div id="groupCategories"></div>
-
-        <br />
+        <br>
+        
+        <label style="display:flex;align-items:center;gap:6px;">
+          <input type="checkbox" id="g_floorPriority">
+            EG zuerst
+          </label>
+        <br>
 
         <label>Anreise</label><br />
         <input type="date" id="g_start" required /><br /><br />
@@ -993,7 +998,7 @@ body {
         background: #fff;
         padding: 20px;
         border: 1px solid #ccc;
-        z-index: 300;
+        z-index: 999999;
         display: none;
         width: 320px;
       ">
@@ -1202,6 +1207,13 @@ body {
         location.reload();
       }
 
+      
+function trimGroupName(name, max = 30) {
+  if (!name) return "";
+  return name.length > max ? name.slice(0, max) + "…" : name;
+}
+
+      
 function applyLogFilter() {
 
   let search = document.getElementById("logNameFilter").value.toLowerCase();
@@ -1478,7 +1490,7 @@ groups.forEach((g) => {
   let opt = document.createElement("option");
 
   opt.value = g.id;
-  opt.textContent = g.name;
+  opt.textContent = trimGroupName(g.name);
   opt.dataset.color = g.color;
 
   opt.style.background = g.color;
@@ -1693,7 +1705,8 @@ async function logBookingAction({
         }
 
         let data = collectGroupData();
-
+        let floorPriority = document.getElementById("g_floorPriority").checked;
+        
         if (data.length === 0) {
           return alert("Bitte mindestens eine Zimmerkategorie auswählen");
         }
@@ -1704,7 +1717,7 @@ async function logBookingAction({
           let msg = "Nicht genügend Zimmer verfügbar:\n\n";
 
           check.errors.forEach((e) => {
-            msg += `${e.type}: fehlen ${e.needed - e.free} (verfügbar ${e.free})\n`;
+            msg += `${e.type}: es fehlen noch ${e.needed} Zimmer\n`;
           });
 
           alert(msg);
@@ -1713,10 +1726,10 @@ async function logBookingAction({
 
         document.getElementById("bookingForm").style.display = "none";
 
-        openColorPicker(data, start, end);
+        openColorPicker(data, start, end, floorPriority);
       }
 
-      function openColorPicker(data, start, end) {
+      function openColorPicker(data, start, end, floorPriority) {
       colorPickerOpen = true;
 
 
@@ -1798,7 +1811,7 @@ box.onclick = (e) => {
             document.getElementById("colorPicker").remove();
             document.getElementById("pickerOverlay")?.remove();
 
-            startPlacementMode(data, start, end, color);
+            startPlacementMode(data, start, end, color, floorPriority);
           };
         });
 
@@ -1813,7 +1826,7 @@ box.onclick = (e) => {
 
       let groupPlacement = null;
 
-      async function startPlacementMode(data, start, end, color) {
+      async function startPlacementMode(data, start, end, color, floorPriority) {
         window.balconyWarningShown = false;
         saveHistory();
 
@@ -1836,101 +1849,131 @@ box.onclick = (e) => {
           start,
           end,
           groupId: group.id,
-          placed: []
+          placed: [],
+          floorPriority: floorPriority
         };
 
         render();
         updatePlacementBox();
       }
 
-      function calculateAvailability(start, end, data) {
-        let freeRooms = [];
+function getFloorPriorityGroups() {
+  return [
+    // 1️⃣ EG
+    ["101","102","103","104","52","53","54","55","56","57"],
 
-        for (let i = 0; i < rooms.length; i++) {
-          if (!overlapDates(i, start, end, -1)) {
-            freeRooms.push(rooms[i]);
+    // 2️⃣ Mitte
+    ["201","202","203","204","205","206","207","208","209","210","212","214","216","218","219",
+     "50","51","58","59","60","61","62","63","64"],
+
+    // 3️⃣ oben
+    ["301","302","303","304","305","306","307","308","309","310","311","312","314","315","316","317","318","319",
+     "65","66","67","68","69","70"]
+  ];
+}
+      
+function calculateAvailability(start, end, data) {
+
+  let tempData = JSON.parse(JSON.stringify(data));
+  let tempOccupied = new Set();
+
+  let order = ["4er","3er","DZ B","DZ","EZ B","EZ"];
+  let groups = getFloorPriorityGroups();
+
+  let floorPriority = document.getElementById("g_floorPriority").checked;
+
+  let somethingPlaced = true;
+
+  if (floorPriority) {
+
+    for (let group of groups) {
+
+      let somethingPlacedInGroup = true;
+
+      while (somethingPlacedInGroup) {
+
+        somethingPlacedInGroup = false;
+
+        for (let type of order) {
+
+          let item = tempData.find(d => d.type === type && d.count > 0);
+          if (!item) continue;
+
+          for (let num of group) {
+
+            let row = rooms.findIndex(r => r.startsWith(num + " "));
+            if (row === -1) continue;
+
+            if (tempOccupied.has(row)) continue;
+            if (overlapDates(row, start, end, -1)) continue;
+
+            let roomName = rooms[row];
+
+            if (!canUseRoomSimple(roomName, type)) continue;
+
+            // ✅ Zählen wie echtes Auto
+            item.count--;
+            tempOccupied.add(row);
+
+            somethingPlaced = true;
+            somethingPlacedInGroup = true;
+
+            break;
           }
+
+          if (somethingPlacedInGroup) break;
         }
-
-        let count = {
-          "4er": freeRooms.filter((r) => {
-            let type = r.split(" - ")[1] || "";
-            return type.includes("4");
-          }).length,
-
-          "3er": freeRooms.filter((r) => {
-            let type = r.split(" - ")[1] || "";
-            return type.includes("3") || type.includes("4");
-          }).length,
-
-          DZ: freeRooms.filter((r) => {
-            let type = r.split(" - ")[1] || "";
-            return type.includes("DZ");
-          }).length,
-
-          EZ: freeRooms.length
-        };
-
-        let need = {
-          "4er": data.find((d) => d.type === "4er")?.count || 0,
-          "3er": data.find((d) => d.type === "3er")?.count || 0,
-          DZ: data.find((d) => d.type === "DZ")?.count || 0,
-          EZ: data.find((d) => d.type === "EZ")?.count || 0
-        };
-
-        let errors = [];
-
-        let used4er = Math.min(count["4er"], need["4er"]);
-
-        if (count["4er"] < need["4er"]) {
-          errors.push({
-            type: "4er",
-            free: count["4er"],
-            needed: need["4er"]
-          });
-        }
-
-        let available3er = count["3er"] - used4er;
-        let used3er = Math.min(available3er, need["3er"]);
-
-        if (available3er < need["3er"]) {
-          errors.push({
-            type: "3er",
-            free: available3er,
-            needed: need["3er"]
-          });
-        }
-
-        let availableDZ = count["DZ"] - used3er - used4er;
-        let usedDZ = Math.min(availableDZ, need["DZ"]);
-
-        if (availableDZ < need["DZ"]) {
-          errors.push({
-            type: "DZ",
-            free: availableDZ,
-            needed: need["DZ"]
-          });
-        }
-
-        let availableEZ = count["EZ"] - usedDZ - used3er - used4er;
-
-        if (availableEZ < need["EZ"]) {
-          errors.push({
-            type: "EZ",
-            free: availableEZ,
-            needed: need["EZ"]
-          });
-        }
-
-        if (errors.length > 0) {
-          return {
-            ok: false,
-            errors: errors
-          };
-        }
-
-        return { ok: true };
       }
+    }
+
+  } else {
+
+    while (somethingPlaced) {
+
+      somethingPlaced = false;
+
+      for (let type of order) {
+
+        let item = tempData.find(d => d.type === type && d.count > 0);
+        if (!item) continue;
+
+        for (let row = 0; row < rooms.length; row++) {
+
+          if (tempOccupied.has(row)) continue;
+          if (overlapDates(row, start, end, -1)) continue;
+
+          let roomName = rooms[row];
+
+          if (!canUseRoom(roomName, start, end, type)) continue;
+
+          item.count--;
+          tempOccupied.add(row);
+
+          somethingPlaced = true;
+
+          break;
+        }
+      }
+    }
+  }
+
+  // ✅ Prüfen ob alles platziert wurde
+  let errors = tempData
+    .filter(d => d.count > 0)
+    .map(d => ({
+      type: d.type,
+      needed: d.count
+    }));
+
+  if (errors.length > 0) {
+    return {
+      ok: false,
+      errors: errors
+    };
+  }
+
+  return { ok: true };
+}
 
       function canUseRoomForCheck(roomName, type) {
         let t = roomName.split(" - ")[1] || "";
@@ -2310,16 +2353,47 @@ for (let d = 0; d < 7; d++) {
 
       let roomName = rooms[row];
 
-      let possible = groupPlacement.data.some((item) => {
-        if (item.count <= 0) return false;
+let possible = false;
 
-        return canUseRoom(
-          roomName,
-          groupPlacement.start,
-          groupPlacement.end,
-          item.type
-        );
-      });
+// ✅ wenn Auto läuft → NUR aktueller Typ zählt
+if (groupPlacement.currentType) {
+
+  let type = groupPlacement.currentType;
+
+  if (groupPlacement.floorPriority) {
+    possible = canUseRoomSimple(roomName, type);
+  } else {
+    possible = canUseRoom(
+      roomName,
+      groupPlacement.start,
+      groupPlacement.end,
+      type
+    );
+  }
+
+} else {
+
+  // ✅ manuell (wie bisher)
+  possible = groupPlacement.data.some((item) => {
+    if (item.count <= 0) return false;
+
+  
+if (groupPlacement.floorPriority) {
+  return canUseRoomSimple(
+    roomName,
+    item.type
+  );
+} else {
+  return canUseRoom(
+    roomName,
+    groupPlacement.start,
+    groupPlacement.end,
+    item.type
+  );
+}
+
+  });
+}
 
       if (!possible) {
         isBlocked = true;
@@ -2770,7 +2844,7 @@ function updateStickyPositions() {
         return roomName.split(" - ")[1];
       }
 
-      async function assignRoom(row, options = {}) {
+      async function assignRoom(row, forcedType = null, options = {}) {
         if (!groupPlacement) return false;
 const { data } = await supa.auth.getUser();
 const user = data.user;
@@ -2786,13 +2860,52 @@ if (!user) return false;
 
         let roomName = rooms[row];
 
-        let item = groupPlacement.data
-          .filter((d) => d.count > 0)
-          .filter((d) => canUseRoom(roomName, groupPlacement.start, groupPlacement.end, d.type))
-          .sort((a, b) => {
-            let order = ["4er", "3er", "DZ B", "DZ", "EZ B", "EZ"];
-            return order.indexOf(a.type) - order.indexOf(b.type);
-          })[0];
+       let item;
+
+if (forcedType) {
+  item = groupPlacement.data.find(d => d.type === forcedType && d.count > 0);
+
+  if (!item) return false;
+
+ 
+let canUse = groupPlacement.floorPriority
+  ? canUseRoomSimple(roomName, forcedType)
+  : 
+canUseRoom(
+    roomName,
+    groupPlacement.start,
+    groupPlacement.end,
+    forcedType
+  );
+
+
+if (!canUse) return false;
+
+
+} else {
+  item = groupPlacement.data
+    .filter((d) => d.count > 0)
+    .filter((d) =>
+{
+
+  if (groupPlacement.floorPriority) {
+    return canUseRoomSimple(roomName, d.type);
+  } else {
+    return canUseRoom(
+      roomName,
+      groupPlacement.start,
+      groupPlacement.end,
+      d.type
+    );
+  }
+
+})
+
+    .sort((a, b) => {
+      let order = ["4er", "3er", "DZ B", "DZ", "EZ B", "EZ"];
+      return order.indexOf(a.type) - order.indexOf(b.type);
+    })[0];
+}
 
         if (!item) return false;
 
@@ -2821,7 +2934,8 @@ if (!user) return false;
         if (dry) {
           return temp;
         }
-
+        
+        item.count--;
         bookings.push(temp);
 
         return temp;
@@ -2997,7 +3111,7 @@ if (e?.target?.classList.contains("blocked")) return;
   let opt = document.createElement("option");
 
   opt.value = g.id;
-  opt.textContent = g.name;
+  opt.textContent = trimGroupName(g.name);
   opt.dataset.color = g.color;
 
   // ✅ FARBE setzen
@@ -3379,12 +3493,12 @@ if (Object.keys(changes).length > 0) {
         editIndex = null;
       }
 
-      function renderGroupBadge(group) {
-        if (!group) return "-";
+     function renderGroupBadge(group) {
+  if (!group) return "-";
 
-       let light = isLightColor(group.color);
+  let light = isLightColor(group.color);
 
-        return `
+  return `
     <span style="
       background:${group.color};
       color:${light ? "black" : "white"};
@@ -3392,10 +3506,10 @@ if (Object.keys(changes).length > 0) {
       border-radius:6px;
       font-size:12px;
     ">
-      ${group.name}
+      ${trimGroupName(group.name)}
     </span>
   `;
-      }
+}
 
       async function openInfo(index) {
         let b = bookings[index];
@@ -3448,6 +3562,7 @@ if (isAdmin()) {
   html += `
     <br><br>
     <button onclick="toggleBookingLogs(${b.id})">Verlauf</button>
+    <button onclick="printBooking(${index})">🖨️ Drucken</button>
   `;
 }
 
@@ -4735,7 +4850,7 @@ let createdAt = group.created_at
     })
   : "-";
 
-        title.innerText = group.name;
+        title.innerText = trimGroupName(group.name);
         let stats = calculateGroupStats(groupId, "bookings");
 
 
@@ -5001,7 +5116,6 @@ supa
     schema: "public",
     table: "groups"
   }, (payload) => {
-    console.log("Group Update", payload);
 
     loadGroups().then(() => render());
   })
@@ -5200,11 +5314,8 @@ if (currentRole !== "staff" || isMobile) return;
   const now = Date.now();
 
   if (now - last < INTERVAL) {
-    console.log("⏭ Backup übersprungen (zentral)");
     return;
   }
-
-  console.log("💾 Backup wird erstellt");
 
   await createBackup();
 
@@ -5224,6 +5335,7 @@ function resetGroupForm() {
   // Kategorien zurücksetzen
   document.querySelectorAll(".g_count").forEach(el => el.value = "");
   document.querySelectorAll(".g_price").forEach(el => el.value = "");
+  document.getElementById("g_floorPriority").checked = false;
 }
       
 let backupStarted = false;
@@ -5242,17 +5354,14 @@ async function tryStartBackup() {
 
   // ✅ Rolle prüfen
   if (currentRole !== "staff") {
-    console.log("⛔ kein Backup: Rolle ist nicht staff");
     return;
   }
 
   // ✅ nur Desktop
   if (isMobile) {
-    console.log("⛔ kein Backup: mobiles Gerät");
     return;
   }
 
-  console.log("✅ Backup-System gestartet");
 
   backupStarted = true;
 
@@ -5491,6 +5600,13 @@ document.addEventListener("keydown", async (e) => {
       return;
     }
 
+    
+const groupBox = document.getElementById("groupInfoBox");
+if (groupBox && groupBox.style.display === "block") {
+  closeGroupInfo();
+  return;
+}
+
     // Log
     const log = document.getElementById("logOverview");
     if (log && log.style.display === "block") {
@@ -5542,25 +5658,28 @@ document.addEventListener("keydown", async (e) => {
         return null;
       }
 
-      function canUseRoomSim(roomName, start, end, type, tempOccupied, row) {
-        if (type === "DZ") {
-          let level = getCurrentDZLevelSim(start, end, tempOccupied);
+function canUseRoomSim(roomName, start, end, type, tempOccupied, row) {
 
-          if (!level) return false;
+  // ✅ FloorPriority → einfache Logik verwenden
+  if (groupPlacement.floorPriority) {
+    return canUseRoomSimple(roomName, type);
+  }
 
-          return level(roomName);
-        }
+  // ✅ alte Logik beibehalten
+  if (type === "DZ") {
+    let level = getCurrentDZLevelSim(start, end, tempOccupied);
+    if (!level) return false;
+    return level(roomName);
+  }
 
-        if (type === "EZ") {
-          let level = getCurrentEZLevel(start, end);
+  if (type === "EZ") {
+    let level = getCurrentEZLevel(start, end);
+    if (!level) return false;
+    return level(roomName);
+  }
 
-          if (!level) return false;
-
-          return level(roomName);
-        }
-
-        return canUseRoom(roomName, start, end, type);
-      }
+  return canUseRoom(roomName, start, end, type);
+}
 
       function getOrderedRooms(start, end, type) {
         let list = [];
@@ -5883,6 +6002,7 @@ window.addEventListener("resize", updateStickyPositions);
       let resizeTimeout;
 
       async function autoPlaceGroup() {
+        let currentType = null;
          const placement = groupPlacement;
         if (!placement || !placement.data) return;
        
@@ -5894,37 +6014,107 @@ window.addEventListener("resize", updateStickyPositions);
 
         let somethingPlaced = true;
 
-        while (somethingPlaced && placement) {
-          somethingPlaced = false;
+    
+if (placement.floorPriority) {
 
-          for (let type of order) {
-            let item = placement.data.find((d) => d.type === type);
+  let groups = getFloorPriorityGroups();
 
-            if (!item || item.count <= 0) continue;
+  for (let group of groups) {
 
-            for (let row = 0; row < rooms.length; row++) {
-              if (tempOccupied.has(row)) continue;
+    let somethingPlacedInGroup = true;
 
-              if (overlapDates(row, start, end, -1)) continue;
+    while (somethingPlacedInGroup) {
 
-              let roomName = rooms[row];
+      somethingPlacedInGroup = false;
 
-              if (!canUseRoom(roomName, start, end, type)) continue;
+      for (let type of order) {
+        currentType = type;
+        groupPlacement.currentType = type;
+        let item = placement.data.find(d => d.type === type && d.count > 0);
+        if (!item) continue;
 
-              let booking = await assignRoom(row, {
-                dryRun: false // ✅ WICHTIG!
-              });
+        for (let num of group) {
 
-              if (booking) {
-                tempOccupied.add(row);
-                item.count--;
-                somethingPlaced = true;
-                break;
-              }
-            }
+          let row = rooms.findIndex(r => r.startsWith(num + " "));
+          if (row === -1) continue;
+
+          if (tempOccupied.has(row)) continue;
+          if (overlapDates(row, start, end, -1)) continue;
+
+          let roomName = rooms[row];
+
+         
+let canUse = placement.floorPriority
+  ? canUseRoomSimple(roomName, type)
+  : canUseRoom(roomName, start, end, type);
+
+if (!canUse) continue;
+
+
+          
+let booking = await assignRoom(row, type);
+
+
+          if (booking) {
+            tempOccupied.add(row);
+            
+
+            somethingPlaced = true;
+            somethingPlacedInGroup = true;
+
+            break;
           }
         }
 
+        if (somethingPlacedInGroup) break;
+      }
+    }
+
+    // ✅ wenn alles fertig → raus
+    if (placement.data.every(d => d.count === 0)) break;
+  }
+
+} else {
+
+  // 👉 DEINE ALTE LOGIK UNVERÄNDERT
+  while (somethingPlaced && placement) {
+    somethingPlaced = false;
+
+    for (let type of order) {
+      let item = placement.data.find(d => d.type === type);
+
+      if (!item || item.count <= 0) continue;
+
+      for (let row = 0; row < rooms.length; row++) {
+
+        if (tempOccupied.has(row)) continue;
+        if (overlapDates(row, start, end, -1)) continue;
+
+        let roomName = rooms[row];
+
+        
+let canUse = placement.floorPriority
+  ? canUseRoomSimple(roomName, type)
+  : canUseRoom(roomName, start, end, type);
+
+if (!canUse) continue;
+
+
+        
+let booking = await assignRoom(row, type);
+
+
+        if (booking) {
+          tempOccupied.add(row);
+
+
+          somethingPlaced = true;
+          break;
+        }
+      }
+    }
+  }
+}
         render();
         updatePlacementBox();
 
@@ -5935,6 +6125,23 @@ window.addEventListener("resize", updateStickyPositions);
           finishPlacement();
         }
       }
+
+    
+      function canUseRoomSimple(roomName, type) {
+
+  let t = roomName.split(" - ")[1] || "";
+
+  if (type === "EZ") return true;
+  if (type === "EZ B") return t.includes("B");
+
+  if (type === "DZ") return t.includes("DZ");
+  if (type === "DZ B") return t.includes("DZ B");
+
+  if (type === "3er") return t.includes("3") || t.includes("4");
+  if (type === "4er") return t.includes("4");
+
+  return false;
+}
 
       
 async function enrichWithUser(dataArray) {
@@ -6047,7 +6254,61 @@ async function saveBatchBookings(list) {
 
   isLocalInsert = false;
 }
-      
+   function printBooking(index) {
+
+  let b = bookings[index];
+  let group = groupsMap[b.group_id];
+
+  let start = new Date(b.start).toLocaleDateString("de-DE");
+  let end = new Date(b.end).toLocaleDateString("de-DE");
+
+  let html = `
+    <html>
+      <head>
+        <title>Buchung drucken</title>
+        <style>
+          body {
+            font-family: Arial;
+            padding: 20px;
+          }
+          h2 {
+            margin-bottom: 20px;
+          }
+          .line {
+            margin-bottom: 10px;
+          }
+        </style>
+      </head>
+      <body>
+
+        <h2>Buchungsdetails</h2>
+
+        <div class="line"><b>Zimmerkategorie:</b> ${b.guests || "-"}</div>
+        <div class="line"><b>Name:</b> ${b.name || "-"}</div>
+        <div class="line"><b>Firma:</b> ${b.company || "-"}</div>
+        <div class="line"><b>Anreise:</b> ${start}</div>
+        <div class="line"><b>Abreise:</b> ${end}</div>
+        <div class="line"><b>Preis:</b> ${b.price || "-"}</div>
+        <div class="line"><b>Kommentar:</b> ${b.comment || "-"}</div>
+
+        <div class="line"><b>Gruppe:</b> ${group ? group.name : "-"}</div>
+
+
+        <script>
+          window.onload = function() {
+            window.print();
+            window.close();
+          }
+        <\/script>
+
+      </body>
+    </html>
+  `;
+
+  let win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
+}   
       function resetCalendarPosition() {
   calendar.style.transition = "none";
   calendar.style.transform = "translateX(0)";
@@ -6174,6 +6435,16 @@ calendar.addEventListener("touchend", () => {
 
       function handleGlobalClose(e) {
           
+if (
+  e.target.closest("#bookingForm") ||
+  e.target.closest("#groupForm") ||
+  e.target.closest("input") ||
+  e.target.closest("select") ||
+  e.target.closest("textarea")
+) {
+  return;
+}
+
 const overlayOpen =
   document.getElementById("bookingForm").style.display === "block" ||
   document.getElementById("bookingInfo").style.display === "block" ||
