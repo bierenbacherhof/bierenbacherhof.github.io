@@ -47,7 +47,6 @@ thead {
 }
 
             thead th {
-
       position: sticky;
         z-index: 2000;
         background: #eee;
@@ -588,6 +587,8 @@ body:not(.logged-in) {
   thead th {
     z-index:50000;
     background: #eee;
+    font-size: 32;
+    white-space: normal;    
   }
 
          
@@ -600,9 +601,9 @@ thead {
     position: sticky;
     left: 0;
 
-    width: 50px;
-    min-width: 50px;
-    max-width: 50px;
+    width: 60px;
+    min-width: 60px;
+    max-width: 60px;
 
     background: #fafafa;
     z-index: 3000;
@@ -613,7 +614,7 @@ thead {
 
   .room::after {
     content: attr(data-room-number);
-    font-size: 18px;
+    font-size: 36px;
     font-weight: bold;
     display: block;
   }
@@ -2192,6 +2193,7 @@ function isLightColor(color) {
           }
 
           await loadData();
+          tryStartBackup();
         } else {
            document.body.classList.remove("logged-in");
           document.getElementById("loginBox").style.display = "block";
@@ -5207,7 +5209,7 @@ if (groupsError) {
 }
     
       async function createBackupIfNeeded() {
-
+if (currentRole !== "staff" || isMobile) return;
   const INTERVAL = 24 * 60 * 60 * 1000; 
 
   // ✅ aktuellen Stand holen
@@ -5251,7 +5253,41 @@ function resetGroupForm() {
   document.querySelectorAll(".g_count").forEach(el => el.value = "");
   document.querySelectorAll(".g_price").forEach(el => el.value = "");
 }
+      
+let backupStarted = false;
 
+async function tryStartBackup() {
+
+  if (backupStarted) return;
+
+  if (!supa) return;
+
+  // ✅ User holen
+  const { data } = await supa.auth.getUser();
+  const user = data.user;
+
+  if (!user) return;
+
+  // ✅ Rolle prüfen
+  if (currentRole !== "staff") {
+    console.log("⛔ kein Backup: Rolle ist nicht staff");
+    return;
+  }
+
+  // ✅ nur Desktop
+  if (isMobile) {
+    console.log("⛔ kein Backup: mobiles Gerät");
+    return;
+  }
+
+  console.log("✅ Backup-System gestartet");
+
+  backupStarted = true;
+
+  await createBackupIfNeeded();
+
+  setInterval(createBackupIfNeeded, 30 * 60 * 1000);
+}
 
       async function addBookingToDB(b) {
         const user = (await supa.auth.getUser()).data.user;
@@ -5857,11 +5893,6 @@ if (!confirm("Sind Sie sicher, dass Sie sich ausloggen wollen?")) {
 
       window.onload = () => {
         render();
-        
-createBackupIfNeeded();
-
-  setInterval(createBackupIfNeeded, 30 * 60 * 1000);
-
       };
 
 window.addEventListener("load", updateStickyPositions);
