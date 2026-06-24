@@ -183,7 +183,7 @@ td.blocked {
             }
 
             .booking:hover .text {
-              transform: translateX(70px); /* Platz für Flags + Handle */
+              transform: translateX(95px); /* Platz für Flags + Handle */
             }
 
             .flags {
@@ -268,6 +268,13 @@ body.admin .admin-only {
               color: black;
             }
 
+.move-blocked {
+  opacity: 0.3 !important;
+  background: #ddd !important;
+}
+      
+      
+
             /* optional: Hover schöner */
             .flag:hover {
               transform: scale(1.1);
@@ -295,6 +302,15 @@ body.admin .admin-only {
               transform: translateY(-50%);
             }
 
+      
+.booking.checked-in {
+  opacity: 0.55;
+  filter: grayscale(20%);
+}
+
+
+
+      
             /* ✅ Hover: sichtbar */
             .booking:hover .flags,
             .booking:hover .drag-handle {
@@ -329,6 +345,16 @@ body.admin .admin-only {
             .drag-handle:active {
               cursor: grabbing;
             }
+      
+.move-handle {
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 4px;
+  font-size: 12px;
+}
 
             tr {
               position: relative;
@@ -386,13 +412,8 @@ body.admin .admin-only {
               z-index: 10;
             }
 
-            .booking-half {
-              position: absolute;
-              top: 3px;
-              bottom: 3px;
-              border-radius: 6px;
-              pointer-events: none;
-            }
+          
+            
 
             .switch-wrapper {
               display: flex;
@@ -564,6 +585,16 @@ body:not(.logged-in) {
   gap: 12px;
 }
 
+body.moving .booking:hover .flags,
+body.moving .booking:hover .drag-handle,
+body.moving .booking:hover .move-handle {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+body.moving .booking:hover .text {
+  transform: none !important;
+}
 
 
 #swipeBackground {
@@ -1176,6 +1207,8 @@ body {
        let singlePlacement = null;
       let blockNextClick = false;
       let currentGroupId = null;
+      let moving = null;
+      let currentUser = null;
       if (savedWeek) {
         current = new Date(savedWeek);
       }
@@ -1517,43 +1550,6 @@ groupSelect.onchange = (e) => {
 
       }
 
-      function hasFreePreferredRoom(start, end, type) {
-        return rooms.some((room, row) => {
-          if (!isThreeDigitRoom(room)) return false;
-
-          if (overlapDates(row, start, end, -1)) return false;
-
-          let allowed = getGuestOptions(room);
-          if (!allowed.includes(type)) return false;
-
-          if (type === "EZ") {
-            let isPref = isPreferredEZRoom(room);
-            let hasPref = hasFreePreferredEZ(start, end);
-
-            if (hasPref && !isPref) return false;
-          }
-
-          if (type === "DZ") {
-            let levels = getFreeDZLevels(start, end);
-
-            if (levels.normalFree && !isNormalDZ(room)) return false;
-            if (!levels.normalFree && levels.deluxeFree && !isDeluxeDZ(room)) return false;
-            if (!levels.normalFree && !levels.deluxeFree && levels.multiFree && !isMultiDZ(room)) return false;
-            if (!levels.normalFree && !levels.deluxeFree && !levels.multiFree && !isSmallDZ(room)) return false;
-          }
-
-          return true;
-        });
-      }
-
-      function hasFreePreferredEZ(start, end) {
-        return rooms.some((room, row) => {
-          if (!isPreferredEZRoom(room)) return false;
-
-          return !overlapDates(row, start, end, -1);
-        });
-      }
-
       
 
 function getTimestamp() {
@@ -1620,7 +1616,7 @@ async function logBookingAction({
   room = null,
   bookingAt = null // ✅ NEU
 }) {
-  const user = (await supa.auth.getUser()).data.user;
+  const user = currentUser;
   if (!user) return;
 
   try {
@@ -1877,105 +1873,62 @@ function getFloorPriorityGroups() {
      "65","66","67","68","69","70"]
   ];
 }
-      
+    
+      function getBuildingPriorityGroups() {
+  return [
+    // 1. EZ
+    ["206","207","208","209","210","304","306","307","308","309","310","314","316","318","319","52","53","56","57",
+     "58","59","62","63","67","68"],
+   
+    // 2. DZ
+    ["101","102","103","104","201","202","203","204","205","212","214","219","301","303","305","311","312","315","50","51","54","55","60","61","66","69"],
+    
+    // 3. 3er
+    ["302","317","64","70"],
+
+    // 4. Altbau 4er
+    ["216","218","65"]
+  ];
+}
 function calculateAvailability(start, end, data) {
 
-  let tempData = JSON.parse(JSON.stringify(data));
-  let tempOccupied = new Set();
+  let tempUsed = new Set();
+  let errors = [];
 
-  let order = ["4er","3er","DZ B","DZ","EZ B","EZ"];
-  let groups = getFloorPriorityGroups();
+  for (let item of data) {
+    let count = item.count;
 
-  let floorPriority = document.getElementById("g_floorPriority").checked;
+    for (let i = 0; i < count; i++) {
 
-  let somethingPlaced = true;
+      let found = false;
 
-  if (floorPriority) {
+      for (let row = 0; row < rooms.length; row++) {
 
-    for (let group of groups) {
+        if (tempUsed.has(row)) continue;
 
-      let somethingPlacedInGroup = true;
+        let roomName = rooms[row];
+        if (!roomName || roomName.trim() === "") continue;
 
-      while (somethingPlacedInGroup) {
+        if (!canUseRoomSimple(roomName, item.type)) continue;
 
-        somethingPlacedInGroup = false;
+        if (overlapDates(row, start, end, -1)) continue;
 
-        for (let type of order) {
-
-          let item = tempData.find(d => d.type === type && d.count > 0);
-          if (!item) continue;
-
-          for (let num of group) {
-
-            let row = rooms.findIndex(r => r.startsWith(num + " "));
-            if (row === -1) continue;
-
-            if (tempOccupied.has(row)) continue;
-            if (overlapDates(row, start, end, -1)) continue;
-
-            let roomName = rooms[row];
-            
-            if (!canUseRoomSimple(roomName, type)) continue;
-
-            // ✅ Zählen wie echtes Auto
-            item.count--;
-            tempOccupied.add(row);
-
-            somethingPlaced = true;
-            somethingPlacedInGroup = true;
-
-            break;
-          }
-
-          if (somethingPlacedInGroup) break;
-        }
+        tempUsed.add(row);
+        found = true;
+        break;
       }
-    }
 
-  } else {
-
-    while (somethingPlaced) {
-
-      somethingPlaced = false;
-
-      for (let type of order) {
-
-        let item = tempData.find(d => d.type === type && d.count > 0);
-        if (!item) continue;
-
-        for (let row = 0; row < rooms.length; row++) {
-
-          if (tempOccupied.has(row)) continue;
-          if (overlapDates(row, start, end, -1)) continue;
-
-          let roomName = rooms[row];
-          if (!roomName || roomName.trim() === "") continue;
-          if (!canUseRoom(roomName, start, end, type)) continue;
-
-          item.count--;
-          tempOccupied.add(row);
-
-          somethingPlaced = true;
-
-          break;
-        }
+      if (!found) {
+        errors.push({
+          type: item.type,
+          needed: 1
+        });
       }
     }
   }
 
-  // ✅ Prüfen ob alles platziert wurde
-  let errors = tempData
-    .filter(d => d.count > 0)
-    .map(d => ({
-      type: d.type,
-      needed: d.count
-    }));
-
   if (errors.length > 0) {
-    return {
-      ok: false,
-      errors: errors
-    };
+    return { ok: false, errors };
   }
 
   return { ok: true };
@@ -2089,6 +2042,73 @@ function isLightColor(color) {
 
         box.innerHTML = html;
       }
+      
+      async function autoPlaceGroup() {
+
+  const placement = groupPlacement;
+  if (!placement || !placement.data) return;
+
+  let { start, end } = placement;
+
+  // ✅ richtige Gruppen wählen
+  let rawGroups = placement.floorPriority
+    ? getFloorPriorityGroups()
+    : getBuildingPriorityGroups();
+
+  // ✅ in echte room-Indices umwandeln
+  let groups = rawGroups.map(g =>
+    g.map(num => rooms.findIndex(r => r.startsWith(num + " ")))
+     .filter(i => i !== -1)
+  );
+
+  // ✅ HAUPTLOOP
+  for (let group of groups) {
+
+    for (let row of group) {
+
+      let roomName = rooms[row];
+      if (!roomName || roomName.trim() === "") continue;
+
+      // ✅ schon belegt?
+      if (overlapDates(row, start, end, -1)) continue;
+
+      // ✅ passenden Typ suchen
+      let item = placement.data.find(d =>
+        d.count > 0 && canUseRoomSimple(roomName, d.type)
+      );
+
+      if (!item) continue;
+
+      // ✅ BUCHUNG ERSTELLEN
+      let booking = await assignRoom(row, item.type, false, true);
+      let counter = 0;
+      if (booking) {
+        bookings.push(booking);
+        counter++;
+        
+        if (counter % 3 === 0) {
+          await new Promise(r => setTimeout(r, 0));
+        }
+      }
+
+      // ✅ fertig?
+      if (placement.data.every(d => d.count === 0)) break;
+    }
+
+    if (placement.data.every(d => d.count === 0)) break;
+  }
+
+  draw();
+  updatePlacementBox();
+
+  // ✅ WENN fertig → speichern
+  let done = placement.data.every(d => d.count === 0);
+
+  if (done) {
+    await syncGroupToDB();
+    finishPlacement();
+  }
+}
 
       function normalizeDate(d) {
         let x = new Date(d);
@@ -2103,39 +2123,7 @@ function isLightColor(color) {
         return x;
       }
 
-      function getCurrentDZLevel(start, end) {
-        let ignore = shouldIgnoreFloorSeparation(start, end);
 
-        let levels = [];
-
-        if (!ignore) {
-          levels.push(
-            (r) => isThreeDigitRoom(r) && isNormalDZ(r),
-            (r) => isThreeDigitRoom(r) && isDeluxeDZ(r),
-            (r) => isThreeDigitRoom(r) && isMultiDZ(r),
-            (r) => isThreeDigitRoom(r) && isSmallDZ(r)
-          );
-        }
-
-        levels.push(
-          (r) => isNormalDZ(r),
-          (r) => isDeluxeDZ(r),
-          (r) => isMultiDZ(r),
-          (r) => isSmallDZ(r)
-        );
-
-        for (let check of levels) {
-          let found = rooms.some((room, row) => {
-            if (!check(room)) return false;
-            if (overlapDates(row, start, end, -1)) return false;
-            return true;
-          });
-
-          if (found) return check;
-        }
-
-        return null;
-      }
 
       async function loadUserRole() {
         const {
@@ -2175,6 +2163,9 @@ function isLightColor(color) {
 
       async function checkAuth() {
         document.body.style.visibility = "hidden";
+        
+const { data: { user } } = await supa.auth.getUser();
+currentUser = user;
 
         const {
           data: { session }
@@ -2337,93 +2328,36 @@ for (let d = 0; d < 7; d++) {
 
 let isBlocked = isEmptyRoom;
 
+// ✅ nur im Placement prüfen
+if (groupPlacement || singlePlacement) {
 
-  // ✅ NUR im Placement-Modus prüfen!
-  if (groupPlacement || singlePlacement) {
+  let possible = false;
 
-    // 1️⃣ Belegt?
-    let occupied = bookings.some((b) => {
-      if (b.row !== row) return false;
+  // ✅ GROUP MODE
+  if (groupPlacement) {
 
-      let s = normalizeDate(b.start);
-      let e = normalizeDate(b.end);
-
-      return cellDate >= s && cellDate < e;
-    });
-
-    if (occupied) {
-      isBlocked = true;
-    }
-
-    // 2️⃣ Gruppenmodus
-    if (groupPlacement && !occupied) {
-
-      let roomName = rooms[row];
-
-let possible = false;
-
-// ✅ wenn Auto läuft → NUR aktueller Typ zählt
-if (groupPlacement.currentType) {
-
-  let type = groupPlacement.currentType;
-
-  if (groupPlacement.floorPriority) {
-    possible = canUseRoomSimple(roomName, type);
-  } else {
-    possible = canUseRoom(
-      roomName,
-      groupPlacement.start,
-      groupPlacement.end,
-      type
+    possible = groupPlacement.data.some(d =>
+      d.count > 0 &&
+      canPlaceInRoom(row, d.type, groupPlacement.start, groupPlacement.end)
     );
   }
 
-} else {
+  // ✅ SINGLE MODE
+  if (singlePlacement) {
 
-  // ✅ manuell (wie bisher)
-  possible = groupPlacement.data.some((item) => {
-    if (item.count <= 0) return false;
-
-  
-if (groupPlacement.floorPriority) {
-  return canUseRoomSimple(
-    roomName,
-    item.type
-  );
-} else {
-  return canUseRoom(
-    roomName,
-    groupPlacement.start,
-    groupPlacement.end,
-    item.type
-  );
-}
-
-  });
-}
-
-      if (!possible) {
-        isBlocked = true;
-      }
-    }
-
-    // 3️⃣ Einzelmodus
-    if (singlePlacement && !occupied) {
-
-      let roomName = rooms[row];
-
-      let possible = canUseRoom(
-        roomName,
-        singlePlacement.start,
-        singlePlacement.end,
-        singlePlacement.guests
-      );
-
-      if (!possible) {
-        isBlocked = true;
-      }
-    }
+    possible = canPlaceInRoom(
+      row,
+      singlePlacement.guests,
+      singlePlacement.start,
+      singlePlacement.end
+    );
   }
+
+  if (!possible) {
+    isBlocked = true;
+  }
+}
+
 
   let cls = "half";
   if (isBlocked) cls += " blocked";
@@ -2446,29 +2380,7 @@ requestAnimationFrame(() => {
 }
     
 
-      function getCurrent3erLevel(start, end) {
-        let ignore = shouldIgnoreFloorSeparation(start, end);
 
-        let levels = [];
-
-        if (!ignore) {
-          levels.push((r) => isThreeDigitRoom(r) && is3erRoom(r));
-        }
-
-        levels.push((r) => is3erRoom(r));
-
-        for (let check of levels) {
-          let found = rooms.some((room, row) => {
-            if (!check(room)) return false;
-            if (overlapDates(row, start, end, -1)) return false;
-            return true;
-          });
-
-          if (found) return check;
-        }
-
-        return null;
-      }
 
       function is3erRoom(room) {
         let type = getRoomType(room);
@@ -2476,152 +2388,18 @@ requestAnimationFrame(() => {
         return type.includes("3");
       }
 
-      function shouldIgnoreFloorSeparation(start, end) {
-        let hasTwoDigitBooked = bookings.some((b) => {
-          let sNorm = normalizeDate(start);
-          let eNorm = normalizeDate(end);
 
-          let bsNorm = normalizeDate(b.start);
-          let beNorm = normalizeDate(b.end);
 
-          if (!(sNorm < beNorm && eNorm > bsNorm)) return false;
 
-          let roomName = rooms[b.row];
+function canUseRoom(roomName, start, end, type) {
 
-          return !isThreeDigitRoom(roomName);
-        });
+  if (type === "BLOCK") return true;
 
-        if (hasTwoDigitBooked) return true;
+  return canUseRoomSimple(roomName, type);
+}
 
-        if (groupPlacement) {
-          let requestedDZ = groupPlacement.data
-            .filter((d) => d.type.includes("DZ"))
-            .reduce((sum, d) => sum + d.count, 0);
 
-          let free3DigitDZ = rooms.filter((room, row) => {
-            if (!isThreeDigitRoom(room)) return false;
 
-            if (overlapDates(row, start, end, -1)) return false;
-
-            return isAnyDZ(room);
-          }).length;
-
-          if (requestedDZ > free3DigitDZ) {
-            return true;
-          }
-        }
-
-        return false;
-      }
-
-      function canUseRoom(roomName, start, end, requestedType) {
-        if (requestedType === "BLOCK") {
-          return true;
-        }
-
-        let allowedTypes = getGuestOptions(roomName);
-
-        if (requestedType === "EZ") {
-          let levelCheck = getCurrentEZLevel(start, end);
-
-          if (!levelCheck) return false;
-
-          return levelCheck(roomName);
-        }
-
-        if (requestedType === "DZ B") {
-          let levelCheck = getCurrentDZBalconyLevel(start, end);
-
-          if (!levelCheck) {
-            return getCurrentDZLevel(start, end)?.(roomName);
-          }
-
-          return levelCheck(roomName);
-        }
-
-        if (!allowedTypes.includes(requestedType)) {
-          return false;
-        }
-
-        if (requestedType === "DZ") {
-          let levelCheck = getCurrentDZLevel(start, end);
-
-          if (!levelCheck) return false;
-
-          return levelCheck(roomName);
-        }
-
-        if (requestedType === "3er") {
-          let levelCheck = getCurrent3erLevel(start, end);
-
-          if (!levelCheck) return false;
-
-          return levelCheck(roomName);
-        }
-
-        if (requestedType === "4er") {
-          let levelCheck = getCurrent4erLevel(start, end);
-
-          if (!levelCheck) return false;
-
-          return levelCheck(roomName);
-        }
-        return true;
-      }
-
-      function getCurrentDZBalconyLevel(start, end) {
-        let ignore = shouldIgnoreFloorSeparation(start, end);
-
-        let levels = [];
-
-        if (!ignore) {
-          levels.push(
-            (r) => isThreeDigitRoom(r) && isDeluxeDZ(r),
-            (r) => isThreeDigitRoom(r) && isMultiDZ(r) && getRoomType(r).includes("B")
-          );
-        }
-
-        levels.push(
-          (r) => isDeluxeDZ(r),
-          (r) => isMultiDZ(r) && getRoomType(r).includes("B")
-        );
-
-        for (let check of levels) {
-          let found = rooms.some((room, row) => {
-            if (!check(room)) return false;
-            if (overlapDates(row, start, end, -1)) return false;
-            return true;
-          });
-
-          if (found) return check;
-        }
-
-        return null;
-      }
-
-      function getCurrent4erLevel(start, end) {
-        let ignore = shouldIgnoreFloorSeparation(start, end);
-
-        let levels = [];
-
-        if (!ignore) {
-          levels.push((r) => isThreeDigitRoom(r) && isFourRoom(r));
-        }
-
-        levels.push((r) => isFourRoom(r));
-
-        for (let check of levels) {
-          let found = rooms.some((room, row) => {
-            if (!check(room)) return false;
-            if (overlapDates(row, start, end, -1)) return false;
-            return true;
-          });
-
-          if (found) return check;
-        }
-
-        return null;
-      }
 
       function isFourRoom(room) {
         let type = getRoomType(room);
@@ -2629,45 +2407,7 @@ requestAnimationFrame(() => {
         return type.includes("4");
       }
 
-      function getCurrentEZLevel(start, end) {
-        let ignore = shouldIgnoreFloorSeparation(start, end);
 
-        let levels = [];
-
-        if (!ignore) {
-          levels.push(
-            (r) => isThreeDigitRoom(r) && isNormalEZ(r),
-            (r) => isThreeDigitRoom(r) && isSmallDZ(r),
-            (r) => isThreeDigitRoom(r) && isDeluxeEZ(r),
-            (r) => isThreeDigitRoom(r) && isSmallEZ(r)
-          );
-        }
-
-        levels.push(
-          (r) => isNormalEZ(r),
-          (r) => isSmallDZ(r),
-          (r) => isDeluxeEZ(r),
-          (r) => isSmallEZ(r)
-        );
-
-        for (let check of levels) {
-          let found = rooms.some((room, row) => {
-            if (!check(room)) return false;
-            if (overlapDates(row, start, end, -1)) return false;
-            return true;
-          });
-
-          if (found) return check;
-        }
-
-        let dzCheck = getCurrentDZLevel(start, end);
-
-        if (dzCheck) {
-          return (room) => dzCheck(room);
-        }
-
-        return null;
-      }
 
 function updateStickyPositions() {
   const header = document.getElementById("stickyHeader");
@@ -2766,29 +2506,60 @@ function updateStickyPositions() {
           }
         }
 
-        for (let [id, cur] of currentMap) {
-          if (!snapshotMap.has(id)) {
-            if (cur.user_id && cur.user_id !== userId) {
-              skippedForeign.push(cur);
-              continue;
-            }
+     
+let groupDeletes = new Set();
 
-            toDelete.push(id);
-          }
-        }
+for (let [id, cur] of currentMap) {
 
-        if (skippedForeign.length) {
-          alert(
-            `${skippedForeign.length} Änderungen wurden nicht zurückgesetzt,\n` +
-              `weil sie von anderen Benutzern stammen.`
-          );
-        }
+  if (!snapshotMap.has(id)) {
+
+    // ✅ fremde Buchung → skip
+    if (cur.user_id && cur.user_id !== userId) {
+      skippedForeign.push(cur);
+      continue;
+    }
+
+    // ✅ wenn Teil einer Gruppe → merken
+    if (cur.group_id) {
+      groupDeletes.add(cur.group_id);
+    } else {
+      toDelete.push(id);
+    }
+  }
+}
+
+// ✅ komplette Gruppen hinzufügen
+for (let groupId of groupDeletes) {
+
+  for (let [id, cur] of currentMap) {
+
+    if (cur.group_id === groupId) {
+
+      // ✅ wieder foreign prüfen!
+      if (cur.user_id && cur.user_id !== userId) {
+        skippedForeign.push(cur);
+        continue;
+      }
+
+      toDelete.push(id);
+    }
+  }
+}
 
         isUndoing = true;
 
-        if (toDelete.length) {
-          await supa.from("bookings").delete().in("id", toDelete);
-        }
+      
+if (toDelete.length) {
+  await supa.from("bookings").delete().in("id", toDelete);
+
+  // ✅ NEU: auch lokal richtig löschen
+  if (groupDeletes.size > 0) {
+    bookings = bookings.filter(b => !groupDeletes.has(b.group_id));
+  } else {
+    bookings = bookings.filter(b => !toDelete.includes(String(b.id)));
+  }
+}
+
 
         for (let u of toUpdate) {
           await supa.from("bookings").update(u.data).eq("id", u.id);
@@ -2827,6 +2598,21 @@ function updateStickyPositions() {
   render();
 }
 
+      function canPlaceInRoom(row, type, start, end, ignoreIndex = -1) {
+
+  let roomName = rooms[row];
+
+  if (!roomName || roomName.trim() === "") return false;
+
+  // ✅ Typ passt?
+  if (!canUseRoomSimple(roomName, type)) return false;
+
+  // ✅ Zeitraum frei?
+  if (overlapDates(row, start, end, ignoreIndex)) return false;
+
+  return true;
+}
+
       function overlapDates(row, start, end, ignoreIndex) {
         const s = normalizeDate(start);
         const e = normalizeDate(end);
@@ -2851,19 +2637,20 @@ function updateStickyPositions() {
         return roomName.split(" - ")[1];
       }
 
-      async function assignRoom(row, forcedType = null, options = {}) {
+      function assignRoom(row, forcedType = null,dry = false, batch = false, options = {}) {
         if (!groupPlacement) return false;
-const { data } = await supa.auth.getUser();
-const user = data.user;
-
+const user = currentUser;
 if (!user) return false;
 
-        let dry = options.dryRun === true;
-        let tempOccupied = options.tempOccupied || new Set();
+      
+       let tempOccupied = options?.tempOccupied || new Set();
 
-        if (overlapDatesSim(row, groupPlacement.start, groupPlacement.end, -1, tempOccupied)) {
-          return false;
-        }
+        if (
+  overlapDates(row, groupPlacement.start, groupPlacement.end, -1) ||
+  tempOccupied.has(row)
+) {
+  return false;
+}
 
         let roomName = rooms[row];
         if (!roomName || roomName.trim() === "") return false;
@@ -2875,15 +2662,15 @@ if (forcedType) {
   if (!item) return false;
 
  
-let canUse = groupPlacement.floorPriority
-  ? canUseRoomSimple(roomName, forcedType)
-  : 
-canUseRoom(
-    roomName,
-    groupPlacement.start,
-    groupPlacement.end,
-    forcedType
-  );
+
+let canUse;
+
+if (forcedType === "EZ") {
+  canUse = getGuestOptions(roomName).includes("EZ");
+} else {
+let canUse = canUseRoomSimple(roomName, forcedType);
+}
+
 
 
 if (!canUse) return false;
@@ -2892,21 +2679,16 @@ if (!canUse) return false;
 } else {
   item = groupPlacement.data
     .filter((d) => d.count > 0)
-    .filter((d) =>
-{
+    
+.filter((d) => {
 
-  if (groupPlacement.floorPriority) {
-    return canUseRoomSimple(roomName, d.type);
-  } else {
-    return canUseRoom(
-      roomName,
-      groupPlacement.start,
-      groupPlacement.end,
-      d.type
-    );
+  if (d.type === "EZ") {
+    return getGuestOptions(roomName).includes("EZ");
   }
 
+ return canUseRoomSimple(roomName, d.type);
 })
+
 
     .sort((a, b) => {
       let order = ["4er", "3er", "DZ B", "DZ", "EZ B", "EZ"];
@@ -2943,7 +2725,13 @@ if (!canUse) return false;
         }
         
         item.count--;
-        bookings.push(temp);
+        
+if (!batch) {
+  bookings.push(temp); // normaler Modus (manuell)
+}
+
+return temp;
+
 
         return temp;
       }
@@ -2977,7 +2765,7 @@ if (!canUse) return false;
         let roomName = rooms[row];
         let allowed = getGuestOptions(roomName);
 
-        if (!canUseRoom(roomName, start, end, singlePlacement.guests)) {
+        if (!canUseRoomSimple(roomName, singlePlacement.guests)) {
           alert("Zimmer passt nicht zur aktuellen Regel");
           return;
         }
@@ -3015,8 +2803,77 @@ if (!canUse) return false;
         render();
       }
 
+      
+function resetMoveHighlight() {
+
+  document.querySelectorAll(".move-blocked").forEach(el => {
+    el.classList.remove("move-blocked");
+  });
+
+}
+
+      function highlightMoveOptions(b) {
+
+  let rows = document.querySelectorAll("tr");
+
+  rows.forEach((tr, rIndex) => {
+
+    if (rIndex === 0) return;
+
+    let rowIndex = rIndex - 1;
+
+    let possible = canPlaceInRoom(
+      rowIndex,
+      b.guests,
+      new Date(b.start),
+      new Date(b.end),
+      moving.index
+    );
+
+    // ✅ Alle Zellen der Zeile
+    let tds = tr.querySelectorAll("td");
+
+    tds.forEach(td => {
+      if (!possible) {
+        td.classList.add("move-blocked");
+      } else {
+        td.classList.remove("move-blocked");
+      }
+    });
+
+  });
+}
+      
       async function add(row, day, e) {
         
+ // ✅ blockierte Räume nicht klickbar
+  let weekStart = normalizeDate(startOfWeek(current));
+  let date = new Date(weekStart);
+  date.setDate(weekStart.getDate() + day);
+
+  if (groupPlacement || singlePlacement) {
+
+    let possible = false;
+
+    if (groupPlacement) {
+      possible = groupPlacement.data.some(x =>
+        x.count > 0 &&
+        canPlaceInRoom(row, x.type, groupPlacement.start, groupPlacement.end)
+      );
+    }
+
+    if (singlePlacement) {
+      possible = canPlaceInRoom(
+        row,
+        singlePlacement.guests,
+        singlePlacement.start,
+        singlePlacement.end
+      );
+    }
+
+    if (!possible) return;
+  }
+
 if (!rooms[row] || rooms[row].trim() === "") return;
 
 
@@ -3042,10 +2899,29 @@ if (e?.target?.classList.contains("blocked")) return;
         if (justDragged) {
           return;
         }
-        if (groupPlacement) {
-          assignRoom(row);
-          return;
-        }
+        
+if (groupPlacement) {
+
+  let result = assignRoom(row);
+
+  if (result) {
+ 
+    updatePlacementBox();  // ✅ Zähler geht runter
+    draw();
+    
+ // ✅ NEU: Fertig-Check
+    let done = groupPlacement.data.every(d => d.count === 0);
+
+    if (done) {
+      await syncGroupToDB();
+      finishPlacement();
+    }
+
+  }
+
+  return;
+}
+
         document.getElementById("toggleGroup").checked = false;
         document.getElementById("singleForm").style.display = "block";
         document.getElementById("groupForm").style.display = "none";
@@ -3055,7 +2931,7 @@ if (e?.target?.classList.contains("blocked")) return;
         document.getElementById("g_end").value = "";
         document.getElementById("groupCategories").innerHTML = "";
 
-        let weekStart = normalizeDate(startOfWeek(current));
+    
         let clickedDate = new Date(weekStart);
         clickedDate.setDate(weekStart.getDate() + day);
 
@@ -3244,7 +3120,7 @@ let oldGuests = b.guests;
 let oldBreakfast = b.breakfast;
 
 // ✅ USER holen (NEU!)
-const user = (await supa.auth.getUser()).data.user;
+const user = currentUser;
 
 // ✅ UI sofort updaten
 b.start = start.toISOString();
@@ -3337,7 +3213,7 @@ if (oldBreakfast !== b.breakfast) {
 
 // ✅ EIN LOG statt viele
 if (Object.keys(changes).length > 0) {
-  await logBookingAction({
+  logBookingAction({
     bookingId: b.id,
     action: "update",
     field: "multi_update",
@@ -3379,27 +3255,6 @@ if (Object.keys(changes).length > 0) {
         render();
       }
 
-      function getFreeDZLevels(start, end, onlyTwoDigit = false) {
-        let normalFree = false;
-        let deluxeFree = false;
-        let multiFree = false;
-
-        rooms.forEach((room, row) => {
-          if (overlapDates(row, start, end, -1)) return;
-
-          if (onlyTwoDigit && isThreeDigitRoom(room)) return;
-
-          if (isNormalDZ(room)) normalFree = true;
-          else if (isDeluxeDZ(room)) deluxeFree = true;
-          else if (isMultiDZ(room)) multiFree = true;
-        });
-
-        return {
-          normalFree,
-          deluxeFree,
-          multiFree
-        };
-      }
 
       function isThreeDigitRoom(room) {
         let number = room.split(" - ")[0];
@@ -3498,6 +3353,7 @@ if (Object.keys(changes).length > 0) {
         setTimeout(() => {
           form.style.display = "none";
           form.style.opacity = "1";
+          resetGroupForm();
         }, 100);
 
         editIndex = null;
@@ -3588,7 +3444,7 @@ if (isAdmin()) {
 
       function draw() {
         document.querySelectorAll(".booking").forEach((e) => e.remove());
-        document.querySelectorAll(".booking-half").forEach((e) => e.remove());
+       
 
         let weekStart = normalizeDate(startOfWeek(current));
 
@@ -3619,6 +3475,10 @@ if (isAdmin()) {
 
           let d = document.createElement("div");
           d.className = "booking";
+          
+if (b.checkin) {
+  d.classList.add("checked-in");
+}
 
           if (b.guests === "BLOCK") {
             d.classList.add("block");
@@ -3690,30 +3550,6 @@ if (isAdmin()) {
           d.style.left = left + GAP / 2 + "px";
           d.style.width = right - left - GAP + "px";
 
-          if (!endsAfterWeek) {
-            let co = Math.floor((bEnd - weekStart) / (1000 * 60 * 60 * 24));
-
-            let showHalf = (co >= 0 && co < 7) || co === 7;
-
-            if (showHalf) {
-              let rowEl = document.querySelectorAll("tr")[b.row + 1];
-
-              let targetDay = co === 7 ? 6 : co;
-
-              let coCell = rowEl.children[targetDay + 1];
-
-              let halfDiv = document.createElement("div");
-              halfDiv.className = "booking-half";
-
-              halfDiv.style.left = "0%";
-              halfDiv.style.width = "50%";
-              halfDiv.style.background = b.color;
-              halfDiv.style.opacity = "0.5";
-
-              coCell.appendChild(halfDiv);
-            }
-          }
-
           let group = groupsMap[b.group_id];
 
           let color = group ? group.color : b.color;
@@ -3732,7 +3568,7 @@ if (isAdmin()) {
 
           let paid = document.createElement("div");
           paid.className = "flag ";
-          paid.innerHTML = "✔";
+          paid.innerHTML = "●";
 
           if (!b.paid) paid.classList.add("off");
 
@@ -3750,7 +3586,7 @@ if (isAdmin()) {
   b.paid = newVal;
   render();
 
-  const user = (await supa.auth.getUser()).data.user;
+const user = currentUser;
 
   const { error } = await supa
     .from("bookings")
@@ -3771,7 +3607,7 @@ if (isAdmin()) {
   }
 
   // ✅ NUR hier loggen!
-  await logBookingAction({
+  logBookingAction({
     bookingId: b.id,
     action: "update",
     field: "paid",
@@ -3786,7 +3622,7 @@ if (isAdmin()) {
           // ✅ CHECK-IN (●)
           let check = document.createElement("div");
           check.className = "flag ";
-          check.innerHTML = "●";
+          check.innerHTML = "✔";
 
           if (!b.checkin) check.classList.add("off");
 
@@ -3805,7 +3641,7 @@ b.checkin = newVal;
 
   render();
 
-  const user = (await supa.auth.getUser()).data.user;
+const user = currentUser;
 
  
 const { error } = await supa
@@ -3827,7 +3663,7 @@ const { error } = await supa
   }
 
  
-await logBookingAction({
+logBookingAction({
   bookingId: b.id,
   action: "update",
   field: "checkin",
@@ -3936,7 +3772,32 @@ await logBookingAction({
             d.appendChild(r);
           }
 
-          d.append(flags, dragHandle, txt, pr);
+         // ✅ MOVE BUTTON
+let moveBtn = document.createElement("div");
+
+moveBtn.className = "move-handle";
+moveBtn.innerHTML = "↕";
+
+
+moveBtn.style.position = "absolute";
+moveBtn.style.left = "75px"; // leicht rechts vom dragHandle
+moveBtn.style.top = "50%";
+moveBtn.style.transform = "translateY(-50%)";
+
+moveBtn.style.display = "none";
+moveBtn.style.cursor = "ns-resize";
+
+// ✅ hover sichtbar
+d.addEventListener("mouseenter", () => {
+  if (moving) return;
+  moveBtn.style.display = "flex";
+});
+
+d.addEventListener("mouseleave", () => {
+  if (!moving) moveBtn.style.display = "none";
+});
+
+d.append(flags, dragHandle, moveBtn, txt, pr);
 
           // ✅ Drag aktivieren
           // ✅ DRAG START
@@ -3998,6 +3859,27 @@ await logBookingAction({
             resizing = false;
             document.body.style.userSelect = "none";
           };
+
+          moveBtn.onmousedown = (e) => {
+document.body.classList.add("moving");
+  if (isMobile) return;
+  if (f) return;
+  if (!isEditAllowed()) return;
+
+  e.stopPropagation();
+
+  let b = bookings[i];
+
+  moving = {
+    index: i,
+    startRow: b.row
+  };
+          
+      
+ highlightMoveOptions(b);
+
+  document.body.style.userSelect = "none";
+};
 
           // ✅ Bearbeiten
 
@@ -4096,7 +3978,7 @@ await logBookingAction({
             // ✅ 3. Logging
            
 
-await logBookingAction({
+logBookingAction({
   bookingId: id,
   action: "delete",
   field: "booking",
@@ -4143,25 +4025,103 @@ if (b.group_id) {
         });
       }
 
-      window.onmousemove = (e) => {
-        if (drag && !resizing) {
-          let el = document.querySelector(`.booking[data-index='${drag.i}']`);
+    window.onmousemove = (e) => {
 
-          if (!el) {
-            drag = null; // ✅ verhindert Hängenbleiben
-            return;
-          }
+  // ✅ ✅ ✅ MOVE (LIVE!)
+  if (moving) {
 
-          let deltaX = e.clientX - drag.mouseStartX;
+    let b = bookings[moving.index];
 
-          el.style.transform = `translateX(${deltaX}px)`;
-          el.style.transition = "none";
-          el.style.pointerEvents = "none";
-        }
-      };
+    let rows = document.querySelectorAll("tr");
+
+    let closestRow = b.row;
+    let closestDist = Infinity;
+
+    rows.forEach((tr, rIndex) => {
+
+      if (rIndex === 0) return;
+
+      let rect = tr.getBoundingClientRect();
+      let center = rect.top + rect.height / 2;
+
+      let dist = Math.abs(e.clientY - center);
+
+      if (dist < closestDist) {
+        closestDist = dist;
+        closestRow = rIndex - 1;
+      }
+    });
+
+    // ✅ nur wenn wirklich andere Zeile
+    if (closestRow !== b.row) {
+
+      if (
+        canPlaceInRoom(
+          closestRow,
+          b.guests,
+          new Date(b.start),
+          new Date(b.end)
+        )
+      ) {
+        b.row = closestRow;
+
+        draw(); // ✅ DAS ist der LIVE SPRUNG
+      }
+    }
+
+    return; // ✅ stoppt alles andere
+  }
+
+  // ✅ NORMALER DRAG (horizontal)
+  if (drag && !resizing) {
+
+    let el = document.querySelector(`.booking[data-index='${drag.i}']`);
+
+    if (!el) {
+      drag = null;
+      return;
+    }
+
+    let deltaX = e.clientX - drag.mouseStartX;
+
+    el.style.transform = `translateX(${deltaX}px)`;
+    el.style.transition = "none";
+    el.style.pointerEvents = "none";
+  }
+};
+
 
       // ✅ DRAG END (SNAP TO GRID)
       window.onmouseup = async (event) => {
+       if (moving) {
+          resetMoveHighlight();
+  let b = bookings[moving.index];
+
+  let oldRow = moving.startRow;
+  let newRow = b.row;
+
+  moving = null;
+document.body.classList.remove("moving");
+  document.body.style.userSelect = "auto";
+
+  if (oldRow !== newRow) {
+
+const user = currentUser;
+
+    await supa
+      .from("bookings")
+      .update({
+        row: newRow,
+        user_id: user?.id
+      })
+      .eq("id", b.id);
+
+  } else {
+    render();
+  }
+
+  return;
+}
         if (!drag && !resizing) {
           drag = null;
           resizing = false;
@@ -4169,7 +4129,7 @@ if (b.group_id) {
           return;
         }
         document.body.style.cursor = "grabbing";
-
+        
         let currentDrag = drag;
 
         if (!currentDrag && !resizing) {
@@ -4267,7 +4227,7 @@ if (b.group_id) {
         document.body.style.userSelect = "auto";
 
        if (changed) {
-  const user = (await supa.auth.getUser()).data.user;
+const user = currentUser;
 
   const { data, error } = await supa
     .from("bookings")
@@ -4290,7 +4250,7 @@ if (b.group_id) {
   }
 
   // ✅ ERST HIER loggen
-  await logBookingAction({
+logBookingAction({
     bookingId: b.id,
     action: "update",
     field: "range",
@@ -4467,7 +4427,7 @@ if (b.group_id) {
 
               render();
 
-              const user = (await supa.auth.getUser()).data.user;
+          const user = currentUser;
 
 const { error } = await supa
   .from("bookings")
@@ -4488,7 +4448,7 @@ if (error) {
 }
 
 // ✅ erst hier loggen
-await logBookingAction({
+logBookingAction({
   bookingId: b.id,
   action: "update",
   field: "start",
@@ -4515,7 +4475,7 @@ await logBookingAction({
 
               render();
 
-           const user = (await supa.auth.getUser()).data.user;
+           const user = currentUser;
 
 await supa
   .from("bookings")
@@ -4526,7 +4486,7 @@ await supa
   .eq("id", b.id);
 
 // ✅ LOG
-await logBookingAction({
+logBookingAction({
   bookingId: b.id,
   action: "update",
   field: "end",
@@ -4862,6 +4822,11 @@ let createdAt = group.created_at
 
         title.innerText = trimGroupName(group.name);
         let stats = calculateGroupStats(groupId, "bookings");
+        
+let groupBookings = bookings.filter(b => b.group_id === groupId);
+
+let allCheckedIn = groupBookings.length > 0 &&
+  groupBookings.every(b => b.checkin);
 
 
  let info = `
@@ -4887,6 +4852,33 @@ let createdAt = group.created_at
   </div>
 `;
 
+let showCheckinBtn = !isMobile && currentRole !== "read";
+
+
+let checkinButton = showCheckinBtn
+  ? `
+    <br>
+    <button 
+      onclick="checkinGroup('${groupId}')"
+      ${allCheckedIn ? "disabled" : ""}
+      style="
+        margin-top:10px;
+        width:100%;
+        padding:8px;
+        border-radius:6px;
+        cursor:${allCheckedIn ? "default" : "pointer"};
+        background:${allCheckedIn ? "#ccc" : "#4caf50"};
+        color:${allCheckedIn ? "#666" : "white"};
+        border:none;
+        font-weight:bold;
+      "
+    >
+      ${allCheckedIn ? "Gruppe eingecheckt" : "gesamte Gruppe einchecken"}
+    </button>
+  `
+  : "";
+
+
 
         fileContainer.innerHTML = info + "Lade...";
         box.style.display = "block";
@@ -4900,7 +4892,7 @@ let createdAt = group.created_at
         }
 
         if (!data.length) {
-          fileContainer.innerHTML = info + "<i>Keine Dateien</i>";
+          fileContainer.innerHTML = info + checkinButton + "<i>Keine Dateien</i>";
         } else {
           let html = "";
 
@@ -4931,7 +4923,7 @@ let createdAt = group.created_at
   `;
           });
 
-          fileContainer.innerHTML = info + html;
+          fileContainer.innerHTML = info + checkinButton + html;
         }
 
         let uploadArea = document.getElementById("uploadArea");
@@ -4944,6 +4936,58 @@ let createdAt = group.created_at
           setupUpload(groupId); // ✅ NUR dann aktivieren
         }
       }
+
+async function checkinGroup(groupId) {
+
+
+  // ✅ relevante Buchungen holen
+  let groupBookings = bookings.filter(b => b.group_id === groupId);
+
+  if (!groupBookings.length) {
+    alert("Keine Buchungen gefunden");
+    return;
+  }
+
+  // ✅ UI sofort updaten
+  groupBookings.forEach(b => {
+    b.checkin = true;
+  });
+
+  render();
+
+  const user = currentUser || (await supa.auth.getUser()).data.user;
+
+  let ids = groupBookings.map(b => b.id);
+
+  // ✅ Batch Update (WICHTIG → schnell!)
+  const { error } = await supa
+    .from("bookings")
+    .update({
+      checkin: true,
+      user_id: user?.id
+    })
+    .in("id", ids);
+
+  if (error) {
+    alert("Fehler beim Einchecken");
+    console.error(error);
+    return;
+  }
+
+  // ✅ Logging (ohne await → locker)
+  groupBookings.forEach(b => {
+    logBookingAction({
+      bookingId: b.id,
+      action: "update",
+      field: "checkin",
+      oldValue: false,
+      newValue: true,
+      room: rooms[b.row],
+      bookingAt: b.end
+    });
+  });
+  openGroupInfo(groupId);
+}
 
       function setupUpload(groupId) {
         if (isMobile || !isEditAllowed()) return;
@@ -5381,7 +5425,7 @@ async function tryStartBackup() {
 }
 
       async function addBookingToDB(b) {
-        const user = (await supa.auth.getUser()).data.user;
+const user = currentUser;
 
 if (!user) {
   alert("Nicht eingeloggt!");
@@ -5417,8 +5461,7 @@ if (!user) {
 
         if (data && data[0]) {
           
-
-await logBookingAction({
+logBookingAction({
   bookingId: data[0].id,
   action: "create",
   field: "booking",
@@ -5573,6 +5616,7 @@ document.addEventListener("keydown", async (e) => {
 
     
  if (groupPlacement || singlePlacement) {
+   bookings = bookings.filter(b => !String(b.id).startsWith("tmp_"));
     groupPlacement = null;
     singlePlacement = null;
 
@@ -5626,128 +5670,9 @@ if (groupBox && groupBox.style.display === "block") {
   }
 
 });
-      function overlapDatesSim(row, start, end, ignoreIndex, tempOccupied) {
-        if (tempOccupied.has(row)) return true;
 
-        return overlapDates(row, start, end, ignoreIndex);
-      }
 
-      function getCurrentDZLevelSim(start, end, tempOccupied) {
-        let ignore = shouldIgnoreFloorSeparation(start, end);
 
-        let levels = [];
-
-        if (!ignore) {
-          levels.push(
-            (r) => isThreeDigitRoom(r) && isNormalDZ(r),
-            (r) => isThreeDigitRoom(r) && isDeluxeDZ(r),
-            (r) => isThreeDigitRoom(r) && isMultiDZ(r),
-            (r) => isThreeDigitRoom(r) && isSmallDZ(r)
-          );
-        }
-
-        levels.push(
-          (r) => isNormalDZ(r),
-          (r) => isDeluxeDZ(r),
-          (r) => isMultiDZ(r),
-          (r) => isSmallDZ(r)
-        );
-
-        for (let check of levels) {
-          let found = rooms.some((room, row) => {
-            if (!check(room)) return false;
-
-            if (overlapDatesSim(row, start, end, -1, tempOccupied)) return false;
-
-            return true;
-          });
-
-          if (found) return check;
-        }
-
-        return null;
-      }
-
-function canUseRoomSim(roomName, start, end, type, tempOccupied, row) {
-
-  // ✅ FloorPriority → einfache Logik verwenden
-  if (groupPlacement.floorPriority) {
-    return canUseRoomSimple(roomName, type);
-  }
-
-  // ✅ alte Logik beibehalten
-  if (type === "DZ") {
-    let level = getCurrentDZLevelSim(start, end, tempOccupied);
-    if (!level) return false;
-    return level(roomName);
-  }
-
-  if (type === "EZ") {
-    let level = getCurrentEZLevel(start, end);
-    if (!level) return false;
-    return level(roomName);
-  }
-
-  return canUseRoom(roomName, start, end, type);
-}
-
-      function getOrderedRooms(start, end, type) {
-        let list = [];
-
-        if (type === "DZ") {
-          let ignore = shouldIgnoreFloorSeparation(start, end);
-
-          let phases = [];
-
-          if (!ignore) {
-            phases.push((r) => isThreeDigitRoom(r) && isNormalDZ(r));
-            phases.push((r) => isThreeDigitRoom(r) && isDeluxeDZ(r));
-            phases.push((r) => isThreeDigitRoom(r) && isMultiDZ(r));
-            phases.push((r) => isThreeDigitRoom(r) && isSmallDZ(r));
-          }
-
-          phases.push((r) => isNormalDZ(r));
-          phases.push((r) => isDeluxeDZ(r));
-          phases.push((r) => isMultiDZ(r));
-          phases.push((r) => isSmallDZ(r));
-
-          phases.forEach((check) => {
-            rooms.forEach((room, i) => {
-              if (check(room)) list.push(i);
-            });
-          });
-
-          return list;
-        }
-
-        if (type === "EZ") {
-          let ignore = shouldIgnoreFloorSeparation(start, end);
-
-          let phases = [];
-
-          if (!ignore) {
-            phases.push((r) => isThreeDigitRoom(r) && isNormalEZ(r));
-            phases.push((r) => isThreeDigitRoom(r) && isSmallDZ(r));
-            phases.push((r) => isThreeDigitRoom(r) && isDeluxeEZ(r));
-            phases.push((r) => isThreeDigitRoom(r) && isSmallEZ(r));
-          }
-
-          phases.push((r) => isNormalEZ(r));
-          phases.push((r) => isSmallDZ(r));
-          phases.push((r) => isDeluxeEZ(r));
-          phases.push((r) => isSmallEZ(r));
-
-          phases.forEach((check) => {
-            rooms.forEach((room, i) => {
-              if (check(room)) list.push(i);
-            });
-          });
-
-          return list;
-        }
-
-        return rooms.map((_, i) => i);
-      }
 
       function getUsedColorsInRange(start, end) {
         let usedColors = new Set();
@@ -6011,132 +5936,10 @@ window.addEventListener("resize", updateStickyPositions);
 
       let resizeTimeout;
 
-      async function autoPlaceGroup() {
-        let currentType = null;
-         const placement = groupPlacement;
-        if (!placement || !placement.data) return;
-       
-        let { start, end } = placement;
-
-        let tempOccupied = new Set();
-
-        let order = ["4er", "3er", "DZ B", "DZ", "EZ B", "EZ"];
-
-        let somethingPlaced = true;
-
-    
-if (placement.floorPriority) {
-
-  let groups = getFloorPriorityGroups();
-
-  for (let group of groups) {
-
-    let somethingPlacedInGroup = true;
-
-    while (somethingPlacedInGroup) {
-
-      somethingPlacedInGroup = false;
-
-      for (let type of order) {
-        currentType = type;
-        groupPlacement.currentType = type;
-        let item = placement.data.find(d => d.type === type && d.count > 0);
-        if (!item) continue;
-
-        for (let num of group) {
-
-          let row = rooms.findIndex(r => r.startsWith(num + " "));
-          if (row === -1) continue;
-
-          if (tempOccupied.has(row)) continue;
-          if (overlapDates(row, start, end, -1)) continue;
-
-          let roomName = rooms[row];
-          if (!roomName || roomName.trim() === "") continue;
-         
-let canUse = placement.floorPriority
-  ? canUseRoomSimple(roomName, type)
-  : canUseRoom(roomName, start, end, type);
-
-if (!canUse) continue;
 
 
-          
-let booking = await assignRoom(row, type);
 
-
-          if (booking) {
-            tempOccupied.add(row);
-            
-
-            somethingPlaced = true;
-            somethingPlacedInGroup = true;
-
-            break;
-          }
-        }
-
-        if (somethingPlacedInGroup) break;
-      }
-    }
-
-    // ✅ wenn alles fertig → raus
-    if (placement.data.every(d => d.count === 0)) break;
-  }
-
-} else {
-
-  // 👉 DEINE ALTE LOGIK UNVERÄNDERT
-  while (somethingPlaced && placement) {
-    somethingPlaced = false;
-
-    for (let type of order) {
-      let item = placement.data.find(d => d.type === type);
-
-      if (!item || item.count <= 0) continue;
-
-      for (let row = 0; row < rooms.length; row++) {
-
-        if (tempOccupied.has(row)) continue;
-        if (overlapDates(row, start, end, -1)) continue;
-
-        let roomName = rooms[row];
-        if (!roomName || roomName.trim() === "") continue;
-        
-let canUse = placement.floorPriority
-  ? canUseRoomSimple(roomName, type)
-  : canUseRoom(roomName, start, end, type);
-
-if (!canUse) continue;
-
-
-        
-let booking = await assignRoom(row, type);
-
-
-        if (booking) {
-          tempOccupied.add(row);
-
-
-          somethingPlaced = true;
-          break;
-        }
-      }
-    }
-  }
-}
-        render();
-        updatePlacementBox();
-
-        let done = placement && placement.data.every((d) => d.count === 0);
-
-        if (done && placement) {
-          await syncGroupToDB(); // ✅ NEU
-          finishPlacement();
-        }
-      }
-
-    
+      
       function canUseRoomSimple(roomName, type) {
 
   let t = roomName.split(" - ")[1] || "";
@@ -6153,7 +5956,7 @@ let booking = await assignRoom(row, type);
   return false;
 }
 
-      
+
 async function enrichWithUser(dataArray) {
   const { data } = await supa.auth.getUser();
   const user = data.user;
@@ -6326,7 +6129,7 @@ async function saveBatchBookings(list) {
       
       function redrawBookingsOnResize() {
         document.querySelectorAll(".booking").forEach((e) => e.remove());
-        document.querySelectorAll(".booking-half").forEach((e) => e.remove());
+       
         draw();
       }
 
