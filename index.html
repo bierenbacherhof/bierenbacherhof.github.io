@@ -6488,33 +6488,27 @@ document.addEventListener('touchend', function (e) {
 }, false);
 
       
-let lastTouchTime = 0;
 
 document.addEventListener("touchstart", function (e) {
 
-  const now = Date.now();
-
-  // ✅ wenn 2 Finger ODER schneller zweiter Finger → block
-  if (
-    e.touches.length > 1 ||
-    (now - lastTouchTime < 500 && e.touches.length === 2)
-  ) {
+  // ✅ sobald mehr als 1 Finger → sofort blocken
+  if (e.touches.length > 1) {
     e.preventDefault();
-    e.stopPropagation();
-    return;
+    e.stopImmediatePropagation();
+    return false;
   }
-
-  lastTouchTime = now;
 
 }, { passive: false });
 
 
+// ✅ extra Sicherheit bei Bewegung
 document.addEventListener("touchmove", function (e) {
   if (e.touches.length > 1) {
     e.preventDefault();
+    e.stopImmediatePropagation();
+    return false;
   }
 }, { passive: false });
-
 
     </script>
   </body>
