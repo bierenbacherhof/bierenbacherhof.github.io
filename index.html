@@ -2459,9 +2459,13 @@ if (groupPlacement || singlePlacement) {
   draw();
   drawLegend();
 
-setTimeout(() => {
-  updateStickyPositions();
-}, 100);
+
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    updateStickyPositions();
+  });
+});
+
 
 
 }
@@ -3459,7 +3463,7 @@ function updateStickyPositions() {
   if (!header || !calendar) return;
 
   // ✅ FIX: stabile Höhe via offsetHeight (NICHT boundingRect)
-  const height = header.offsetHeight;
+  const height = header.scrollHeight;
 
   calendar.style.marginTop = height - 1 + "px";
 
@@ -4874,7 +4878,17 @@ fixedLegend.forEach(item => {
           };
 
           l.appendChild(div);
+          
         });
+        
+
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    updateStickyPositions();
+  });
+});
+
+
       }
 
      function calculateGroupStats(data, mode = "input") {
@@ -6354,7 +6368,7 @@ calendar.addEventListener("touchend", () => {
     diff = parseFloat(transform.replace(/translateX\(([-0-9.]+)px\)/, "$1"));
   }
 
-  let threshold = 500;
+  let threshold = 350;
 
   calendar.style.transition = "transform 0.2s ease-out";
 
