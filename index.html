@@ -937,7 +937,12 @@ body {
         </button>
   <div id="topRightButtons">
   <button id="logOverviewBtn" onclick="event.stopPropagation(); openLogOverview();" class="auth-only admin-only">🗑️ Gelöscht</button>
-  <button id="logoutBtn" class="auth-only">Logout</button>
+ 
+<button id="monthlyStatsBtn"> monatliche Zählung </button>
+
+<button id="printListsBtn" > Listen drucken </button>
+
+    <button id="logoutBtn" class="auth-only">Logout</button>
 </div>
         <div
           id="backupList"
@@ -2243,7 +2248,338 @@ function isLightColor(color) {
       function isAdmin() {
         return currentRole === "admin";
       }
+      
+      function openPrintOptions() {
 
+  let overlay = document.createElement("div");
+
+  overlay.style = `
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.4);
+    z-index:30000;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+  `;
+
+  let box = document.createElement("div");
+
+  box.style = `
+    background:white;
+    padding:20px;
+    border-radius:10px;
+    min-width:280px;
+    font-size:16px;
+  `;
+
+  box.innerHTML = `
+    <b>Listen Drucken</b><br><br>
+
+    <label><input type="checkbox" id="chk_all"> Alle auswählen</label><br>
+    <label><input type="checkbox" class="list-option"> Check-In</label><br>
+    <label><input type="checkbox" class="list-option"> Check-Out</label><br>
+    <label><input type="checkbox" class="list-option"> Freie Zimmer</label><br>
+    <label><input type="checkbox" class="list-option"> Housekeeping</label><br>
+    <label><input type="checkbox" class="list-option"> Frühstück</label><br>
+
+    <br>
+
+    <label>Datum:</label><br>
+    <input type="date" id="printDate" style="width:100%;">
+
+    <br><br>
+
+    <div style="display:flex; gap:10px;">
+      <button id="printConfirm">OK</button>
+      <button id="printCancel">Abbrechen</button>
+    </div>
+  `;
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+document.getElementById("printConfirm").onclick = () => {
+
+  const dateInput = box.querySelector("#printDate");
+
+  if (!dateInput) {
+    alert("Datum konnte nicht gefunden werden");
+    return;
+  }
+
+  const date = dateInput.value;
+
+  const options = [...box.querySelectorAll(".list-option")];
+
+  const checkInSelected = options[0].checked;
+
+  overlay.remove();
+
+  if (checkInSelected) {
+    printCheckInList(date);
+  }
+};
+
+
+document.getElementById("printCancel").onclick = () => {
+  overlay.remove();
+};
+
+  // ✅ Default Datum = heute
+  document.getElementById("printDate").value =
+    new Date().toISOString().slice(0,10);
+
+  // ✅ LOGIK: Alle auswählen
+  const allCheckbox = document.getElementById("chk_all");
+  const options = box.querySelectorAll(".list-option");
+
+  allCheckbox.onchange = () => {
+    options.forEach(opt => {
+      opt.checked = allCheckbox.checked;
+    });
+  };
+
+  // ✅ optional: wenn alle einzeln -> Alle automatisch aktivieren
+  options.forEach(opt => {
+    opt.onchange = () => {
+      const allChecked = [...options].every(o => o.checked);
+      allCheckbox.checked = allChecked;
+    };
+  });
+
+  // ✅ Buttons
+  document.getElementById("printCancel").onclick = () => {
+    overlay.remove();
+  };
+
+}
+
+  function printCheckInList(dateStr) {
+
+  const date = new Date(dateStr);
+  date.setHours(0,0,0,0);
+
+  // ✅ eindeutige Buchungen (dein System ist dup-anfällig)
+  const uniqueBookings = Object.values(
+    Object.fromEntries(
+      bookings.map(b => [b.id, b])
+    )
+  );
+
+const arrivals = uniqueBookings.filter(b => {
+
+  if (!b.start) return false;
+
+  // ✅ bereits eingecheckte ausschließen
+  if (b.checkin) return false;
+
+  // ❌ Block ebenfalls rausnehmen (optional, aber sinnvoll)
+  if (b.guests === "BLOCK") return false;
+
+  const start = new Date(b.start);
+  start.setHours(0,0,0,0);
+
+  return start.getTime() === date.getTime();
+});
+  // ✅ sortieren
+  const groups = [];
+  const companies = [];
+  const singles = [];
+
+  arrivals.forEach(b => {
+
+    if (b.group_id) {
+      groups.push(b);
+    }
+    else if (b.company) {
+      companies.push(b);
+    }
+    else {
+      singles.push(b);
+    }
+  });
+
+  // ✅ HTML bauen
+  let html = `
+  <html>
+  <head>
+    <title>Check-In Liste</title>
+    <style>
+      body { font-family: Arial; padding:20px; }
+      h2 { margin-top:30px; }
+      .row { margin-bottom:8px; }
+    </style>
+  </head>
+  <body>
+
+  <h1>Check-In Liste ${date.toLocaleDateString("de-DE")}</h1>
+  `;
+
+  function renderList(title, list) {
+
+    if (!list.length) return "";
+
+    let out = `<h2>${title}</h2>`;
+
+    list.forEach(b => {
+
+      let end = new Date(b.end);
+
+      let start = new Date(b.start);
+
+      let duration = Math.round(
+        (end - start) / (1000 * 60 * 60 * 24)
+      );
+    
+      
+      out += `
+        <div class="row">
+          <b>${b.name ? b.name + ":" : "-"}</b>
+          ${b.guests}
+          ${(rooms[b.row] || "").split(" - ")[0]}
+          Dauer: ${duration} ${duration !== 1 ? "Nächte" : "Nacht"} (${end.toLocaleDateString("de-DE")})
+         Preis: ${b.price || "-"}
+         ${b.comment !== null ? b.comment : ""}
+          
+        </div>
+      `;
+    });
+
+    return out;
+  }
+
+  html += renderList("Gruppen", groups);
+  html += renderList("Firmen", companies);
+  html += renderList("Einzelbuchungen", singles);
+
+  html += `
+    <script>
+      window.onload = function() {
+        window.print();
+      }
+    <\/script>
+  </body>
+  </html>
+  `;
+
+  let win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
+}
+
+      
+function runMonthlyStats() {
+  if (!confirm("Zahlen des letzten Monats drucken")) return;
+
+  const now = new Date();
+
+  // ✅ letzter Monat bestimmen
+  const year = now.getFullYear();
+  const month = now.getMonth(); // aktueller Monat
+
+  const lastMonthStart = new Date(year, month - 1, 1);
+  const lastMonthEnd = new Date(year, month, 0); // letzter Tag vom Monat
+
+
+const uniqueBookings = Object.values(
+  Object.fromEntries(
+    bookings
+      .filter(b => b.id && !String(b.id).startsWith("tmp_"))
+      .map(b => [b.id, b])
+  )
+);
+
+
+  let bookingsCount = 0;
+  let nightsTotal = 0;
+
+uniqueBookings.forEach(b => {
+
+  let start = new Date(b.start);
+  let end = new Date(b.end);
+
+  // ❌ BLOCK ignorieren
+  if (b.guests === "BLOCK") return;
+
+  // ✅ Gewicht bestimmen
+  let factor = 1;
+
+  if (b.guests.includes("DZ")) factor = 2;
+  else if (b.guests.includes("3")) factor = 3;
+  else if (b.guests.includes("4")) factor = 4;
+  // EZ und EZ B bleiben 1
+
+  if (start <= lastMonthEnd && end >= lastMonthStart) {
+
+    // ✅ Anreisen gewichtet zählen
+    bookingsCount += factor;
+
+    // ✅ Zeitraum begrenzen
+    let realStart = start < lastMonthStart ? lastMonthStart : start;
+    let realEnd = end > lastMonthEnd ? lastMonthEnd : end;
+
+    realStart.setHours(0,0,0,0);
+    realEnd.setHours(0,0,0,0);
+
+    let diff = (realEnd - realStart) / (1000 * 60 * 60 * 24);
+
+    if (diff > 0) {
+      nightsTotal += diff * factor;
+    }
+  }
+});
+
+
+
+  const monthName = lastMonthStart.toLocaleString("de-DE", { month: "long" });
+
+  showMonthlyStatsPopup(monthName, bookingsCount, nightsTotal);
+}
+      
+      function showMonthlyStatsPopup(monthName, bookingsCount, nightsTotal) {
+
+  let overlay = document.createElement("div");
+
+  overlay.style = `
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.4);
+    z-index:30000;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  `;
+
+  let box = document.createElement("div");
+
+  box.style = `
+    background:white;
+    padding:20px;
+    border-radius:10px;
+    text-align:center;
+    min-width:250px;
+    font-size:18px;
+  `;
+
+  box.innerHTML = `
+    <b>monatliche Zählung ${monthName}</b><br><br>
+    Anreisen: ${bookingsCount}<br>
+    Übernachtungen: ${nightsTotal}
+    <br><br>
+    <button onclick="this.closest('div').parentElement.remove()">OK</button>
+  `;
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+      
       async function checkAuth() {
         
         
@@ -2273,6 +2609,21 @@ currentUser = user;
         
           
           document.getElementById("newBookingBtn").style.display = isEditAllowed() ? "inline-block" : "none";
+
+     const printBtn = document.getElementById("printListsBtn");
+
+if (printBtn) {
+  printBtn.style.display =
+    (!isMobile && currentRole !== "read") ? "inline-block" : "none";
+}
+     
+          
+const monthlyBtn = document.getElementById("monthlyStatsBtn");
+
+if (monthlyBtn) {
+  monthlyBtn.style.display =
+    (!isMobile && currentRole !== "read") ? "inline-block" : "none";
+}
 
           if (currentRole === "read" || isMobile) {
             document.body.classList.add("readonly");
@@ -6045,9 +6396,22 @@ if (groupBox && groupBox.style.display === "block") {
 
   window.addEventListener("DOMContentLoaded", () => {
 
+    
+const printBtn = document.getElementById("printListsBtn");
+
+if (printBtn) {
+  printBtn.onclick = openPrintOptions;
+}
+
+    
+const btn = document.getElementById("monthlyStatsBtn");
+
+  if (btn) {
+    btn.onclick = runMonthlyStats;
+  }
+
   document.getElementById("toggleGroup").onchange = function () {
     let isGroup = this.checked;
-
     document.getElementById("singleForm").style.display = isGroup ? "none" : "block";
     document.getElementById("groupForm").style.display = isGroup ? "block" : "none";
 
