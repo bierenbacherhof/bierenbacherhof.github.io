@@ -2149,42 +2149,40 @@ function isLightColor(color) {
      .filter(i => i !== -1)
   );
 
-  // ✅ HAUPTLOOP
-  for (let group of groups) {
+ let counter = 0; // ✅ EINMAL
 
-    for (let row of group) {
+for (let group of groups) {
 
-      let roomName = rooms[row];
-      if (!roomName || roomName.trim() === "") continue;
+  for (let row of group) {
 
-      // ✅ schon belegt?
-      if (overlapDates(row, start, end, -1)) continue;
+    let roomName = rooms[row];
+    if (!roomName || roomName.trim() === "") continue;
 
-      // ✅ passenden Typ suchen
-      let item = placement.data.find(d =>
-        d.count > 0 && canUseRoomSimple(roomName, d.type)
-      );
+    if (overlapDates(row, start, end, -1)) continue;
 
-      if (!item) continue;
+    let item = placement.data.find(d =>
+      d.count > 0 && canUseRoomSimple(roomName, d.type)
+    );
 
-      // ✅ BUCHUNG ERSTELLEN
-      let booking = await assignRoom(row, item.type, false, true);
-      let counter = 0;
-      if (booking) {
-        bookings.push(booking);
-        counter++;
-        
-        if (counter % 3 === 0) {
-          await new Promise(r => setTimeout(r, 0));
-        }
+    if (!item) continue;
+
+    let booking = await assignRoom(row, item.type, false, true);
+
+    if (booking) {
+      bookings.push(booking);
+      counter++;
+
+      if (counter % 3 === 0) {
+        await new Promise(r => setTimeout(r, 0));
       }
-
-      // ✅ fertig?
-      if (placement.data.every(d => d.count === 0)) break;
     }
 
     if (placement.data.every(d => d.count === 0)) break;
   }
+
+  if (placement.data.every(d => d.count === 0)) break;
+}
+
 
   draw();
   updatePlacementBox();
@@ -3093,9 +3091,8 @@ let canUse;
 if (forcedType === "EZ") {
   canUse = getGuestOptions(roomName).includes("EZ");
 } else {
-let canUse = canUseRoomSimple(roomName, forcedType);
+  canUse = canUseRoomSimple(roomName, forcedType); // ✅ ohne let
 }
-
 
 
 if (!canUse) return false;
