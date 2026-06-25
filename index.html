@@ -8,12 +8,12 @@
 
 <meta 
   name="viewport" 
-  content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"
+  content="width=device-width, initial-scale=1.0"
 />
 
 
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
 
     <title>Hotel Belegungsplan</title>
 
@@ -823,6 +823,22 @@ body {
              
             
     </style>
+    
+<script>
+  function fixIOSViewport() {
+    const scale = window.innerWidth / document.documentElement.clientWidth;
+
+    if (scale !== 1) {
+      document.documentElement.style.transform = `scale(${1 / scale})`;
+      document.documentElement.style.transformOrigin = "top left";
+      document.documentElement.style.width = `${100 * scale}%`;
+    }
+  }
+
+  window.addEventListener("load", fixIOSViewport);
+  window.addEventListener("resize", fixIOSViewport);
+</script>
+
   </head>
 
   <body>
