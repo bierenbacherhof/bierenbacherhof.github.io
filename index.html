@@ -658,8 +658,8 @@ body {
   }
   
   .booking.checked-in {
-  opacity: 0.55;
-  filter: grayscale(50%);
+  opacity: 0.4;
+  filter: grayscale(50%) !important;
 }
 
   /* ✅ ZIMMER SPALTE */
@@ -1761,7 +1761,7 @@ overlay.onclick = () => {
 
         let used = getUsedColorsInRange(start, end);
 
-        let blocked = ["yellow", "pink", "orange"];
+        let blocked = ["yellow", "pink", "orange", "turquoise"];
 
         let freeColors = colors.filter((c) => !used.has(c) && !blocked.includes(c));
 
@@ -4546,12 +4546,12 @@ logBookingAction({
   "yellow",
   "orange",
   "pink",
+  "turquoise",
   "red",
   "blue",
   "purple",
   "green",
   "brown",
-  "turquoise",
   "lightgray",
 
   // ✅ NEU (gut unterscheidbar)
@@ -4587,7 +4587,7 @@ logBookingAction({
   saveHistory();
 
   // ✅ STANDARDFARBEN (KEINE GRUPPE!)
-  const simpleColors = ["yellow", "pink", "orange"];
+  const simpleColors = ["yellow", "pink", "orange", "turquoise"];
 
   if (simpleColors.includes(c)) {
 
@@ -4665,23 +4665,54 @@ function closeColorPicker() {
         let l = document.getElementById("legend");
         l.innerHTML = "";
 
-        l.innerHTML += `
-    <div style="background:pink;color:black;padding:4px 8px;border-radius:6px;display:inline-block;margin:4px;">
-      Deluxe
-    </div>
-  `;
-
-        l.innerHTML += `
-    <div style="background:orange;color:black;padding:4px 8px;border-radius:6px;display:inline-block;margin:4px;">
-      Arrangement
-    </div>
-  `;
 
         let legendMap = {};
 
         let weekStart = normalizeDate(startOfWeek(current));
         let weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 7);
+
+        
+const fixedLegend = [
+  { color: "pink", text: "Deluxe" },
+  { color: "orange", text: "Arrangement" },
+  { color: "turquoise", text: "Option" }
+];
+
+fixedLegend.forEach(item => {
+
+  // ✅ prüfen ob Farbe in dieser Woche vorkommt
+  let exists = bookings.some(b => {
+
+    let s = new Date(b.start);
+    let e = new Date(b.end);
+
+    s.setHours(0, 0, 0, 0);
+    e.setHours(0, 0, 0, 0);
+
+    // ✅ überschneidet sich mit aktueller Woche
+    let overlaps = s < weekEnd && e > weekStart;
+
+    return overlaps && b.color === item.color;
+  });
+
+  // ❌ wenn nicht vorhanden → überspringen
+  if (!exists) return;
+
+  // ✅ ansonsten anzeigen
+  let div = document.createElement("div");
+
+  div.innerText = item.text;
+
+  div.style.background = item.color;
+  div.style.color = isLightColor(item.color) ? "black" : "white";
+  div.style.padding = "4px 8px";
+  div.style.borderRadius = "6px";
+  div.style.display = "inline-block";
+  div.style.margin = "4px";
+
+  l.appendChild(div);
+});
 
         bookings.forEach((b) => {
           let group = groupsMap[b.group_id];
