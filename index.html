@@ -90,7 +90,7 @@ thead th:not(:last-child)::before {
             body {
               margin: 0;
               padding: 0;
-              touch-action: pan-y;
+           
               
             }
 
@@ -674,12 +674,6 @@ body.moving .booking:hover .text {
 @media (max-width: 600px) {
 
   
-.pwa #app {
-  transform: scale(0.5);
-  transform-origin: top left;
-  width: calc(100% / 0.5);
-}
-
 body {
   -webkit-tap-highlight-color: transparent;
 }
@@ -828,7 +822,16 @@ body {
     <div id="loginBlocker"></div>
     
 <div id="swipeBackground"></div>
-    
+
+ 
+
+<table id="calendar"></table>
+
+
+
+
+  
+
     <div
       id="loginBox"
       style="
@@ -848,8 +851,7 @@ body {
 
       <button onclick="login()">Login</button>
     </div>
-    
-        <div
+    <div
       id="groupInfoBox"
       style="
         position: fixed;
@@ -883,11 +885,7 @@ body {
       <br />
       <button onclick="closeGroupInfo()">Schließen</button>
     </div>
-  <div id="app">
-
-
-
-<div id="stickyHeader">
+    <div id="stickyHeader">
       <div id="controls">
         <button onclick="changeWeek(-1)" id="weekDown" class="auth-only">◀ Woche</button>
         <button onclick="changeWeek(1)" id="weekUp" class="auth-only">Woche ▶</button>
@@ -975,15 +973,7 @@ body {
           <button onclick="closeLogOverview()">Schließen</button>
         </div>
 
-      
-      </div>
-      <div id="legend"></div>
-    </div>
-    <table id="calendar"></table>
-    </div>
-
-  
-  <div
+        <div
           id="overlay"
           style="
             position: fixed !important;
@@ -995,10 +985,9 @@ body {
             display: none;
             z-index: 10000;
           "></div>
-
-
-   
-    
+      </div>
+      <div id="legend"></div>
+    </div>
     <div id="palette"></div>
     <div
       id="bookingForm"
@@ -2702,12 +2691,6 @@ if (toDelete.length) {
         return roomName.split(" - ")[1];
       }
 
-      
-function isStandalone() {
-  return window.navigator.standalone === true;
-}
-
-    
       function assignRoom(row, forcedType = null,dry = false, batch = false, options = {}) {
         if (!groupPlacement) return false;
 const user = currentUser;
@@ -6510,11 +6493,7 @@ window.addEventListener("load", () => {
   }
 });
 
-    
-if (window.navigator.standalone) {
-  document.documentElement.classList.add("pwa");
-}
-  
+      
 
     </script>
   </body>
