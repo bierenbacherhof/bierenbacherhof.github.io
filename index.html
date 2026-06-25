@@ -302,11 +302,28 @@ body.admin .admin-only {
               transform: translateY(-50%);
             }
 
-      
-.booking.checked-in {
-  opacity: 0.55;
-  filter: grayscale(20%);
+
+.booking.checked-in::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  background: rgba(255, 255, 255, 0.45); /* simuliert dein grau */
+
+  border-radius: 6px;
+
+  z-index: 1;
+  pointer-events: none;
 }
+      
+.paid-icon {
+  position: relative;
+
+
+  z-index: 2; /* WICHTIG → über dem Overlay */
+}
+
+
 
 
 
@@ -687,7 +704,7 @@ body {
   }
   
  .paid-icon {
-    font-size: 30px; /* 👈 hier kannst du spielen */
+    font-size: 35px; /* 👈 hier kannst du spielen */
   }
 
 
@@ -4593,8 +4610,8 @@ logBookingAction({
   let usedColors = getUsedColorsInWeek();
 
   if (usedColors.has(c)) {
-    alert("Farbe ist in dieser Woche bereits vergeben");
-    return;
+    if (!confirm("Farbe ist in dieser Woche bereits vergeben!\nSind Sie sicher, dass Sie sie Verwenden möchten?")) return;
+   
   }
 
   saveHistory();
@@ -5207,7 +5224,7 @@ let insertObj = {
           ) {
             return;
           }
-           console.log("Realtime Event:", payload);
+          
           handleRealtimeUpdate(payload);
         })
         .subscribe();
