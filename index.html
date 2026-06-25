@@ -2428,7 +2428,11 @@ if (groupPlacement || singlePlacement) {
   drawLegend();
   
 requestAnimationFrame(() => {
-  updateStickyPositions();
+ 
+setTimeout(() => {
+    updateStickyPositions();
+  }, 50);
+
 });
 
 }
