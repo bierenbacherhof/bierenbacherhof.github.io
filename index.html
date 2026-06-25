@@ -22,7 +22,6 @@ html {
 
             body {
               font-family: Arial;
-              visibility: hidden;
               cursor: default;
               margin: 0;
               position: relative;
@@ -60,6 +59,7 @@ thead {
 
             thead th {
       position: sticky;
+              top: 120px;
         z-index: 2000 !important;
         background: #eee;
    }
@@ -166,8 +166,11 @@ td.blocked {
             .booking-layer {
               position: absolute;
               top: 0;
-              left: 100%; /* ✅ statt 180px */
-              width: calc(100vw - 180px); /* ✅ flexibel */
+              
+left: 180px;
+  right: 0;
+  width: auto;
+
               height: 100%;
               pointer-events: none;
               z-index: 0;
@@ -595,10 +598,13 @@ body:not(.logged-in) {
 
             }
 
-      
-#calendar {
-  margin-top: 0; /* Desktop */
+#stickyHeader {
+  height: 120px; /* evtl. anpassen */
+}
 
+/* ✅ Kalender korrekt runter schieben */
+#calendar {
+  margin-top: 120px;
 }
 
 
@@ -813,13 +819,7 @@ body {
   #undo {
     display: none !important;
   }
-  
-  html {
-    transform: scale(0.6);
-    transform-origin: top left;
-    width: calc(100% / 0.6);
-    height: calc(100% / 0.6);
-  }
+
 }
  
              
@@ -2225,7 +2225,7 @@ function isLightColor(color) {
       }
 
       async function checkAuth() {
-        document.body.style.visibility = "hidden";
+        
         
 const { data: { user } } = await supa.auth.getUser();
 currentUser = user;
@@ -2270,10 +2270,15 @@ currentUser = user;
           render();
         }
 
-        document.body.style.visibility = "visible";
+ setTimeout(() => {
+  updateStickyPositions();
+}, 120);
       }
 
       checkAuth();
+      
+
+
 
       async function logout() {
         await supa.auth.signOut();
@@ -2435,14 +2440,11 @@ if (groupPlacement || singlePlacement) {
 
   draw();
   drawLegend();
-  
-requestAnimationFrame(() => {
- 
-setTimeout(() => {
-    updateStickyPositions();
-  }, 50);
 
-});
+setTimeout(() => {
+  updateStickyPositions();
+}, 100);
+
 
 }
     
@@ -2473,25 +2475,6 @@ function canUseRoom(roomName, start, end, type) {
         if (!type) return false;
         return type.includes("4");
       }
-
-
-
-function updateStickyPositions() {
-  const header = document.getElementById("stickyHeader");
-  const calendar = document.getElementById("calendar");
-
-  if (!header || !calendar) return;
-
-  // ✅ WICHTIG: Layout zuerst "fertig rechnen lassen"
-  const height = Math.ceil(header.getBoundingClientRect().bottom)-1;
-
-  // ✅ Kalender verschieben
-  calendar.style.marginTop = height + "px";
-  // ✅ Tabellenkopf positionieren
-  document.querySelectorAll("thead th").forEach(th => {
-    th.style.top = height + "px";
-  });
-}
 
 
       function saveHistory() {
@@ -3448,6 +3431,23 @@ if (Object.keys(changes).length > 0) {
       ${trimGroupName(group.name)}
     </span>
   `;
+}
+
+      
+function updateStickyPositions() {
+  const header = document.getElementById("stickyHeader");
+  const calendar = document.getElementById("calendar");
+
+  if (!header || !calendar) return;
+
+  // ✅ FIX: stabile Höhe via offsetHeight (NICHT boundingRect)
+  const height = header.offsetHeight;
+
+  calendar.style.marginTop = height - 1 + "px";
+
+  document.querySelectorAll("thead th").forEach(th => {
+    th.style.top = height - 1  + "px";
+  });
 }
 
       async function openInfo(index) {
@@ -6045,10 +6045,13 @@ if (!confirm("Sind Sie sicher, dass Sie sich ausloggen wollen?")) {
 
       window.onload = () => {
         render();
+        
+setTimeout(() => {
+    updateStickyPositions();
+  }, 150);
+
       };
 
-window.addEventListener("load", updateStickyPositions);
-window.addEventListener("resize", updateStickyPositions);
 
       let resizeTimeout;
 
@@ -6506,7 +6509,11 @@ window.addEventListener("load", () => {
   }
 });
 
-      
+    
+window.addEventListener("resize", () => {
+  setTimeout(updateStickyPositions, 100);
+});
+  
 
     </script>
   </body>
