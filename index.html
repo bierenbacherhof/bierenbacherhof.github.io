@@ -5,15 +5,10 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <meta charset="UTF-8" />
    
-
 <meta 
   name="viewport" 
-  content="width=device-width, initial-scale=1.0"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
 />
-
-
-<meta name="apple-mobile-web-app-capable" content="yes">
-
 
     <title>Hotel Belegungsplan</title>
 
@@ -21,14 +16,13 @@
       
 html {
   -webkit-text-size-adjust: 100%;
-
 }
       
      
 
             body {
               font-family: Arial;
-              visibility: visible;
+              visibility: hidden;
               cursor: default;
               margin: 0;
               position: relative;
@@ -172,9 +166,8 @@ td.blocked {
             .booking-layer {
               position: absolute;
               top: 0;
-              left: 180px;
-              right: 0;
-              width: auto; /* ✅ flexibel */
+              left: 100%; /* ✅ statt 180px */
+              width: calc(100vw - 180px); /* ✅ flexibel */
               height: 100%;
               pointer-events: none;
               z-index: 0;
@@ -681,6 +674,12 @@ body.moving .booking:hover .text {
 @media (max-width: 600px) {
 
   
+.pwa body {
+  transform: scale(0.5);
+  transform-origin: top left;
+  width: calc(100% / 0.5);
+}
+
 body {
   -webkit-tap-highlight-color: transparent;
 }
@@ -809,7 +808,7 @@ body {
 
   /* ✅ BOOKING LAYER BREITE */
   .booking-layer {
-    left: 65px;
+    width: calc(100vw - 65px);
   }
      
   #newBookingBtn,
@@ -823,22 +822,6 @@ body {
              
             
     </style>
-    
-<script>
-  function fixIOSViewport() {
-    const scale = window.innerWidth / document.documentElement.clientWidth;
-
-    if (scale !== 1) {
-      document.documentElement.style.transform = `scale(${1 / scale})`;
-      document.documentElement.style.transformOrigin = "top left";
-      document.documentElement.style.width = `${100 * scale}%`;
-    }
-  }
-
-  window.addEventListener("load", fixIOSViewport);
-  window.addEventListener("resize", fixIOSViewport);
-</script>
-
   </head>
 
   <body>
@@ -2714,6 +2697,12 @@ if (toDelete.length) {
         return roomName.split(" - ")[1];
       }
 
+      
+function isStandalone() {
+  return window.navigator.standalone === true;
+}
+
+    
       function assignRoom(row, forcedType = null,dry = false, batch = false, options = {}) {
         if (!groupPlacement) return false;
 const user = currentUser;
@@ -6516,7 +6505,11 @@ window.addEventListener("load", () => {
   }
 });
 
-      
+    
+if (window.navigator.standalone) {
+  document.documentElement.classList.add("pwa");
+}
+  
 
     </script>
   </body>
