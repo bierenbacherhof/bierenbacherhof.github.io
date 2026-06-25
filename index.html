@@ -828,10 +828,64 @@ body {
     <div id="loginBlocker"></div>
     
 <div id="swipeBackground"></div>
+    
+    <div
+      id="loginBox"
+      style="
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #fff;
+        padding: 20px;
+        border: 1px solid #ccc;
+        z-index: 50000;
+      ">
+      <h3>Login</h3>
 
+      <input type="text" id="login_email" placeholder="Benutzername" /><br /><br />
+      <input type="password" id="login_password" placeholder="Passwort" /><br /><br />
+
+      <button onclick="login()">Login</button>
+    </div>
+    
+        <div
+      id="groupInfoBox"
+      style="
+        position: fixed;
+        top: 55%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #fff;
+        padding: 20px;
+        border: 1px solid #ccc;
+        z-index: 60000;
+        max-width: 30vw;
+        width: 30vw;
+        max-height: 650px;
+        overflow-y: auto;
+        display: none;
+        border-radius: 10px;
+      ">
+      <h3 id="groupInfoTitle">Gruppe</h3>
+
+      <div id="groupInfoFiles"></div>
+
+      <br />
+
+      <div
+        id="uploadArea"
+        style="border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 10px; cursor: pointer">
+        Dateien hier reinziehen oder klicken
+        <input type="file" id="fileInput" multiple style="display: none" />
+      </div>
+
+      <br />
+      <button onclick="closeGroupInfo()">Schließen</button>
+    </div>
   <div id="app">
 
-<table id="calendar"></table>
+
 
 <div id="stickyHeader">
       <div id="controls">
@@ -921,7 +975,15 @@ body {
           <button onclick="closeLogOverview()">Schließen</button>
         </div>
 
-        <div
+      
+      </div>
+      <div id="legend"></div>
+    </div>
+    <table id="calendar"></table>
+    </div>
+
+  
+  <div
           id="overlay"
           style="
             position: fixed !important;
@@ -933,66 +995,8 @@ body {
             display: none;
             z-index: 10000;
           "></div>
-      </div>
-      <div id="legend"></div>
-    </div>
-    </div>
 
-  
 
-    <div
-      id="loginBox"
-      style="
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: #fff;
-        padding: 20px;
-        border: 1px solid #ccc;
-        z-index: 50000;
-      ">
-      <h3>Login</h3>
-
-      <input type="text" id="login_email" placeholder="Benutzername" /><br /><br />
-      <input type="password" id="login_password" placeholder="Passwort" /><br /><br />
-
-      <button onclick="login()">Login</button>
-    </div>
-    <div
-      id="groupInfoBox"
-      style="
-        position: fixed;
-        top: 55%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: #fff;
-        padding: 20px;
-        border: 1px solid #ccc;
-        z-index: 60000;
-        max-width: 30vw;
-        width: 30vw;
-        max-height: 650px;
-        overflow-y: auto;
-        display: none;
-        border-radius: 10px;
-      ">
-      <h3 id="groupInfoTitle">Gruppe</h3>
-
-      <div id="groupInfoFiles"></div>
-
-      <br />
-
-      <div
-        id="uploadArea"
-        style="border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 10px; cursor: pointer">
-        Dateien hier reinziehen oder klicken
-        <input type="file" id="fileInput" multiple style="display: none" />
-      </div>
-
-      <br />
-      <button onclick="closeGroupInfo()">Schließen</button>
-    </div>
    
     
     <div id="palette"></div>
