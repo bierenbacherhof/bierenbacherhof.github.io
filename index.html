@@ -310,19 +310,19 @@ body.admin .admin-only {
             }
 
 
-.booking.checked-in::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-
-  background: rgba(255, 255, 255, 0.45); /* simuliert dein grau */
-
-  border-radius: 6px;
-
-  z-index: 1;
-  pointer-events: none;
+.booking.checked-in {
+  background-image: 
+    repeating-linear-gradient(
+      135deg,
+      rgba(0, 0, 0, 0.4),
+      rgba(0, 0, 0, 0.4) 2px,
+      transparent 6px,
+      transparent 12px
+    );
+    
+  background-blend-mode: multiply;
 }
-      
+
 .paid-icon {
   position: relative;
 
@@ -598,6 +598,7 @@ body:not(.logged-in) {
       
 #calendar {
   margin-top: 0; /* Desktop */
+  touch-action: pan-y;
 }
 
 
@@ -3597,7 +3598,7 @@ if (b.checkin) {
 
           let color = group ? group.color : b.color;
 
-          d.style.background = color;
+          d.style.backgroundColor = color;
 
           d.style.color = isLightColor(color) ? "black" : "white";
 
@@ -4608,7 +4609,7 @@ logBookingAction({
 
       colors.forEach((c) => {
         let d = document.createElement("div");
-        d.style.background = c;
+        d.style.backgroundColor = c;
 
         d.onclick = async (e) => {
   e.stopPropagation();
