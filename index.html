@@ -3687,18 +3687,20 @@ logBookingAction({
 
           txt.className = "text";
           txt.style.flex = 1;
-
+          
+          let paidIcon = b.paid ? "💰 " : "";
+          
           if (isMobile) {
             if (b.guests === "BLOCK") {
               txt.innerHTML = "🚫";
             } else {
-              txt.innerHTML = "";
+              txt.innerHTML = `${paidIcon}`;
             }
           } else {
             if (b.guests === "BLOCK") {
               txt.innerHTML = "🚫 BLOCKIERT";
             } else {
-              txt.innerHTML = `${b.guests} ${b.name || (group ? group.name : "")}${companyText}${frText}${commentText}`;
+             txt.innerHTML = `${paidIcon}${b.guests} ${b.name || (group ? group.name : "")}${companyText}${frText}${commentText}`;
             }
           }
 
