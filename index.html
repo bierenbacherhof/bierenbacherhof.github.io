@@ -18,9 +18,7 @@ html {
   -webkit-text-size-adjust: 100%;
 }
       
-      html,body {
-        touch-action: pan-y;
-      }
+     
 
             body {
               font-family: Arial;
@@ -4158,6 +4156,10 @@ if (b.group_id) {
   let oldRow = moving.startRow;
   let newRow = b.row;
 
+         
+let oldRoom = rooms[oldRow];
+let newRoom = rooms[newRow];
+
   moving = null;
 document.body.classList.remove("moving");
   document.body.style.userSelect = "auto";
@@ -4166,13 +4168,35 @@ document.body.classList.remove("moving");
 
 const user = currentUser;
 
-    await supa
-      .from("bookings")
-      .update({
-        row: newRow,
-        user_id: user?.id
-      })
-      .eq("id", b.id);
+const { error } = await supa
+  .from("bookings")
+  .update({
+    row: newRow,
+    user_id: user?.id
+  })
+  .eq("id", b.id);
+
+if (error) {
+  console.error(error);
+
+  // ❌ rollback
+  b.row = oldRow;
+  render();
+
+  alert("Fehler beim Verschieben");
+  return;
+}
+
+  
+  logBookingAction({
+    bookingId: b.id,
+    action: "update",
+    field: "room",
+    oldValue: String(oldRoom),
+    newValue: String(newRoom),
+    room: newRoom, // aktueller Raum für Kontext
+    bookingAt: b.end
+  });
 
   } else {
     render();
@@ -5889,7 +5913,7 @@ if (groupBox && groupBox.style.display === "block") {
 
             i++;
           } else {
-            switch (log.field) {
+          switch ((log.field || "").trim().toLowerCase()) {
               case "paid":
                 icon = "💰";
                 text = log.new_value === "true" ? "als <b>bezahlt</b> markiert" : "<b>Bezahlt</b> entfernt";
@@ -5919,6 +5943,18 @@ if (groupBox && groupBox.style.display === "block") {
                 icon = "💲";
                 text = `Preis geändert (${log.old_value} ➡️ ${log.new_value})`;
                 break;
+
+              
+case "room":
+  icon = "🔁";
+
+  if (log.old_value && log.new_value) {
+    text = `Zimmer gewechselt (${log.old_value} ➡️ ${log.new_value})`;
+  } else {
+    text = "Zimmer geändert";
+  }
+
+  break;
 
               case "comment":
                 icon = "💬";
