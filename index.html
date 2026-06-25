@@ -688,6 +688,13 @@ body {
   thead th:not(:last-child)::before {
     width: 2px;
   }
+  
+  .booking.checked-in::after {
+  
+
+  background: rgba(255, 255, 255, 0); /* simuliert dein grau */
+
+}
 
 
   /* ✅ ZIMMER SPALTE */
@@ -6321,12 +6328,8 @@ calendar.addEventListener("touchend", () => {
 
 });
 
-      
-document.addEventListener('touchmove', function (e) {
-  if (e.scale !== 1) {
-    e.preventDefault();
-  }
-}, { passive: false });
+
+
 
       
       function handleGlobalClose(e) {
@@ -6471,36 +6474,58 @@ window.addEventListener("load", () => {
 
       
 
-["gesturestart", "gesturechange", "gestureend"].forEach(evt => {
-  document.addEventListener(evt, e => e.preventDefault(), { passive: false });
-});
-      
-      document.addEventListener('touchstart', function(e) {
-  if (e.touches.length > 1) {
-    e.preventDefault();
-  }
-}, { passive: false });
 
+['gesturestart', 'gesturechange', 'gestureend'].forEach(evt => {
+  document.addEventListener(evt, e => {
+    e.preventDefault();
+  }, { passive: false });
+});
 
 
 let lastTouchEnd = 0;
 
-document.addEventListener('touchend', function (event) {
+document.addEventListener('touchend', function (e) {
   const now = Date.now();
 
-  if (now - lastTouchEnd <= 300) {
-    event.preventDefault();
+  if (now - lastTouchEnd < 300) {
+    e.preventDefault();
   }
 
   lastTouchEnd = now;
 }, false);
 
       
-document.addEventListener('touchstart', function(e) {
+document.addEventListener('touchstart', function (e) {
   if (e.touches.length > 1) {
     e.preventDefault();
   }
 }, { passive: false });
+
+
+let isPinching = false;
+
+// ✅ Multi-Finger sofort erkennen
+document.addEventListener('touchstart', function (e) {
+  if (e.touches.length > 1) {
+    isPinching = true;
+    e.preventDefault(); // ✅ sofort blocken
+  }
+}, { passive: false });
+
+
+// ✅ während Bewegung blocken (auch Micro-Pinch!)
+document.addEventListener('touchmove', function (e) {
+  if (isPinching || e.touches.length > 1) {
+    e.preventDefault();
+  }
+}, { passive: false });
+
+
+// ✅ Reset
+document.addEventListener('touchend', function () {
+  isPinching = false;
+});
+
 
 
     </script>
