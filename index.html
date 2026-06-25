@@ -674,6 +674,8 @@ body.moving .booking:hover .text {
 @media (max-width: 600px) {
 
   
+ 
+
 body {
   -webkit-tap-highlight-color: transparent;
 }
@@ -810,6 +812,13 @@ body {
   #weekDown,
   #undo {
     display: none !important;
+  }
+  
+  html {
+    transform: scale(0.6);
+    transform-origin: top left;
+    width: calc(100% / 0.6);
+    height: calc(100% / 0.6);
   }
 }
  
