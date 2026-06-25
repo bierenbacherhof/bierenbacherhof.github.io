@@ -689,13 +689,6 @@ body {
     width: 2px;
   }
   
-  .booking.checked-in::after {
-  
-
-  background: rgba(255, 255, 255, 0); /* simuliert dein grau */
-
-}
-
 
   /* ✅ ZIMMER SPALTE */
   .room {
@@ -6495,37 +6488,32 @@ document.addEventListener('touchend', function (e) {
 }, false);
 
       
-document.addEventListener('touchstart', function (e) {
+let lastTouchTime = 0;
+
+document.addEventListener("touchstart", function (e) {
+
+  const now = Date.now();
+
+  // ✅ wenn 2 Finger ODER schneller zweiter Finger → block
+  if (
+    e.touches.length > 1 ||
+    (now - lastTouchTime < 500 && e.touches.length === 2)
+  ) {
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
+
+  lastTouchTime = now;
+
+}, { passive: false });
+
+
+document.addEventListener("touchmove", function (e) {
   if (e.touches.length > 1) {
     e.preventDefault();
   }
 }, { passive: false });
-
-
-let isPinching = false;
-
-// ✅ Multi-Finger sofort erkennen
-document.addEventListener('touchstart', function (e) {
-  if (e.touches.length > 1) {
-    isPinching = true;
-    e.preventDefault(); // ✅ sofort blocken
-  }
-}, { passive: false });
-
-
-// ✅ während Bewegung blocken (auch Micro-Pinch!)
-document.addEventListener('touchmove', function (e) {
-  if (isPinching || e.touches.length > 1) {
-    e.preventDefault();
-  }
-}, { passive: false });
-
-
-// ✅ Reset
-document.addEventListener('touchend', function () {
-  isPinching = false;
-});
-
 
 
     </script>
