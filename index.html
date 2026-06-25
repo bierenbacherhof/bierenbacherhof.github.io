@@ -4,15 +4,22 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+   
+<meta 
+  name="viewport" 
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+/>
+
     <title>Hotel Belegungsplan</title>
 
     <style>
       
 html {
   -webkit-text-size-adjust: 100%;
-  touch-action: manipulation;
 }
+      html,body {
+        touch-action: manipulation
+      }
 
             body {
               font-family: Arial;
@@ -681,11 +688,7 @@ body {
   thead th:not(:last-child)::before {
     width: 2px;
   }
-  
-  .booking.checked-in {
-  opacity: 0.4;
-  filter: grayscale(50%) !important;
-}
+
 
   /* ✅ ZIMMER SPALTE */
   .room {
@@ -2881,6 +2884,12 @@ function resetMoveHighlight() {
       
       async function add(row, day, e) {
         
+
+
+if (f) {
+  return; // ✅ verhindert neue Buchung im Select-Mode
+}
+
  // ✅ blockierte Räume nicht klickbar
   let weekStart = normalizeDate(startOfWeek(current));
   let date = new Date(weekStart);
@@ -3525,7 +3534,6 @@ if (b.checkin) {
           d.onclick = (e) => {
             if (f) {
               e.stopPropagation();
-
               if (selected.includes(i)) {
                 selected = selected.filter((x) => x !== i);
               } else {
@@ -6313,6 +6321,14 @@ calendar.addEventListener("touchend", () => {
 
 });
 
+      
+document.addEventListener('touchmove', function (e) {
+  if (e.scale !== 1) {
+    e.preventDefault();
+  }
+}, { passive: false });
+
+      
       function handleGlobalClose(e) {
           
 if (
@@ -6430,6 +6446,8 @@ document.getElementById("datePicker").addEventListener("change", async (e) => {
       
 document.addEventListener("click", (e) => {
 
+
+
   if (blockNextClick) {
 
     e.preventDefault();
@@ -6464,6 +6482,7 @@ window.addEventListener("load", () => {
 }, { passive: false });
 
 
+
 let lastTouchEnd = 0;
 
 document.addEventListener('touchend', function (event) {
@@ -6474,7 +6493,15 @@ document.addEventListener('touchend', function (event) {
   }
 
   lastTouchEnd = now;
+}, false);
+
+      
+document.addEventListener('touchstart', function(e) {
+  if (e.touches.length > 1) {
+    e.preventDefault();
+  }
 }, { passive: false });
+
 
     </script>
   </body>
