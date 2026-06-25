@@ -1983,7 +1983,13 @@ function calculateAvailability(start, end, data) {
   let tempUsed = new Set();
   let errors = [];
 
-  for (let item of data) {
+ let ordered = [...data].sort((a, b) => {
+  const order = ["4er", "3er", "DZ B", "DZ", "EZ B", "EZ"];
+  return order.indexOf(a.type) - order.indexOf(b.type);
+});
+
+for (let item of ordered) {
+
     let count = item.count;
 
     for (let i = 0; i < count; i++) {
