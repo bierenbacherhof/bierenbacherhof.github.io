@@ -371,10 +371,18 @@ body.admin .admin-only {
             }
 
             .selected {
-              opacity: 0.5;
+              background: black !important;
+              color: white !important;
+  opacity: 1 !important;
+              border: 2px solid white;
             }
 
           
+.selected .text,
+.selected .price {
+  color: white !important;
+}
+
 
             #palette {
               position: fixed;
@@ -677,6 +685,11 @@ body {
     font-size: 0;
     text-align: center;
   }
+  
+ .paid-icon {
+    font-size: 30px; /* 👈 hier kannst du spielen */
+  }
+
 
   .room::after {
     content: attr(data-room-number);
@@ -3693,7 +3706,7 @@ logBookingAction({
           txt.className = "text";
           txt.style.flex = 1;
           
-          let paidIcon = b.paid ? "💰 " : "";
+          let paidIcon = b.paid ? `<span class="paid-icon">💰</span> ` : "";
           
           if (isMobile) {
             if (b.guests === "BLOCK") {
@@ -5193,12 +5206,13 @@ let insertObj = {
             isDraggingUpdate ||
             isLocalInsert 
           ) {
+            
             return;
           }
-
+           console.log("Realtime Event:", payload);
           handleRealtimeUpdate(payload);
         })
-        .subscribe();
+        
       
       
 supa
@@ -5211,7 +5225,7 @@ supa
 
     loadGroups().then(() => render());
   })
-  .subscribe();
+ 
       
       
 supa
@@ -5223,7 +5237,7 @@ supa
   }, () => {
     loadUserMap();
   })
-  .subscribe();
+
 
 
 supa
@@ -5247,7 +5261,7 @@ supa
       }
     }
   })
-  .subscribe();
+ 
       
       
 
