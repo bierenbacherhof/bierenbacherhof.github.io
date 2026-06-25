@@ -7,8 +7,11 @@
    
 <meta 
   name="viewport" 
-  content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  content="width=device-width, initial-scale=1.0, viewport-fit=cover"
 />
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 
     <title>Hotel Belegungsplan</title>
 
@@ -90,6 +93,7 @@ thead th:not(:last-child)::before {
             body {
               margin: 0;
               padding: 0;
+              touch-action: pan-y;
               
             }
 
@@ -165,8 +169,9 @@ td.blocked {
             .booking-layer {
               position: absolute;
               top: 0;
-              left: 100%; /* ✅ statt 180px */
-              width: calc(100vw - 180px); /* ✅ flexibel */
+              left: 180px;
+              right: 0;
+              width: auto; /* ✅ flexibel */
               height: 100%;
               pointer-events: none;
               z-index: 0;
@@ -801,7 +806,7 @@ body {
 
   /* ✅ BOOKING LAYER BREITE */
   .booking-layer {
-    width: calc(100vw - 65px);
+    left: 65px;
   }
      
   #newBookingBtn,
@@ -1417,6 +1422,10 @@ renderLogList(allLogs);
 
           case "checkin":
             return log.new_value === "true" ? "🏨 Check-in" : "🏨 Check-in entfernt";
+
+            
+case "room":
+  return `🔁 Zimmer gewechselt (${log.old_value} ➡️ ${log.new_value})`;
 
           case "start":
             return `📅 Anreise geändert`;
@@ -5913,77 +5922,51 @@ if (groupBox && groupBox.style.display === "block") {
 
             i++;
           } else {
+            console.log("BEFORE SWITCH", log.field);
           switch ((log.field || "").trim().toLowerCase()) {
-              case "paid":
-                icon = "💰";
-                text = log.new_value === "true" ? "als <b>bezahlt</b> markiert" : "<b>Bezahlt</b> entfernt";
-                break;
 
-              case "checkin":
-                icon = "🏨";
-                text = log.new_value === "true" ? "<b>Check-in durchgeführt</b>" : "<b>Check-in entfernt</b>";
-                break;
+  case "paid":
+    icon = "💰";
+    text = log.new_value === "true"
+      ? "als <b>bezahlt</b> markiert"
+      : "<b>Bezahlt</b> entfernt";
+    break;
 
-              case "start":
-                icon = "📅";
-                text = `Anreise geändert (${formatDate(log.old_value)} ➡️ ${formatDate(log.new_value)})`;
-                break;
+  case "checkin":
+    icon = "🏨";
+    text = log.new_value === "true"
+      ? "<b>Check-in durchgeführt</b>"
+      : "<b>Check-in entfernt</b>";
+    break;
 
-              case "end":
-                icon = "📅";
-                text = `Abreise geändert (${formatDate(log.old_value)} ➡️ ${formatDate(log.new_value)})`;
-                break;
+  case "start":
+    icon = "📅";
+    text = `Anreise geändert (${formatDate(log.old_value)} ➡️ ${formatDate(log.new_value)})`;
+    break;
 
-              case "name":
-                icon = "✏️";
-                text = `Name geändert (${log.old_value} ➡️ ${log.new_value})`;
-                break;
+  case "end":
+    icon = "📅";
+    text = `Abreise geändert (${formatDate(log.old_value)} ➡️ ${formatDate(log.new_value)})`;
+    break;
 
-              case "price":
-                icon = "💲";
-                text = `Preis geändert (${log.old_value} ➡️ ${log.new_value})`;
-                break;
-
-              
-case "room":
-  icon = "🔁";
-
-  if (log.old_value && log.new_value) {
+  case "room":
+    icon = "🔁";
     text = `Zimmer gewechselt (${log.old_value} ➡️ ${log.new_value})`;
-  } else {
-    text = "Zimmer geändert";
-  }
+    break;
 
-  break;
+  case "booking":
+    if (log.new_value === "created") {
+      icon = "➕";
+      text = "<b>Buchung erstellt</b>";
+    } else if (log.new_value === "deleted") {
+      icon = "🗑️";
+      text = "<b>Buchung gelöscht</b>";
+    }
+    break;
 
-              case "comment":
-                icon = "💬";
-                text = "Kommentar geändert";
-                break;
-
-              case "color":
-                icon = "🎨";
-                text = "Kategorie geändert";
-                break;
-
-              case "group":
-                icon = "👥";
-                text = `Gruppe geändert (${log.old_value || "-"} ➡️ ${log.new_value || "-"})`;
-                break;
-
-              case "booking":
-                if (log.new_value === "created") {
-                  icon = "➕";
-                  text = "<b>Buchung erstellt</b>";
-                } else if (log.new_value === "deleted") {
-                  icon = "🗑️";
-                  text = "<b>Buchung gelöscht</b>";
-                }
-                break;
-
-              default:
-                text = `${log.field}: ${log.old_value} ➡️ ${log.new_value}`;
-            }
+  default:
+    text = `${log.field}: ${log.old_value} ➡️ ${log.new_value}`;
+}
           }
 
           html += `
