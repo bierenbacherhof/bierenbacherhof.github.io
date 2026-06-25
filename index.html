@@ -5206,13 +5206,12 @@ let insertObj = {
             isDraggingUpdate ||
             isLocalInsert 
           ) {
-            
             return;
           }
            console.log("Realtime Event:", payload);
           handleRealtimeUpdate(payload);
         })
-        
+        .subscribe();
       
       
 supa
@@ -5225,7 +5224,7 @@ supa
 
     loadGroups().then(() => render());
   })
- 
+  .subscribe();
       
       
 supa
@@ -5237,7 +5236,7 @@ supa
   }, () => {
     loadUserMap();
   })
-
+  .subscribe();
 
 
 supa
@@ -5261,7 +5260,7 @@ supa
       }
     }
   })
- 
+  .subscribe();
       
       
 
@@ -5294,7 +5293,7 @@ supa
         }
 
         if (eventType === "UPDATE") {
-          bookings = bookings.map((b) => (b.id === newRow.id ? { ...newRow, row: Number(newRow.row) } : b));
+          bookings = bookings.map((b) => (b.id == newRow.id ? { ...newRow, row: Number(newRow.row) } : b));
         }
 
         if (eventType === "DELETE") {
