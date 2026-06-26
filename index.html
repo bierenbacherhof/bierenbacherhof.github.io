@@ -619,6 +619,7 @@ body:not(.logged-in) {
 /* ✅ Kalender korrekt runter schieben */
 #calendar {
   margin-top: 120px;
+  will-change: transform;
 }
 
 
@@ -714,9 +715,15 @@ body.moving .booking:hover .text {
     -webkit-user-select: none;
   }
 
-body {
-  -webkit-tap-highlight-color: transparent;
-}
+  #stickyHeader {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  body {
+    -webkit-tap-highlight-color: transparent;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 
   /* ✅ HEADER */
   thead th {
@@ -724,6 +731,7 @@ body {
     line-height: 1.2;
     padding: 10px 4px;
     height: 80px;
+    top: calc(120px + env(safe-area-inset-top));
   }
 
   thead th:not(:last-child)::before {
@@ -760,7 +768,8 @@ body {
   }
   
 #calendar {
-  margin-top: 84px;
+  margin-top: calc(120px + env(safe-area-inset-top));
+  padding-bottom: env(safe-area-inset-bottom);
 }
   
   /* ✅ ZELLEN */
