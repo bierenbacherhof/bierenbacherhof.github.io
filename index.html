@@ -701,9 +701,9 @@ body.moving .booking:hover .text {
 
 @media (max-width: 600px) {
 
-  
   html, body {
     touch-action: pan-y;
+    font-size: 14px;
   }
 
   #calendar {
@@ -732,17 +732,18 @@ body.moving .booking:hover .text {
     justify-content: space-between;
     gap: 6px;
     padding: 8px 6px;
+    font-size: 14px;
   }
 
   #controls button,
   #controls label {
-    font-size: 22px;
-    min-width: 100px;
-    min-height: 48px;
+    font-size: 14px;
+    min-width: 74px;
+    min-height: 40px;
     flex: 1 1 40%;
     max-width: 220px;
-    padding: 10px 14px;
-    border-radius: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
     background: #d7d7d7;
     color: black;
     display: inline-flex;
@@ -783,81 +784,71 @@ body.moving .booking:hover .text {
   #controls input,
   #controls select,
   #controls textarea {
-    font-size: 16px;
+    font-size: 14px;
   }
 
   /* ✅ HEADER */
   thead th {
-    font-size: 26px !important;
-    line-height: 1.2;
-    padding: 10px 4px;
-    height: 80px;
-    top: calc(120px + env(safe-area-inset-top));
+    font-size: 14px !important;
+    line-height: 1.15;
+    padding: 6px 3px;
+    height: 50px;
+    top: calc(100px + env(safe-area-inset-top));
   }
 
   thead th:not(:last-child)::before {
     width: 2px;
   }
-  
 
   /* ✅ ZIMMER SPALTE */
   .room {
     position: -webkit-sticky;
     position: sticky;
     left: 0;
-
-    width: 65px;
-    min-width: 65px;
-    max-width: 65px;
-
+    width: 54px;
+    min-width: 54px;
+    max-width: 54px;
     background: #fafafa;
     z-index: 1999;
-
     font-size: 0;
     text-align: center;
   }
-  
- .paid-icon {
-    font-size: 35px; /* 👈 hier kannst du spielen */
-  }
 
+  .paid-icon {
+    font-size: 20px;
+  }
 
   .room::after {
     content: attr(data-room-number);
-    font-size: 24px;
+    font-size: 12px;
     font-weight: bold;
   }
-  
-#calendar {
-  margin-top: calc(120px + env(safe-area-inset-top));
-  padding-bottom: env(safe-area-inset-bottom);
-}
-  
+
+  #calendar {
+    margin-top: calc(100px + env(safe-area-inset-top));
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
   /* ✅ ZELLEN */
   #calendar td {
-    height: 55px;
+    height: 46px;
   }
 
   /* ✅ BOOKINGS */
   .booking {
-    font-size: 16px;
+    font-size: 12px;
+    line-height: 1.1;
     border-radius: 6px;
-  }
-
-  /* ✅ CONTROLS CONTAINER */
-  #controls {
-    font-size: 16px;
-    padding: 8px;
   }
 
   /* ✅ BUTTONS */
   #controls button,
   #controls label {
-    font-size: 32px;
-    padding: 14px 18px;
-    min-width: 110px;
-    min-height: 56px;
-    border-radius: 10px;
+    font-size: 14px;
+    padding: 8px 10px;
+    min-width: 72px;
+    min-height: 40px;
+    border-radius: 8px;
     background: #d7d7d7;
     color: black;
     display: inline-flex;
@@ -868,37 +859,17 @@ body.moving .booking:hover .text {
     box-sizing: border-box;
     margin: 4px 4px 4px 0;
   }
-  
-  #groupInfoTitle{
-    font-size: 75px;
+
+  #groupInfoTitle {
+    font-size: 22px;
   }
 
   #groupInfoBox {
-    max-width: 90vw !important;
-    width: 90vw !important;
-    max-height: 750px !important;
-    font-size: 35px;
+    max-width: 92vw !important;
+    width: 92vw !important;
+    max-height: 70vh !important;
+    font-size: 14px;
     -webkit-overflow-scrolling: touch;
-      
-  }
-
-  /* ✅ BUTTON ACTIVE */
-  #controls button:active,
-  #controls label:active {
-    background: #828282;
-  }
-  
-
-  #controls button {
-    display: none;
-  }
-
-  #controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    align-items: center;
-    justify-content: flex-start;
   }
 
   /* ✅ LOGIN OK */
@@ -913,26 +884,26 @@ body.moving .booking:hover .text {
 
   /* ✅ LEGENDE */
   #legend {
-    font-size: 32px;
+    font-size: 14px;
   }
 
   #legend div {
-    font-size: 32px;
-    padding: 12px 20px;
+    font-size: 14px;
+    padding: 8px 12px;
     margin: 3px;
   }
 
   /* ✅ SWIPE TEXT */
   #swipeHint {
-    font-size: 32px;
-    padding: 20px 30px;
+    font-size: 14px;
+    padding: 12px 16px;
   }
 
   /* ✅ BOOKING LAYER BREITE */
   .booking-layer {
-    width: calc(100vw - 65px);
+    width: calc(100vw - 54px);
   }
-     
+
   #newBookingBtn,
   #weekUp,
   #weekDown,
