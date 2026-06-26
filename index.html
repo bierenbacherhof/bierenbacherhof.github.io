@@ -804,7 +804,7 @@ body {
   
 
   #controls button {
-    display: none;
+    display: none !important;
   }
 
  
@@ -812,10 +812,12 @@ body.logged-in #logoutBtn {
   display: inline-block !important;
 }
 
-body.admin #backupBtn,
-body.admin #logOverviewBtn {
-  display: inline-block !important;
-}
+
+body.logged-in.admin #backupBtn,
+  body.logged-in.admin #logOverviewBtn {
+    display: inline-block !important;
+  }
+
 
   /* ✅ LEGENDE */
   #legend {
@@ -839,12 +841,6 @@ body.admin #logOverviewBtn {
     width: calc(100vw - 65px);
   }
      
-  #newBookingBtn,
-  #weekUp,
-  #weekDown,
-  #undo {
-    display: none !important;
-  }
 
 }
  
