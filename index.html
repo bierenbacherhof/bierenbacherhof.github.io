@@ -807,15 +807,15 @@ body {
     display: none;
   }
 
-  /* ✅ LOGIN OK */
-  body.logged-in #controls button.allowed.auth-only {
-    display: inline-block !important;
-  }
+ 
+body.logged-in #logoutBtn {
+  display: inline-block !important;
+}
 
-  /* ✅ ADMIN */
-  body.logged-in.admin #controls button.admin-only {
-    display: inline-block !important;
-  }
+body.admin #backupBtn,
+body.admin #logOverviewBtn {
+  display: inline-block !important;
+}
 
   /* ✅ LEGENDE */
   #legend {
