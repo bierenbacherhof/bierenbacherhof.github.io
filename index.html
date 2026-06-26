@@ -7,7 +7,7 @@
   
 <meta 
   name="viewport" 
-  content="width=device-width, initial-scale=0.6, minimum-scale=0.6, maximum-scale=0.6, user-scalable=no, viewport-fit=cover, shrink-to-fit=no"
+  content="width=device-width, initial-scale=0.5, viewport-fit=cover"
 />
 
 
@@ -71,7 +71,6 @@ thead {
 }
 
             thead th {
-      position: -webkit-sticky;
       position: sticky;
               top: 120px;
         z-index: 2000 !important;
@@ -619,7 +618,6 @@ body:not(.logged-in) {
 /* ✅ Kalender korrekt runter schieben */
 #calendar {
   margin-top: 120px;
-  will-change: transform;
 }
 
 
@@ -701,179 +699,112 @@ body.moving .booking:hover .text {
 
 @media (max-width: 600px) {
 
-  html {
-    font-size: 13px;
-  }
-
+  
   html, body {
     touch-action: pan-y;
-    font-size: 13px;
   }
 
-  #calendar {
-    touch-action: pan-y;
-    -ms-touch-action: pan-y;
-    -webkit-touch-callout: none;
-    -webkit-user-drag: none;
-    -webkit-overflow-scrolling: touch;
-    -webkit-user-select: none;
-  }
-
-  #stickyHeader {
-    padding-top: env(safe-area-inset-top);
-  }
-
-  body {
-    -webkit-tap-highlight-color: transparent;
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-
-  #controls {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-    padding: 8px 6px;
-    font-size: 13px;
-  }
-
-  #controls button,
-  #controls label {
-    font-size: 13px;
-    min-width: 70px;
-    min-height: 38px;
-    flex: 1 1 40%;
-    max-width: 220px;
-    padding: 8px 10px;
-    border-radius: 8px;
-    background: #d7d7d7;
-    color: black;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    white-space: nowrap;
-    box-sizing: border-box;
-    margin: 0 6px 6px 0;
-    -webkit-appearance: none;
-    appearance: none;
-    -webkit-tap-highlight-color: rgba(0,0,0,0);
-    touch-action: manipulation;
-  }
-
-  #controls button:active,
-  #controls label:active {
-    background: #828282;
-  }
-
-  #newBookingBtn {
-    position: static !important;
-    left: auto !important;
-    transform: none !important;
-    width: auto !important;
-    max-width: 100% !important;
-  }
-
-  #topRightButtons,
-  #lowerTopRightButtons {
-    position: static !important;
-    top: auto !important;
-    right: auto !important;
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  #controls input,
-  #controls select,
-  #controls textarea {
-    font-size: 14px;
-  }
+body {
+  -webkit-tap-highlight-color: transparent;
+}
 
   /* ✅ HEADER */
   thead th {
-    font-size: 12px !important;
-    line-height: 1.1;
-    padding: 4px 2px;
-    height: 44px;
-    top: calc(92px + env(safe-area-inset-top));
+    font-size: 26px !important;
+    line-height: 1.2;
+    padding: 10px 4px;
+    height: 80px;
   }
 
   thead th:not(:last-child)::before {
     width: 2px;
   }
+  
 
   /* ✅ ZIMMER SPALTE */
   .room {
-    position: -webkit-sticky;
     position: sticky;
     left: 0;
-    width: 48px;
-    min-width: 48px;
-    max-width: 48px;
+
+    width: 65px;
+    min-width: 65px;
+    max-width: 65px;
+
     background: #fafafa;
     z-index: 1999;
+
     font-size: 0;
     text-align: center;
   }
-
-  .paid-icon {
-    font-size: 20px;
+  
+ .paid-icon {
+    font-size: 35px; /* 👈 hier kannst du spielen */
   }
+
 
   .room::after {
     content: attr(data-room-number);
-    font-size: 11px;
+    font-size: 24px;
     font-weight: bold;
   }
-
-  #calendar {
-    margin-top: calc(92px + env(safe-area-inset-top));
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-
+  
+#calendar {
+  margin-top: 84px;
+}
+  
   /* ✅ ZELLEN */
   #calendar td {
-    height: 42px;
+    height: 55px;
   }
 
   /* ✅ BOOKINGS */
   .booking {
-    font-size: 11px;
-    line-height: 1.05;
+    font-size: 16px;
     border-radius: 6px;
   }
 
+  /* ✅ CONTROLS CONTAINER */
+  #controls {
+    font-size: 16px;
+    padding: 8px;
+  }
+
   /* ✅ BUTTONS */
-  #controls button,
-  #controls label {
-    font-size: 14px;
-    padding: 8px 10px;
-    min-width: 72px;
-    min-height: 40px;
+  #controls button {
+    font-size: 35px;
+    padding: 14px 22px;
     border-radius: 8px;
     background: #d7d7d7;
     color: black;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    white-space: nowrap;
-    box-sizing: border-box;
-    margin: 4px 4px 4px 0;
   }
-
-  #groupInfoTitle {
-    font-size: 22px;
+  
+  #groupInfoTitle{
+    font-size: 75px;
   }
 
   #groupInfoBox {
-    max-width: 92vw !important;
-    width: 92vw !important;
-    max-height: 70vh !important;
-    font-size: 14px;
-    -webkit-overflow-scrolling: touch;
+    max-width: 90vw !important;
+    width: 90vw !important;
+    max-height: 750px !important;
+    font-size: 35px;
+      
+  }
+  #controls label {
+    font-size: 35px;
+    padding: 14px 22px;
+    border-radius: 8px;
+    background: #d7d7d7;
+  }
+
+  /* ✅ BUTTON ACTIVE */
+  #controls button:active,
+  #controls label:active {
+    background: #828282;
+  }
+  
+
+  #controls button {
+    display: none;
   }
 
   /* ✅ LOGIN OK */
@@ -888,26 +819,26 @@ body.moving .booking:hover .text {
 
   /* ✅ LEGENDE */
   #legend {
-    font-size: 14px;
+    font-size: 32px;
   }
 
   #legend div {
-    font-size: 14px;
-    padding: 8px 12px;
+    font-size: 32px;
+    padding: 12px 20px;
     margin: 3px;
   }
 
   /* ✅ SWIPE TEXT */
   #swipeHint {
-    font-size: 14px;
-    padding: 12px 16px;
+    font-size: 32px;
+    padding: 20px 30px;
   }
 
   /* ✅ BOOKING LAYER BREITE */
   .booking-layer {
-    width: calc(100vw - 48px);
+    width: calc(100vw - 65px);
   }
-
+     
   #newBookingBtn,
   #weekUp,
   #weekDown,
@@ -2987,7 +2918,30 @@ requestAnimationFrame(() => {
 
 
 
+      function is3erRoom(room) {
+        let type = getRoomType(room);
+        if (!type) return false;
+        return type.includes("3");
+      }
 
+
+
+
+function canUseRoom(roomName, start, end, type) {
+
+  if (type === "BLOCK") return true;
+
+  return canUseRoomSimple(roomName, type);
+}
+
+
+
+
+      function isFourRoom(room) {
+        let type = getRoomType(room);
+        if (!type) return false;
+        return type.includes("4");
+      }
 
 
       function saveHistory() {
@@ -3137,6 +3091,16 @@ if (toDelete.length) {
         await loadData();
       }
 
+      function hasAnyFree3DigitDZ(start, end) {
+        return rooms.some((room, row) => {
+          if (!isThreeDigitRoom(room)) return false;
+
+          if (overlapDates(row, start, end, -1)) return false;
+
+          return isAnyDZ(room);
+        });
+      }
+
    async function changeWeek(n) {
 
   current.setDate(current.getDate() + 7 * n);
@@ -3181,6 +3145,10 @@ if (toDelete.length) {
         });
       }
 
+      function isPreferredEZRoom(roomName) {
+        return roomName.includes("EZ") || roomName.includes("kl. DZ");
+      }
+
       function getRoomType(roomName) {
         if (!roomName) return "";
         return roomName.split(" - ")[1];
@@ -3210,15 +3178,19 @@ if (forcedType) {
 
   if (!item) return false;
 
-  let canUse;
+ 
 
-  if (forcedType === "EZ") {
-    canUse = getGuestOptions(roomName).includes("EZ");
-  } else {
-    canUse = canUseRoomSimple(roomName, forcedType);
-  }
+let canUse;
 
-  if (!canUse) return false;
+if (forcedType === "EZ") {
+  canUse = getGuestOptions(roomName).includes("EZ");
+} else {
+  canUse = canUseRoomSimple(roomName, forcedType); // ✅ ohne let
+}
+
+
+if (!canUse) return false;
+
 
 } else {
   item = groupPlacement.data
@@ -3278,6 +3250,10 @@ return temp;
 
 
         return temp;
+      }
+
+      function isAnyDZ(room) {
+        return isNormalDZ(room) || isDeluxeDZ(room) || isMultiDZ(room) || isSmallDZ(room);
       }
 
       function finishPlacement() {
@@ -3801,6 +3777,59 @@ if (Object.keys(changes).length > 0) {
         render();
       }
 
+
+      function isThreeDigitRoom(room) {
+        let number = room.split(" - ")[0];
+        return number.length === 3;
+      }
+
+      function isNormalEZ(room) {
+        let type = getRoomType(room);
+        if (!type) return false;
+        return type.includes("EZ") && !type.includes("B") && !type.includes("kl");
+      }
+
+      function isDeluxeEZ(room) {
+        let type = getRoomType(room);
+        if (!type) return false;
+        return type.includes("EZ B");
+      }
+
+      function isSmallEZ(room) {
+        let type = getRoomType(room);
+        if (!type) return false;
+        return type.includes("kl. EZ");
+      }
+
+      function isNormalDZ(room) {
+        let type = getRoomType(room);
+        if (!type) return false;
+        return (
+          type.includes("DZ") &&
+          !type.includes("B") &&
+          !type.includes("3") &&
+          !type.includes("4") &&
+          !type.includes("kl")
+        );
+      }
+
+      function isDeluxeDZ(room) {
+        let type = getRoomType(room);
+        if (!type) return false;
+        return type.includes("DZ") && type.includes("B") && !type.includes("3") && !type.includes("4");
+      }
+
+      function isMultiDZ(room) {
+        let type = getRoomType(room);
+        if (!type) return false;
+        return type.includes("3") || type.includes("4");
+      }
+
+      function isSmallDZ(room) {
+        let type = getRoomType(room);
+        if (!type) return false;
+        return type.includes("kl. DZ");
+      }
 
       function updateSinglePlacementBox() {
         let box = document.getElementById("placementBox");
@@ -5076,6 +5105,16 @@ logBookingAction({
       }
 
   
+
+      window.onkeyup = (e) => {
+        if (e.key.toLowerCase() === "f") {
+          f = false;
+          document.body.classList.remove("select-mode");
+          if (selected.length) {
+            document.getElementById("palette").style.display = "block";
+          }
+        }
+      };
 
     let colors = [
   "yellow",
@@ -6462,56 +6501,63 @@ if (groupBox && groupBox.style.display === "block") {
 
 
   window.addEventListener("DOMContentLoaded", () => {
-        render();
-        
-    setTimeout(() => {
-      updateStickyPositions();
-    }, 150);
 
-    const printBtn = document.getElementById("printListsBtn");
+    
+const printBtn = document.getElementById("printListsBtn");
 
-    if (printBtn) {
-      printBtn.onclick = openPrintOptions;
+if (printBtn) {
+  printBtn.onclick = openPrintOptions;
+}
+
+    
+const btn = document.getElementById("monthlyStatsBtn");
+
+  if (btn) {
+    btn.onclick = runMonthlyStats;
+  }
+
+  document.getElementById("toggleGroup").onchange = function () {
+    let isGroup = this.checked;
+    document.getElementById("singleForm").style.display = isGroup ? "none" : "block";
+    document.getElementById("groupForm").style.display = isGroup ? "block" : "none";
+
+    if (isGroup) {
+      buildGroupForm();
     }
+  };
 
-    const btn = document.getElementById("monthlyStatsBtn");
+const pickerLabel = document.querySelector("#datePickerWrapper label");
 
-    if (btn) {
-      btn.onclick = runMonthlyStats;
-    }
+if (pickerLabel) {
+  pickerLabel.addEventListener("click", () => {
+    const input = document.getElementById("datePicker");
+    input.showPicker?.() || input.click();
+  });
+}
 
-    document.getElementById("toggleGroup").onchange = function () {
-      let isGroup = this.checked;
-      document.getElementById("singleForm").style.display = isGroup ? "none" : "block";
-      document.getElementById("groupForm").style.display = isGroup ? "block" : "none";
+ document.getElementById("logoutBtn").addEventListener("click", (e) => {
+    e.stopPropagation();
+   
+if (!confirm("Sind Sie sicher, dass Sie sich ausloggen wollen?")) {
+    return; // ✅ abgebrochen
+  }
 
-      if (isGroup) {
-        buildGroupForm();
-      }
-    };
-
-    const pickerLabel = document.querySelector("#datePickerWrapper label");
-
-    if (pickerLabel) {
-      pickerLabel.addEventListener("click", () => {
-        const input = document.getElementById("datePicker");
-        input.showPicker?.() || input.click();
-      });
-    }
-
-    document.getElementById("logoutBtn").addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (!confirm("Sind Sie sicher, dass Sie sich ausloggen wollen?")) {
-        return; // ✅ abgebrochen
-      }
-
-      logout();
-    });
-
+    logout();
   });
 
+});
+
+      window.onload = () => {
+        render();
+        
+setTimeout(() => {
+    updateStickyPositions();
+  }, 150);
+
+      };
 
 
+      let resizeTimeout;
 
 
 
@@ -6733,7 +6779,7 @@ calendar.addEventListener("touchstart", (e) => {
 
 
   calendar.style.transition = "none";
-}, { passive: false });
+});
 
 
 calendar.addEventListener("touchmove", (e) => {
@@ -6755,10 +6801,9 @@ calendar.addEventListener("touchmove", (e) => {
     calendar.style.transition = "none";
   }
 
-  if (isSwiping) {
-    e.preventDefault();
-    calendar.style.transform = `translateX(${diffX}px) translateZ(0)`;
-  }
+  if (!isSwiping) return;
+
+ calendar.style.transform = `translateX(${diffX}px) translateZ(0)`;
 
   // ✅ TEXT LOGIK
   let width = window.innerWidth;
@@ -6795,7 +6840,7 @@ calendar.addEventListener("touchend", () => {
     diff = parseFloat(transform.replace(/translateX\(([-0-9.]+)px\)/, "$1"));
   }
 
-  let threshold = Math.max(120, window.innerWidth * 0.25);
+  let threshold = 350;
 
   calendar.style.transition = "transform 0.2s ease-out";
 
@@ -6822,13 +6867,6 @@ calendar.addEventListener("touchend", () => {
     bg.innerHTML = ""; // ✅ hier wichtig
   }
 
-});
-
-calendar.addEventListener("touchcancel", () => {
-  isSwiping = false;
-  calendar.style.transition = "transform 0.2s ease-out";
-  calendar.style.transform = "translateX(0)";
-  bg.innerHTML = "";
 });
 
 
