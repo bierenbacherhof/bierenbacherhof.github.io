@@ -729,18 +729,19 @@ body.moving .booking:hover .text {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: flex-start;
-    gap: 8px;
-    padding: 10px 8px;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 8px 6px;
   }
 
   #controls button,
   #controls label {
-    font-size: 32px;
-    min-width: 120px;
-    min-height: 56px;
-    flex: 1 1 130px;
-    padding: 14px 18px;
+    font-size: 22px;
+    min-width: 100px;
+    min-height: 48px;
+    flex: 1 1 40%;
+    max-width: 220px;
+    padding: 10px 14px;
     border-radius: 10px;
     background: #d7d7d7;
     color: black;
@@ -766,7 +767,7 @@ body.moving .booking:hover .text {
     position: static !important;
     left: auto !important;
     transform: none !important;
-    width: 100% !important;
+    width: auto !important;
     max-width: 100% !important;
   }
 
@@ -776,7 +777,7 @@ body.moving .booking:hover .text {
     top: auto !important;
     right: auto !important;
     width: 100%;
-    justify-content: flex-end;
+    justify-content: space-between;
   }
 
   #controls input,
