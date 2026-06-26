@@ -7,7 +7,7 @@
   
 <meta 
   name="viewport" 
-  content="width=device-width, initial-scale=0.8, minimum-scale=0.8, maximum-scale=0.8, user-scalable=no, viewport-fit=cover, shrink-to-fit=no"
+  content="width=device-width, initial-scale=0.6, minimum-scale=0.6, maximum-scale=0.6, user-scalable=no, viewport-fit=cover, shrink-to-fit=no"
 />
 
 
@@ -701,9 +701,13 @@ body.moving .booking:hover .text {
 
 @media (max-width: 600px) {
 
+  html {
+    font-size: 13px;
+  }
+
   html, body {
     touch-action: pan-y;
-    font-size: 12px;
+    font-size: 13px;
   }
 
   #calendar {
@@ -732,14 +736,14 @@ body.moving .booking:hover .text {
     justify-content: space-between;
     gap: 6px;
     padding: 8px 6px;
-    font-size: 14px;
+    font-size: 13px;
   }
 
   #controls button,
   #controls label {
-    font-size: 12px;
-    min-width: 66px;
-    min-height: 36px;
+    font-size: 13px;
+    min-width: 70px;
+    min-height: 38px;
     flex: 1 1 40%;
     max-width: 220px;
     padding: 8px 10px;
@@ -793,7 +797,7 @@ body.moving .booking:hover .text {
     line-height: 1.1;
     padding: 4px 2px;
     height: 44px;
-    top: calc(90px + env(safe-area-inset-top));
+    top: calc(92px + env(safe-area-inset-top));
   }
 
   thead th:not(:last-child)::before {
@@ -825,18 +829,18 @@ body.moving .booking:hover .text {
   }
 
   #calendar {
-    margin-top: calc(90px + env(safe-area-inset-top));
+    margin-top: calc(92px + env(safe-area-inset-top));
     padding-bottom: env(safe-area-inset-bottom);
   }
 
   /* ✅ ZELLEN */
   #calendar td {
-    height: 40px;
+    height: 42px;
   }
 
   /* ✅ BOOKINGS */
   .booking {
-    font-size: 10px;
+    font-size: 11px;
     line-height: 1.05;
     border-radius: 6px;
   }
