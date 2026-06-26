@@ -4,8 +4,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <meta charset="UTF-8" />
-   
-
+  
 <meta 
   name="viewport" 
   content="width=device-width, initial-scale=1, viewport-fit=cover"
@@ -72,6 +71,7 @@ thead {
 }
 
             thead th {
+      position: -webkit-sticky;
       position: sticky;
               top: 120px;
         z-index: 2000 !important;
@@ -636,6 +636,13 @@ body:not(.logged-in) {
   right: 20px;
   display: flex;
   gap: 12px;
+} 
+    #lowerTopRightButtons {
+  position: absolute;
+  top: 40px;
+  right: 20px;
+  display: flex;
+  gap: 12px;
 }
 
 body.moving .booking:hover .flags,
@@ -698,6 +705,15 @@ body.moving .booking:hover .text {
     touch-action: pan-y;
   }
 
+  #calendar {
+    touch-action: pan-y;
+    -ms-touch-action: pan-y;
+    -webkit-touch-callout: none;
+    -webkit-user-drag: none;
+    -webkit-overflow-scrolling: touch;
+    -webkit-user-select: none;
+  }
+
 body {
   -webkit-tap-highlight-color: transparent;
 }
@@ -717,6 +733,7 @@ body {
 
   /* ✅ ZIMMER SPALTE */
   .room {
+    position: -webkit-sticky;
     position: sticky;
     left: 0;
 
@@ -781,6 +798,7 @@ body {
     width: 90vw !important;
     max-height: 750px !important;
     font-size: 35px;
+    -webkit-overflow-scrolling: touch;
       
   }
   #controls label {
@@ -938,12 +956,13 @@ body {
   <div id="topRightButtons">
   <button id="logOverviewBtn" onclick="event.stopPropagation(); openLogOverview();" class="auth-only admin-only">🗑️ Gelöscht</button>
  
-<button id="monthlyStatsBtn"> monatliche Zählung </button>
-
-<button id="printListsBtn" > Listen drucken </button>
-
     <button id="logoutBtn" class="auth-only">Logout</button>
 </div>
+        <div id="lowerTopRightButtons">
+        <button id="monthlyStatsBtn"> monatliche Zählung </button>
+
+<button id="printListsBtn" > Listen drucken </button>
+        </div>
         <div
           id="backupList"
              class="overlay-box"
@@ -2389,76 +2408,157 @@ const arrivals = uniqueBookings.filter(b => {
 
   return start.getTime() === date.getTime();
 });
-  // ✅ sortieren
-  const groups = [];
-  const companies = [];
-  const singles = [];
+ // ✅ echte Gruppierung
 
-  arrivals.forEach(b => {
+const groupedByGroup = {};
+const groupedByCompany = {};
+const singles = [];
 
-    if (b.group_id) {
-      groups.push(b);
+arrivals.forEach(b => {
+
+  if (b.group_id && groupsMap[b.group_id]) {
+
+    const g = groupsMap[b.group_id];
+
+    if (!groupedByGroup[g.id]) {
+      groupedByGroup[g.id] = {
+        name: g.name,
+        list: []
+      };
     }
-    else if (b.company) {
-      companies.push(b);
+
+    groupedByGroup[g.id].list.push(b);
+  }
+
+  else if (b.company) {
+
+    if (!groupedByCompany[b.company]) {
+      groupedByCompany[b.company] = [];
     }
-    else {
-      singles.push(b);
-    }
-  });
+
+    groupedByCompany[b.company].push(b);
+  }
+
+  else {
+    singles.push(b);
+  }
+
+});
 
   // ✅ HTML bauen
-  let html = `
-  <html>
-  <head>
+ 
+let html = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="format-detection" content="telephone=no">
+<meta name="format-detection" content="date=no">
+<meta name="format-detection" content="address=no">
+<meta name="format-detection" content="email=no">
+
     <title>Check-In Liste</title>
-    <style>
-      body { font-family: Arial; padding:20px; }
-      h2 { margin-top:30px; }
-      .row { margin-bottom:8px; }
-    </style>
+   <style>
+ body {
+  font-family: Arial;
+  padding: 20px;
+  color: black;
+}
+
+h1 {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+h2 {
+  font-size: 16px;
+  font-weight: bold;
+  text-decoration: underline;
+  margin-top: 25px;
+  margin-bottom: 10px;
+}
+
+.row {
+  font-size: 12px;
+  margin-bottom: 6px;
+  font-weight: normal;
+  color: black;
+  text-decoration: none;
+}
+
+.row span {
+  all: initial;
+  font-family: Arial;
+  font-size: 12px;
+  color: black;
+  text-decoration: none;
+  font-weight: normal;
+}
+
+
+a, a:link, a:visited, a:hover, a:active {
+  text-decoration: none !important;
+  color: black !important;
+  font-weight: normal !important;
+}
+
+</style>
   </head>
   <body>
 
   <h1>Check-In Liste ${date.toLocaleDateString("de-DE")}</h1>
   `;
 
-  function renderList(title, list) {
+function renderList(title, list) {
 
-    if (!list.length) return "";
+  if (!list.length) return "";
 
-    let out = `<h2>${title}</h2>`;
+  let container = document.createElement("div");
 
-    list.forEach(b => {
+  let h2 = document.createElement("h2");
+  h2.textContent = title;
+  container.appendChild(h2);
 
-      let end = new Date(b.end);
+  list.forEach(b => {
 
-      let start = new Date(b.start);
+    let end = new Date(b.end);
+    let start = new Date(b.start);
 
-      let duration = Math.round(
-        (end - start) / (1000 * 60 * 60 * 24)
-      );
-    
-      
-      out += `
-        <div class="row">
-          <b>${b.name ? b.name + ":" : "-"}</b>
-          ${b.guests}
-          ${(rooms[b.row] || "").split(" - ")[0]}
-          Dauer: ${duration} ${duration !== 1 ? "Nächte" : "Nacht"} (${end.toLocaleDateString("de-DE")})
-         Preis: ${b.price || "-"}
-         ${b.comment !== null ? b.comment : ""}
-          
-        </div>
-      `;
-    });
+    let duration = Math.round(
+      (end - start) / (1000 * 60 * 60 * 24)
+    );
 
-    return out;
-  }
+    let row = document.createElement("div");
+    row.className = "row";
 
-  html += renderList("Gruppen", groups);
-  html += renderList("Firmen", companies);
-  html += renderList("Einzelbuchungen", singles);
+    // ✅ DAS ist der Trick
+    row.textContent =
+      `${b.name || "-"} ${b.guests} ${(rooms[b.row] || "").split(" - ")[0]} ` +
+      `(${duration} ${duration !== 1 ? "Nächte" : "Nacht"}) ` +
+      `bis ${end.toLocaleDateString("de-DE")} ` +
+      `${b.price ? "– " + b.price + "€" : ""} ` +
+      `${b.comment ? "– " + b.comment : ""}`;
+
+    container.appendChild(row);
+  });
+
+  return container.innerHTML;
+}
+// ✅ Gruppen (jede einzelne Gruppe)
+Object.values(groupedByGroup).forEach(g => {
+  html += renderList(`Gruppe: ${g.name}`, g.list);
+});
+
+// ✅ Firmen (jede Firma einzeln)
+Object.entries(groupedByCompany).forEach(([company, list]) => {
+  html += renderList(`Firma: ${company}`, list);
+});
+
+// ✅ Einzelgäste
+if (singles.length) {
+  html += renderList("Einzelgäste", singles);
+}
 
   html += `
     <script>
@@ -2830,30 +2930,7 @@ requestAnimationFrame(() => {
 
 
 
-      function is3erRoom(room) {
-        let type = getRoomType(room);
-        if (!type) return false;
-        return type.includes("3");
-      }
 
-
-
-
-function canUseRoom(roomName, start, end, type) {
-
-  if (type === "BLOCK") return true;
-
-  return canUseRoomSimple(roomName, type);
-}
-
-
-
-
-      function isFourRoom(room) {
-        let type = getRoomType(room);
-        if (!type) return false;
-        return type.includes("4");
-      }
 
 
       function saveHistory() {
@@ -3003,16 +3080,6 @@ if (toDelete.length) {
         await loadData();
       }
 
-      function hasAnyFree3DigitDZ(start, end) {
-        return rooms.some((room, row) => {
-          if (!isThreeDigitRoom(room)) return false;
-
-          if (overlapDates(row, start, end, -1)) return false;
-
-          return isAnyDZ(room);
-        });
-      }
-
    async function changeWeek(n) {
 
   current.setDate(current.getDate() + 7 * n);
@@ -3057,10 +3124,6 @@ if (toDelete.length) {
         });
       }
 
-      function isPreferredEZRoom(roomName) {
-        return roomName.includes("EZ") || roomName.includes("kl. DZ");
-      }
-
       function getRoomType(roomName) {
         if (!roomName) return "";
         return roomName.split(" - ")[1];
@@ -3090,19 +3153,15 @@ if (forcedType) {
 
   if (!item) return false;
 
- 
+  let canUse;
 
-let canUse;
+  if (forcedType === "EZ") {
+    canUse = getGuestOptions(roomName).includes("EZ");
+  } else {
+    canUse = canUseRoomSimple(roomName, forcedType);
+  }
 
-if (forcedType === "EZ") {
-  canUse = getGuestOptions(roomName).includes("EZ");
-} else {
-  canUse = canUseRoomSimple(roomName, forcedType); // ✅ ohne let
-}
-
-
-if (!canUse) return false;
-
+  if (!canUse) return false;
 
 } else {
   item = groupPlacement.data
@@ -3162,10 +3221,6 @@ return temp;
 
 
         return temp;
-      }
-
-      function isAnyDZ(room) {
-        return isNormalDZ(room) || isDeluxeDZ(room) || isMultiDZ(room) || isSmallDZ(room);
       }
 
       function finishPlacement() {
@@ -3690,59 +3745,6 @@ if (Object.keys(changes).length > 0) {
       }
 
 
-      function isThreeDigitRoom(room) {
-        let number = room.split(" - ")[0];
-        return number.length === 3;
-      }
-
-      function isNormalEZ(room) {
-        let type = getRoomType(room);
-        if (!type) return false;
-        return type.includes("EZ") && !type.includes("B") && !type.includes("kl");
-      }
-
-      function isDeluxeEZ(room) {
-        let type = getRoomType(room);
-        if (!type) return false;
-        return type.includes("EZ B");
-      }
-
-      function isSmallEZ(room) {
-        let type = getRoomType(room);
-        if (!type) return false;
-        return type.includes("kl. EZ");
-      }
-
-      function isNormalDZ(room) {
-        let type = getRoomType(room);
-        if (!type) return false;
-        return (
-          type.includes("DZ") &&
-          !type.includes("B") &&
-          !type.includes("3") &&
-          !type.includes("4") &&
-          !type.includes("kl")
-        );
-      }
-
-      function isDeluxeDZ(room) {
-        let type = getRoomType(room);
-        if (!type) return false;
-        return type.includes("DZ") && type.includes("B") && !type.includes("3") && !type.includes("4");
-      }
-
-      function isMultiDZ(room) {
-        let type = getRoomType(room);
-        if (!type) return false;
-        return type.includes("3") || type.includes("4");
-      }
-
-      function isSmallDZ(room) {
-        let type = getRoomType(room);
-        if (!type) return false;
-        return type.includes("kl. DZ");
-      }
-
       function updateSinglePlacementBox() {
         let box = document.getElementById("placementBox");
 
@@ -3778,21 +3780,69 @@ if (Object.keys(changes).length > 0) {
         return `${dt.getDate()}.${dt.getMonth() + 1}.${String(dt.getFullYear()).slice(-2)}`;
       }
 
-      function closeForm() {
-        let form = document.getElementById("bookingForm");
+ function openEditBooking(b) {
 
-        form.style.transition = "opacity 0.1s";
-        form.style.opacity = "0";
+   let roomName = rooms[b.row];
+let opts = getGuestOptions(roomName);
 
-        setTimeout(() => {
-          form.style.display = "none";
-          form.style.opacity = "1";
-          resetGroupForm();
-        }, 100);
+let select = document.getElementById("f_guests");
+select.innerHTML = "";
 
-        editIndex = null;
-      }
+opts.forEach((o) => {
+  let opt = document.createElement("option");
+  opt.value = o;
+  opt.innerText = o;
+  select.appendChild(opt);
+});
 
+select.value = b.guests || opts[0];
+  // ✅ richtiger Index
+  editIndex = bookings.findIndex(x => x.id === b.id);
+
+  document.getElementById("bookingForm").style.display = "block";
+
+  document.getElementById("formTitle").innerText = "Buchung bearbeiten";
+
+  document.getElementById("toggleGroup").checked = false;
+  document.getElementById("singleForm").style.display = "block";
+  document.getElementById("groupForm").style.display = "none";
+
+  document.getElementById("f_name").value = b.name || "";
+  document.getElementById("f_company").value = b.company || "";
+  document.getElementById("f_price").value = b.price || "";
+  document.getElementById("f_comment").value = b.comment || "";
+
+  document.getElementById("f_start").value = b.start
+    ? new Date(b.start).toISOString().slice(0, 10)
+    : "";
+
+  document.getElementById("f_end").value = b.end
+    ? new Date(b.end).toISOString().slice(0, 10)
+    : "";
+
+  document.getElementById("f_guests").value = b.guests || "EZ";
+
+  document.getElementById("f_breakfast").value =
+    b.breakfast !== undefined ? String(b.breakfast) : "true";
+
+  document.getElementById("f_group").value = b.group_id || "";
+}
+
+      
+function closeForm() {
+
+  document.getElementById("bookingForm").style.display = "none";
+
+  editIndex = null;
+
+  // ✅ ALLES resetten
+  document.getElementById("f_name").value = "";
+  document.getElementById("f_company").value = "";
+  document.getElementById("f_price").value = "";
+  document.getElementById("f_comment").value = "";
+  document.getElementById("f_group").value = "";
+}
+      
      function renderGroupBadge(group) {
   if (!group) return "-";
 
@@ -4335,54 +4385,21 @@ document.body.classList.add("moving");
 
           // ✅ Bearbeiten
 
-          d.ondblclick = (e) => {
-            if (isMobile) return;
-            let b = bookings[i];
+d.ondblclick = (e) => {
+  if (isMobile) return;
 
-            // ✅ BLOCK: nicht editieren
-            if (b.guests === "BLOCK") {
-              e.stopPropagation();
-              return;
-            }
+  let b = bookings[i];
 
-            clearTimeout(clickTimer);
+  if (b.guests === "BLOCK") {
+    e.stopPropagation();
+    return;
+  }
 
-            document.querySelector(".switch-wrapper").style.display = "none";
+  clearTimeout(clickTimer);
 
-            document.getElementById("toggleGroup").checked = false;
-            document.getElementById("singleForm").style.display = "block";
-            document.getElementById("groupForm").style.display = "none";
-            document.getElementById("f_breakfast").value = b.breakfast ? "true" : "false";
-            document.querySelector(".switch-wrapper").style.display = "none";
+  openEditBooking(b); // ✅ DAS ist alles
+};
 
-            editIndex = i;
-
-            let roomName = rooms[b.row];
-            let opts = getGuestOptions(roomName);
-
-            let select = document.getElementById("f_guests");
-            select.innerHTML = "";
-
-            opts.forEach((o) => {
-              let opt = document.createElement("option");
-              opt.value = o;
-              opt.innerText = o;
-              select.appendChild(opt);
-            });
-
-            select.value = b.guests || opts[0];
-
-            document.getElementById("f_name").value = b.name || "";
-            document.getElementById("f_start").value = b.start.slice(0, 10);
-            document.getElementById("f_end").value = b.end.slice(0, 10);
-            document.getElementById("f_price").value = b.price || "";
-            document.getElementById("f_comment").value = b.comment || "";
-
-            document.getElementById("formTitle").innerText = "Buchung ändern";
-
-            document.getElementById("bookingForm").style.display = "block";
-            document.getElementById("f_name").focus();
-          };
 
           // ✅ Löschen
           d.oncontextmenu = async (e) => {
@@ -5002,16 +5019,6 @@ logBookingAction({
       }
 
   
-
-      window.onkeyup = (e) => {
-        if (e.key.toLowerCase() === "f") {
-          f = false;
-          document.body.classList.remove("select-mode");
-          if (selected.length) {
-            document.getElementById("palette").style.display = "block";
-          }
-        }
-      };
 
     let colors = [
   "yellow",
@@ -6398,63 +6405,56 @@ if (groupBox && groupBox.style.display === "block") {
 
 
   window.addEventListener("DOMContentLoaded", () => {
-
-    
-const printBtn = document.getElementById("printListsBtn");
-
-if (printBtn) {
-  printBtn.onclick = openPrintOptions;
-}
-
-    
-const btn = document.getElementById("monthlyStatsBtn");
-
-  if (btn) {
-    btn.onclick = runMonthlyStats;
-  }
-
-  document.getElementById("toggleGroup").onchange = function () {
-    let isGroup = this.checked;
-    document.getElementById("singleForm").style.display = isGroup ? "none" : "block";
-    document.getElementById("groupForm").style.display = isGroup ? "block" : "none";
-
-    if (isGroup) {
-      buildGroupForm();
-    }
-  };
-
-const pickerLabel = document.querySelector("#datePickerWrapper label");
-
-if (pickerLabel) {
-  pickerLabel.addEventListener("click", () => {
-    const input = document.getElementById("datePicker");
-    input.showPicker?.() || input.click();
-  });
-}
-
- document.getElementById("logoutBtn").addEventListener("click", (e) => {
-    e.stopPropagation();
-   
-if (!confirm("Sind Sie sicher, dass Sie sich ausloggen wollen?")) {
-    return; // ✅ abgebrochen
-  }
-
-    logout();
-  });
-
-});
-
-      window.onload = () => {
         render();
         
-setTimeout(() => {
-    updateStickyPositions();
-  }, 150);
+    setTimeout(() => {
+      updateStickyPositions();
+    }, 150);
 
-      };
+    const printBtn = document.getElementById("printListsBtn");
+
+    if (printBtn) {
+      printBtn.onclick = openPrintOptions;
+    }
+
+    const btn = document.getElementById("monthlyStatsBtn");
+
+    if (btn) {
+      btn.onclick = runMonthlyStats;
+    }
+
+    document.getElementById("toggleGroup").onchange = function () {
+      let isGroup = this.checked;
+      document.getElementById("singleForm").style.display = isGroup ? "none" : "block";
+      document.getElementById("groupForm").style.display = isGroup ? "block" : "none";
+
+      if (isGroup) {
+        buildGroupForm();
+      }
+    };
+
+    const pickerLabel = document.querySelector("#datePickerWrapper label");
+
+    if (pickerLabel) {
+      pickerLabel.addEventListener("click", () => {
+        const input = document.getElementById("datePicker");
+        input.showPicker?.() || input.click();
+      });
+    }
+
+    document.getElementById("logoutBtn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!confirm("Sind Sie sicher, dass Sie sich ausloggen wollen?")) {
+        return; // ✅ abgebrochen
+      }
+
+      logout();
+    });
+
+  });
 
 
-      let resizeTimeout;
+
 
 
 
@@ -6676,7 +6676,7 @@ calendar.addEventListener("touchstart", (e) => {
 
 
   calendar.style.transition = "none";
-});
+}, { passive: false });
 
 
 calendar.addEventListener("touchmove", (e) => {
@@ -6698,9 +6698,9 @@ calendar.addEventListener("touchmove", (e) => {
     calendar.style.transition = "none";
   }
 
-  if (!isSwiping) return;
-
- calendar.style.transform = `translateX(${diffX}px) translateZ(0)`;
+  if (isSwiping) {
+    e.preventDefault();
+  }
 
   // ✅ TEXT LOGIK
   let width = window.innerWidth;
@@ -6737,7 +6737,7 @@ calendar.addEventListener("touchend", () => {
     diff = parseFloat(transform.replace(/translateX\(([-0-9.]+)px\)/, "$1"));
   }
 
-  let threshold = 350;
+  let threshold = Math.max(120, window.innerWidth * 0.25);
 
   calendar.style.transition = "transform 0.2s ease-out";
 
@@ -6764,6 +6764,13 @@ calendar.addEventListener("touchend", () => {
     bg.innerHTML = ""; // ✅ hier wichtig
   }
 
+});
+
+calendar.addEventListener("touchcancel", () => {
+  isSwiping = false;
+  calendar.style.transition = "transform 0.2s ease-out";
+  calendar.style.transform = "translateX(0)";
+  bg.innerHTML = "";
 });
 
 
