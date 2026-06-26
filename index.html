@@ -6709,6 +6709,7 @@ calendar.addEventListener("touchmove", (e) => {
 
   if (isSwiping) {
     e.preventDefault();
+    calendar.style.transform = `translateX(${diffX}px) translateZ(0)`;
   }
 
   // ✅ TEXT LOGIK
