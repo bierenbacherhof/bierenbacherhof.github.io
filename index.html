@@ -1329,7 +1329,10 @@ body {
           return;
         }
 
-        await checkAuth();
+        setTimeout(() => {
+   location.reload();
+}, 200);
+     
       }
 
       
