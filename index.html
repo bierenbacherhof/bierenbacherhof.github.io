@@ -7,7 +7,7 @@
   
 <meta 
   name="viewport" 
-  content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, shrink-to-fit=no"
+  content="width=device-width, initial-scale=0.8, minimum-scale=0.8, maximum-scale=0.8, user-scalable=no, viewport-fit=cover, shrink-to-fit=no"
 />
 
 
@@ -703,7 +703,7 @@ body.moving .booking:hover .text {
 
   html, body {
     touch-action: pan-y;
-    font-size: 14px;
+    font-size: 12px;
   }
 
   #calendar {
@@ -737,9 +737,9 @@ body.moving .booking:hover .text {
 
   #controls button,
   #controls label {
-    font-size: 14px;
-    min-width: 74px;
-    min-height: 40px;
+    font-size: 12px;
+    min-width: 66px;
+    min-height: 36px;
     flex: 1 1 40%;
     max-width: 220px;
     padding: 8px 10px;
@@ -789,11 +789,11 @@ body.moving .booking:hover .text {
 
   /* ✅ HEADER */
   thead th {
-    font-size: 14px !important;
-    line-height: 1.15;
-    padding: 6px 3px;
-    height: 50px;
-    top: calc(100px + env(safe-area-inset-top));
+    font-size: 12px !important;
+    line-height: 1.1;
+    padding: 4px 2px;
+    height: 44px;
+    top: calc(90px + env(safe-area-inset-top));
   }
 
   thead th:not(:last-child)::before {
@@ -805,9 +805,9 @@ body.moving .booking:hover .text {
     position: -webkit-sticky;
     position: sticky;
     left: 0;
-    width: 54px;
-    min-width: 54px;
-    max-width: 54px;
+    width: 48px;
+    min-width: 48px;
+    max-width: 48px;
     background: #fafafa;
     z-index: 1999;
     font-size: 0;
@@ -820,24 +820,24 @@ body.moving .booking:hover .text {
 
   .room::after {
     content: attr(data-room-number);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: bold;
   }
 
   #calendar {
-    margin-top: calc(100px + env(safe-area-inset-top));
+    margin-top: calc(90px + env(safe-area-inset-top));
     padding-bottom: env(safe-area-inset-bottom);
   }
 
   /* ✅ ZELLEN */
   #calendar td {
-    height: 46px;
+    height: 40px;
   }
 
   /* ✅ BOOKINGS */
   .booking {
-    font-size: 12px;
-    line-height: 1.1;
+    font-size: 10px;
+    line-height: 1.05;
     border-radius: 6px;
   }
 
@@ -901,7 +901,7 @@ body.moving .booking:hover .text {
 
   /* ✅ BOOKING LAYER BREITE */
   .booking-layer {
-    width: calc(100vw - 54px);
+    width: calc(100vw - 48px);
   }
 
   #newBookingBtn,
