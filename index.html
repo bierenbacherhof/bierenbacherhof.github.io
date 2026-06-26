@@ -1329,10 +1329,7 @@ body {
           return;
         }
 
-        setTimeout(() => {
-   location.reload();
-}, 200);
-     
+ checkAuth();
       }
 
       
@@ -6990,14 +6987,18 @@ document.getElementById("datePicker").addEventListener("change", async (e) => {
 
   render();
 });
-      document.addEventListener("mousedown", handleGlobalClose);
+      
+if (!isMobile) {
+  document.addEventListener("mousedown", handleGlobalClose);
+} else {
+  document.addEventListener("touchstart", handleGlobalClose);
+}
 
-      document.addEventListener("touchstart", handleGlobalClose);
       
       
 document.addEventListener("click", (e) => {
 
-
+if (e.target.closest("#loginBox")) return;
 
   if (blockNextClick) {
 
