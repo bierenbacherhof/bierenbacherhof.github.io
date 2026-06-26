@@ -808,16 +808,15 @@ body {
   }
 
  
-body.logged-in #logoutBtn {
-  display: inline-block !important;
-}
 
-
-body.logged-in.admin #backupBtn,
-  body.logged-in.admin #logOverviewBtn {
+  #logoutBtn {
     display: inline-block !important;
   }
 
+  body.admin #backupBtn,
+  body.admin #logOverviewBtn {
+    display: inline-block !important;
+  }
 
   /* ✅ LEGENDE */
   #legend {
@@ -2671,6 +2670,15 @@ uniqueBookings.forEach(b => {
       async function checkAuth() {
         
         
+if (isMobile) {
+  document.getElementById("newBookingBtn").style.display = "none";
+}
+
+if (isMobile) {
+  printBtn.style.display = "none";
+  monthlyBtn.style.display = "none";
+}
+
 const { data: { user } } = await supa.auth.getUser();
 currentUser = user;
 
