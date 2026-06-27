@@ -7,7 +7,7 @@
   
 <meta 
   name="viewport" 
-  content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover"
+  content="width=device-width, initial-scale=1, viewport-fit=cover"
 />
 
 
@@ -715,21 +715,8 @@ body.moving .booking:hover .text {
 
 @media (max-width: 600px) {
 
- #calendar {
-    transform: scale(0.5);
-    transform-origin: top left;
-    width: 200%;
-  }
-#stickyHeader {
-    transform: scale(0.5);
-    transform-origin: top left;
-    width: 200%;
-  }
 
   
-body {
-  -webkit-tap-highlight-color: transparent;
-}
 
   /* ✅ HEADER */
   thead th {
@@ -2379,6 +2366,12 @@ if (options[2].checked) {
 }
 
 
+if (options[4].checked) {
+  content += `<div class="print-section">`;
+  content += buildBreakfastHTML(date);
+  content += `</div>`;
+}
+
   // 👉 später einfach erweitern:
   // Freie Zimmer, Frühstück etc.
 
@@ -2598,6 +2591,127 @@ function buildCheckOutHTML(dateStr) {
 
   return html;
 }
+  
+function buildBreakfastHTML(dateStr) {
+
+  const base = new Date(dateStr);
+  base.setHours(0,0,0,0);
+
+  const breakfastDate = new Date(base);
+  breakfastDate.setDate(base.getDate() + 1);
+
+  const uniqueBookings = Object.values(
+    Object.fromEntries(bookings.map(b => [b.id, b]))
+  );
+
+  const relevant = uniqueBookings.filter(b => {
+
+    if (b.guests === "BLOCK") return false;
+    if (b.breakfast === false) return false;
+
+    let start = new Date(b.start);
+    let end = new Date(b.end);
+
+    start.setHours(0,0,0,0);
+    end.setHours(0,0,0,0);
+
+    return start < breakfastDate && end >= breakfastDate;
+  });
+
+  function getGuestCount(type) {
+    if (type === "EZ" || type === "EZ B") return 1;
+    if (type === "DZ" || type === "DZ B") return 2;
+    if (type === "3er") return 3;
+    if (type === "4er") return 4;
+    return 0;
+  }
+
+  const groupedByGroup = {};
+  const groupedByCompany = {};
+  const singles = [];
+
+  let totalGuests = 0; // ✅ NEU
+
+  relevant.forEach(b => {
+
+    let count = getGuestCount(b.guests);
+    totalGuests += count; // ✅ NEU
+
+    if (b.group_id && groupsMap[b.group_id]) {
+
+      const g = groupsMap[b.group_id];
+
+      if (!groupedByGroup[g.id]) {
+        groupedByGroup[g.id] = {
+          name: g.name,
+          guests: 0
+        };
+      }
+
+      groupedByGroup[g.id].guests += count;
+    }
+
+    else if (b.company) {
+
+      if (!groupedByCompany[b.company]) {
+        groupedByCompany[b.company] = 0;
+      }
+
+      groupedByCompany[b.company] += count;
+    }
+
+    else {
+      singles.push({
+        name: b.name || "-",
+        guests: count
+      });
+    }
+  });
+
+  // ✅ NEUE ÜBERSCHRIFT MIT GESAMTZAHL
+  let html = `
+    <h1>
+      Frühstücksliste ${breakfastDate.toLocaleDateString("de-DE")}
+      <br>
+      Gesamt: ${totalGuests} Personen
+    </h1>
+  `;
+
+  // Gruppen
+  Object.values(groupedByGroup).forEach(g => {
+    html += `
+      <div class="row">
+        Gruppe: ${g.name} – ${g.guests} Personen
+      </div>
+    `;
+  });
+
+  // Firmen
+  Object.entries(groupedByCompany).forEach(([company, guests]) => {
+    html += `
+      <div class="row">
+        Firma: ${company} – ${guests} Personen
+      </div>
+    `;
+  });
+
+  // Einzelgäste
+  if (singles.length) {
+
+    html += `<h2>Einzelgäste</h2>`;
+
+    singles.forEach(s => {
+      html += `
+        <div class="row">
+          ${s.name} – ${s.guests} Person${s.guests > 1 ? "en" : ""}
+        </div>
+      `;
+    });
+  }
+
+  return html;
+}
+      
 function buildListHTML(title, date, list) {
 
   const groupedByGroup = {};
@@ -3724,7 +3838,8 @@ if (groupPlacement) {
               price,
               comment,
               guests,
-              group_id: group || null
+              group_id: group || null,
+              breakfast: breakfast
             };
 
             closeForm();
@@ -3744,7 +3859,8 @@ if (groupPlacement) {
             color: "yellow",
             group_id: group || null,
             paid: false,
-            checkin: false
+            checkin: false,
+            breakfast: breakfast
           };
 
           if (guests.includes("B")) {
