@@ -591,7 +591,7 @@ body:not(.logged-in) #loginBlocker {
 body:not(.logged-in) {
   overflow: hidden;
   height: 100vh;
-  touch-action: none; /* ✅ blockiert Gesten */
+  touch-action: pan-y;
 }
 
 
@@ -6878,7 +6878,8 @@ calendar.addEventListener("touchend", () => {
 
       
       function handleGlobalClose(e) {
-          
+        
+       if (e.target.closest("#loginBox")) return;   
 if (
   e.target.closest("#bookingForm") ||
   e.target.closest("#groupForm") ||
@@ -6998,7 +6999,7 @@ if (!isMobile) {
       
 document.addEventListener("click", (e) => {
 
-if (e.target.closest("#loginBox")) return;
+
 
   if (blockNextClick) {
 
