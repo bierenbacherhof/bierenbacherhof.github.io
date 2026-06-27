@@ -781,6 +781,7 @@ body.moving .booking:hover .text {
       #topRightButtons {
       font-size: 35px;
       padding: 14px 22px;
+        top: 5px;
 } 
 
   /* ✅ BUTTONS */
@@ -3088,8 +3089,8 @@ if (monthlyBtn) {
     h += `<th><div class="day">${["Mo","Di","Mi","Do","Fr","Sa","So"][i]}</div>
     <div class="date">
 ${d.toLocaleDateString("de-DE", {
-  day: "numeric",
-  month: "numeric",
+  day: "2-digit",
+  month: "2-digit",
   year: "2-digit"
 })}
 </div></th>`;
