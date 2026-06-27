@@ -252,6 +252,35 @@ body.admin .admin-only {
   display: inline-block !important;
 }
 
+#datePickerWrapper {
+  display: none !important;
+}
+
+body.logged-in #datePickerWrapper {
+  display: inline-block !important;
+}
+
+@media (max-width: 600px) {
+  body.logged-in #datePickerWrapper,
+  body.logged-in #logoutBtn {
+    display: inline-block !important;
+  }
+
+  body.logged-in #weekDown,
+  body.logged-in #weekUp,
+  body.logged-in #undo,
+  body.logged-in #newBookingBtn,
+  body.logged-in #monthlyStatsBtn,
+  body.logged-in #printListsBtn {
+    display: none !important;
+  }
+
+  body.logged-in.body.admin #backupBtn,
+  body.logged-in.body.admin #logOverviewBtn {
+    display: inline-block !important;
+  }
+}
+
       
             .no-breakfast-icon::after {
               content: "";
