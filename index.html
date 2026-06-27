@@ -715,6 +715,24 @@ body.moving .booking:hover .text {
 
 @media (max-width: 600px) {
 
+ #calendar {
+    transform: scale(0.5);
+    transform-origin: top left;
+    width: 200%;
+  }
+#stickyHeader {
+    transform: scale(0.5);
+    transform-origin: top left;
+    width: 200%;
+  }
+
+  .booking {
+    transform: scale(1) !important;
+    transform-origin: top left;
+    width: 100% !important;
+  }
+
+  
 body {
   -webkit-tap-highlight-color: transparent;
 }
@@ -2359,6 +2377,13 @@ document.getElementById("printConfirm").onclick = () => {
     `</div>`;
 
   }
+  
+if (options[2].checked) {
+  if (content) content += `<div class="print-section">`;
+  content += buildFreeRoomsHTML(date);
+  content += `</div>`;
+}
+
 
   // 👉 später einfach erweitern:
   // Freie Zimmer, Frühstück etc.
@@ -2384,17 +2409,20 @@ body {
 h1 {
   font-size: 20px;
   margin-bottom: 20px;
+  font-weight: bold;
 }
 
 h2 {
   font-size: 16px;
   margin-top: 25px;
   margin-bottom: 10px;
+  font-weight: bold;
 }
 
 .row {
   font-size: 12px;
   margin-bottom: 6px;
+  font-weight: normal;
 }
 
 
@@ -2511,6 +2539,71 @@ function buildCheckOutHTML(dateStr) {
   return buildListHTML("Check-Out Liste", date, departures);
 }
 
+      function buildFreeRoomsHTML(dateStr) {
+
+  const base = new Date(dateStr);
+  base.setHours(0,0,0,0);
+
+  let html = `<h1>Freie Zimmer ${base.toLocaleDateString("de-DE")}</h1>`;
+
+  const nightsLimit = 7;
+
+  rooms.forEach((roomName, rowIndex) => {
+ if (!roomName || roomName.trim() === "") return;
+    let consecutiveFreeNights = 0;
+
+    for (let i = 0; i < nightsLimit; i++) {
+
+      let nightStart = new Date(base);
+      nightStart.setDate(base.getDate() + i);
+
+      let nightEnd = new Date(base);
+      nightEnd.setDate(base.getDate() + i + 1);
+
+      let occupied = bookings.some(b => {
+
+        if (b.row !== rowIndex) return false;
+        if (b.guests === "BLOCK") return true; // BLOCK zählt als belegt
+
+        let start = new Date(b.start);
+        let end = new Date(b.end);
+
+        return start < nightEnd && end > nightStart;
+      });
+
+      if (occupied) break;
+
+      consecutiveFreeNights++;
+    }
+
+    // ❌ nicht frei in der ersten Nacht → raus
+    if (consecutiveFreeNights === 0) return;
+
+    let roomLabel = roomName; // z.B. "101 - DZ B"
+
+    let text = "";
+
+    if (consecutiveFreeNights >= 7) {
+      text = "7+ Nächte";
+    } else {
+
+      let endDate = new Date(base);
+      endDate.setDate(base.getDate() + consecutiveFreeNights);
+
+      text = `${consecutiveFreeNights} ${
+        consecutiveFreeNights === 1 ? "Nacht" : "Nächte"
+      } (bis zum ${endDate.toLocaleDateString("de-DE")})`;
+    }
+
+    html += `
+      <div class="row">
+        ${roomLabel}, ${text}
+      </div>
+    `;
+  });
+
+  return html;
+}
 function buildListHTML(title, date, list) {
 
   const groupedByGroup = {};
