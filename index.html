@@ -715,18 +715,19 @@ body.moving .booking:hover .text {
 
 @media (max-width: 600px) {
 
-
-  #calendar {
-    transform: scale(0.5);
+  thead th {
+     transform: scale(0.5);
     transform-origin: top left;
     width: 200%;
   }
-
+  
   #stickyHeader{
      transform: scale(0.5);
     transform-origin: top left;
     width: 200%;
   }
+
+  
 
 body {
   -webkit-tap-highlight-color: transparent;
@@ -2352,24 +2353,82 @@ for (let group of groups) {
 
 document.getElementById("printConfirm").onclick = () => {
 
-  const dateInput = box.querySelector("#printDate");
+  const date = document.getElementById("printDate").value;
+  const options = [...box.querySelectorAll(".list-option")];
 
-  if (!dateInput) {
-    alert("Datum konnte nicht gefunden werden");
+  let content = "";
+
+  if (options[0].checked) {
+    content += buildCheckInHTML(date);
+  }
+
+  if (options[1].checked) {
+    if (content) content += `<div style="page-break-before:always;"></div>`;
+    content += buildCheckOutHTML(date);
+  }
+
+  // 👉 später einfach erweitern:
+  // Freie Zimmer, Frühstück etc.
+
+  if (!content) {
+    alert("Bitte mindestens eine Liste auswählen");
     return;
   }
 
-  const date = dateInput.value;
+  let html = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Druck</title>
 
-  const options = [...box.querySelectorAll(".list-option")];
+<style>
+body {
+  font-family: Arial;
+  padding: 20px;
+}
 
-  const checkInSelected = options[0].checked;
+h1 {
+  font-size: 20px;
+  margin-bottom: 20px;
+}
 
-  overlay.remove();
+h2 {
+  font-size: 16px;
+  margin-top: 25px;
+  margin-bottom: 10px;
+}
 
-  if (checkInSelected) {
-    printCheckInList(date);
+.row {
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+@media print {
+  h1 {
+    page-break-before: always;
   }
+
+</style>
+
+</head>
+<body>
+
+${content}
+
+<script>
+window.onload = function() {
+  window.print();
+}
+<\/script>
+
+</body>
+</html>
+`;
+
+  let win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
 };
 
 
@@ -2406,200 +2465,125 @@ document.getElementById("printCancel").onclick = () => {
 
 }
 
-  function printCheckInList(dateStr) {
+function buildCheckInHTML(dateStr) {
 
   const date = new Date(dateStr);
   date.setHours(0,0,0,0);
 
-  // ✅ eindeutige Buchungen (dein System ist dup-anfällig)
   const uniqueBookings = Object.values(
-    Object.fromEntries(
-      bookings.map(b => [b.id, b])
-    )
+    Object.fromEntries(bookings.map(b => [b.id, b]))
   );
 
-const arrivals = uniqueBookings.filter(b => {
+  const arrivals = uniqueBookings.filter(b => {
+    if (!b.start) return false;
+    if (b.checkin) return false;
+    if (b.guests === "BLOCK") return false;
 
-  if (!b.start) return false;
+    const start = new Date(b.start);
+    start.setHours(0,0,0,0);
 
-  // ✅ bereits eingecheckte ausschließen
-  if (b.checkin) return false;
+    return start.getTime() === date.getTime();
+  });
 
-  // ❌ Block ebenfalls rausnehmen (optional, aber sinnvoll)
-  if (b.guests === "BLOCK") return false;
-
-  const start = new Date(b.start);
-  start.setHours(0,0,0,0);
-
-  return start.getTime() === date.getTime();
-});
- // ✅ echte Gruppierung
-
-const groupedByGroup = {};
-const groupedByCompany = {};
-const singles = [];
-
-arrivals.forEach(b => {
-
-  if (b.group_id && groupsMap[b.group_id]) {
-
-    const g = groupsMap[b.group_id];
-
-    if (!groupedByGroup[g.id]) {
-      groupedByGroup[g.id] = {
-        name: g.name,
-        list: []
-      };
-    }
-
-    groupedByGroup[g.id].list.push(b);
-  }
-
-  else if (b.company) {
-
-    if (!groupedByCompany[b.company]) {
-      groupedByCompany[b.company] = [];
-    }
-
-    groupedByCompany[b.company].push(b);
-  }
-
-  else {
-    singles.push(b);
-  }
-
-});
-
-  // ✅ HTML bauen
- 
-let html = `
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<meta name="format-detection" content="telephone=no">
-<meta name="format-detection" content="date=no">
-<meta name="format-detection" content="address=no">
-<meta name="format-detection" content="email=no">
-
-    <title>Check-In Liste</title>
-   <style>
- body {
-  font-family: Arial;
-  padding: 20px;
-  color: black;
+  return buildListHTML("Check-In Liste", date, arrivals);
 }
 
-h1 {
-  font-size: 20px;
-  font-weight: bold;
-  margin-bottom: 20px;
+function buildCheckOutHTML(dateStr) {
+
+  const base = new Date(dateStr);
+  base.setHours(0,0,0,0);
+
+  const date = new Date(base);
+  date.setDate(base.getDate() + 1);
+
+  const uniqueBookings = Object.values(
+    Object.fromEntries(bookings.map(b => [b.id, b]))
+  );
+
+  const departures = uniqueBookings.filter(b => {
+    if (!b.end) return false;
+    if (b.guests === "BLOCK") return false;
+
+    const end = new Date(b.end);
+    end.setHours(0,0,0,0);
+
+    return end.getTime() === date.getTime();
+  });
+
+  return buildListHTML("Check-Out Liste", date, departures);
 }
 
-h2 {
-  font-size: 16px;
-  font-weight: bold;
-  text-decoration: underline;
-  margin-top: 25px;
-  margin-bottom: 10px;
-}
+function buildListHTML(title, date, list) {
 
-.row {
-  font-size: 12px;
-  margin-bottom: 6px;
-  font-weight: normal;
-  color: black;
-  text-decoration: none;
-}
-
-.row span {
-  all: initial;
-  font-family: Arial;
-  font-size: 12px;
-  color: black;
-  text-decoration: none;
-  font-weight: normal;
-}
-
-
-a, a:link, a:visited, a:hover, a:active {
-  text-decoration: none !important;
-  color: black !important;
-  font-weight: normal !important;
-}
-
-</style>
-  </head>
-  <body>
-
-  <h1>Check-In Liste ${date.toLocaleDateString("de-DE")}</h1>
-  `;
-
-function renderList(title, list) {
-
-  if (!list.length) return "";
-
-  let container = document.createElement("div");
-
-  let h2 = document.createElement("h2");
-  h2.textContent = title;
-  container.appendChild(h2);
+  const groupedByGroup = {};
+  const groupedByCompany = {};
+  const singles = [];
 
   list.forEach(b => {
 
-    let end = new Date(b.end);
-    let start = new Date(b.start);
+    if (b.group_id && groupsMap[b.group_id]) {
+      const g = groupsMap[b.group_id];
 
-    let duration = Math.round(
-      (end - start) / (1000 * 60 * 60 * 24)
-    );
+      if (!groupedByGroup[g.id]) {
+        groupedByGroup[g.id] = { name: g.name, list: [] };
+      }
 
-    let row = document.createElement("div");
-    row.className = "row";
+      groupedByGroup[g.id].list.push(b);
+    }
 
-    // ✅ DAS ist der Trick
-    row.textContent =
-      `${b.name || "-"} ${b.guests} ${(rooms[b.row] || "").split(" - ")[0]} ` +
-      `(${duration} ${duration !== 1 ? "Nächte" : "Nacht"}) ` +
-      `bis ${end.toLocaleDateString("de-DE")} ` +
-      `${b.price ? "– " + b.price + "€" : ""} ` +
-      `${b.comment ? "– " + b.comment : ""}`;
+    else if (b.company) {
+      if (!groupedByCompany[b.company]) {
+        groupedByCompany[b.company] = [];
+      }
+      groupedByCompany[b.company].push(b);
+    }
 
-    container.appendChild(row);
+    else {
+      singles.push(b);
+    }
   });
 
-  return container.innerHTML;
+  function renderList(title, list) {
+    if (!list.length) return "";
+
+    let html = `<h2>${title}</h2>`;
+
+    list.forEach(b => {
+
+      let end = new Date(b.end);
+      let start = new Date(b.start);
+
+      let duration = Math.round(
+        (end - start) / (1000 * 60 * 60 * 24)
+      );
+
+      html += `
+        <div class="row">
+          ${b.name || "-"} ${b.guests} ${(rooms[b.row] || "").split(" - ")[0]}
+          (${duration} ${duration !== 1 ? "Nächte" : "Nacht"})
+        </div>
+      `;
+    });
+
+    return html;
+  }
+
+  let html = `<h1>${title} ${date.toLocaleDateString("de-DE")}</h1>`;
+
+  Object.values(groupedByGroup).forEach(g => {
+    html += renderList(`Gruppe: ${g.name}`, g.list);
+  });
+
+  Object.entries(groupedByCompany).forEach(([company, list]) => {
+    html += renderList(`Firma: ${company}`, list);
+  });
+
+  if (singles.length) {
+    html += renderList("Einzelgäste", singles);
+  }
+
+  return html;
 }
-// ✅ Gruppen (jede einzelne Gruppe)
-Object.values(groupedByGroup).forEach(g => {
-  html += renderList(`Gruppe: ${g.name}`, g.list);
-});
-
-// ✅ Firmen (jede Firma einzeln)
-Object.entries(groupedByCompany).forEach(([company, list]) => {
-  html += renderList(`Firma: ${company}`, list);
-});
-
-// ✅ Einzelgäste
-if (singles.length) {
-  html += renderList("Einzelgäste", singles);
-}
-
-  html += `
-    <script>
-      window.onload = function() {
-        window.print();
-      }
-    <\/script>
-  </body>
-  </html>
-  `;
-
-  let win = window.open("", "_blank");
-  win.document.write(html);
-  win.document.close();
-}
-
       
 function runMonthlyStats() {
   if (!confirm("Zahlen des letzten Monats drucken")) return;
