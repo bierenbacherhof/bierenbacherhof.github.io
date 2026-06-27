@@ -598,6 +598,15 @@ body:not(.logged-in) {
       #loginBox {
         position: fixed;
         z-index: 99999;
+        width: min(90vw, 320px);
+        max-width: 320px;
+        box-sizing: border-box;
+      }
+
+      #loginBox input,
+      #loginBox button {
+        width: 100%;
+        box-sizing: border-box;
       }
 
             #stickyHeader {
@@ -874,12 +883,14 @@ body {
         border: 1px solid #ccc;
         z-index: 50000;
       ">
-      <h3>Login</h3>
+      <form id="loginForm" autocomplete="on" onsubmit="event.preventDefault(); login(); return false;">
+        <h3>Login</h3>
 
-      <input type="text" id="login_email" placeholder="Benutzername" /><br /><br />
-      <input type="password" id="login_password" placeholder="Passwort" /><br /><br />
+        <input type="text" id="login_email" name="username" placeholder="Benutzername" autocomplete="username" autocapitalize="none" inputmode="text" /><br /><br />
+        <input type="password" id="login_password" name="password" placeholder="Passwort" autocomplete="current-password" /><br /><br />
 
-      <button onclick="login()">Login</button>
+        <button type="submit" id="loginSubmitBtn">Login</button>
+      </form>
     </div>
     <div
       id="groupInfoBox"
@@ -1307,29 +1318,46 @@ body {
     
 
       async function login() {
-        let username = document.getElementById("login_email").value.trim();
-        let password = document.getElementById("login_password").value;
+        const usernameInput = document.getElementById("login_email");
+        const passwordInput = document.getElementById("login_password");
+        const submitButton = document.getElementById("loginSubmitBtn");
 
-        const { data, error } = await supa.from("user_roles").select("email").ilike("username", username).single();
+        if (!usernameInput || !passwordInput) return;
 
-        if (error || !data) {
-          alert("Benutzer nicht gefunden");
-          console.error(error);
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value;
+
+        if (!username || !password) {
+          alert("Bitte Benutzername und Passwort eingeben");
           return;
         }
 
-        const { error: loginError } = await supa.auth.signInWithPassword({
-          email: data.email,
-          password: password
-        });
+        if (submitButton) submitButton.disabled = true;
 
-        if (loginError) {
-          alert("Falsches Passwort");
-          console.error(loginError);
-          return;
+        try {
+          const { data, error } = await supa.from("user_roles").select("email").ilike("username", username).single();
+
+          if (error || !data) {
+            alert("Benutzer nicht gefunden");
+            console.error(error);
+            return;
+          }
+
+          const { error: loginError } = await supa.auth.signInWithPassword({
+            email: data.email,
+            password: password
+          });
+
+          if (loginError) {
+            alert("Falsches Passwort");
+            console.error(loginError);
+            return;
+          }
+
+          await checkAuth();
+        } finally {
+          if (submitButton) submitButton.disabled = false;
         }
-
- checkAuth();
       }
 
       
@@ -2668,16 +2696,21 @@ uniqueBookings.forEach(b => {
 }
       
       async function checkAuth() {
-        
-        
-if (isMobile) {
-  document.getElementById("newBookingBtn").style.display = "none";
-}
+        const newBookingBtn = document.getElementById("newBookingBtn");
+        const printBtn = document.getElementById("printListsBtn");
+        const monthlyBtn = document.getElementById("monthlyStatsBtn");
 
-if (isMobile) {
-  printBtn.style.display = "none";
-  monthlyBtn.style.display = "none";
-}
+        if (isMobile && newBookingBtn) {
+          newBookingBtn.style.display = "none";
+        }
+
+        if (isMobile && printBtn) {
+          printBtn.style.display = "none";
+        }
+
+        if (isMobile && monthlyBtn) {
+          monthlyBtn.style.display = "none";
+        }
 
 const { data: { user } } = await supa.auth.getUser();
 currentUser = user;
@@ -2704,9 +2737,9 @@ currentUser = user;
 }
         
           
-          document.getElementById("newBookingBtn").style.display = isEditAllowed() ? "inline-block" : "none";
-
-     const printBtn = document.getElementById("printListsBtn");
+          if (newBookingBtn) {
+            newBookingBtn.style.display = isEditAllowed() ? "inline-block" : "none";
+          }
 
 if (printBtn) {
   printBtn.style.display =
@@ -2714,8 +2747,6 @@ if (printBtn) {
 }
      
           
-const monthlyBtn = document.getElementById("monthlyStatsBtn");
-
 if (monthlyBtn) {
   monthlyBtn.style.display =
     (!isMobile && currentRole !== "read") ? "inline-block" : "none";
@@ -2741,6 +2772,29 @@ if (monthlyBtn) {
   updateStickyPositions();
 }, 120);
       }
+
+      const loginForm = document.getElementById("loginForm");
+      const loginEmail = document.getElementById("login_email");
+      const loginPassword = document.getElementById("login_password");
+
+      if (loginForm) {
+        loginForm.addEventListener("submit", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          login();
+        });
+      }
+
+      [loginEmail, loginPassword].forEach((input) => {
+        if (!input) return;
+
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            login();
+          }
+        });
+      });
 
       checkAuth();
       
