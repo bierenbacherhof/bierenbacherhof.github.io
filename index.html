@@ -715,8 +715,8 @@ body.moving .booking:hover .text {
 
 @media (max-width: 600px) {
 
-  thead th {
-     transform: scale(0.5);
+  #calender {
+       transform: scale(0.5);
     transform-origin: top left;
     width: 200%;
   }
@@ -727,7 +727,11 @@ body.moving .booking:hover .text {
     width: 200%;
   }
 
-  
+  .booking{
+     transform: scale(0.5);
+    transform-origin: top left;
+    width: 200%;
+  }
 
 body {
   -webkit-tap-highlight-color: transparent;
@@ -2359,12 +2363,19 @@ document.getElementById("printConfirm").onclick = () => {
   let content = "";
 
   if (options[0].checked) {
-    content += buildCheckInHTML(date);
+   
+ content += `<div class="print-section">` +
+    buildCheckInHTML(date) +
+    `</div>`;
+
   }
 
   if (options[1].checked) {
-    if (content) content += `<div style="page-break-before:always;"></div>`;
-    content += buildCheckOutHTML(date);
+ 
+ content += `<div class="print-section">` +
+    buildCheckOutHTML(date) +
+    `</div>`;
+
   }
 
   // 👉 später einfach erweitern:
@@ -2404,10 +2415,15 @@ h2 {
   margin-bottom: 6px;
 }
 
-@media print {
-  h1 {
-    page-break-before: always;
-  }
+
+.print-section {
+  page-break-after: always;
+}
+
+
+.print-section:last-child {
+  page-break-after: auto;
+}
 
 </style>
 
