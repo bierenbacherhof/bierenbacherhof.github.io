@@ -7,7 +7,7 @@
   
 <meta 
   name="viewport" 
-  content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+  content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
 />
 
 
@@ -259,28 +259,6 @@ body.admin .admin-only {
 body.logged-in #datePickerWrapper {
   display: inline-block !important;
 }
-
-@media (max-width: 600px) {
-  body.logged-in #datePickerWrapper,
-  body.logged-in #logoutBtn {
-    display: inline-block !important;
-  }
-
-  body.logged-in #weekDown,
-  body.logged-in #weekUp,
-  body.logged-in #undo,
-  body.logged-in #newBookingBtn,
-  body.logged-in #monthlyStatsBtn,
-  body.logged-in #printListsBtn {
-    display: none !important;
-  }
-
-  body.logged-in.body.admin #backupBtn,
-  body.logged-in.body.admin #logOverviewBtn {
-    display: inline-block !important;
-  }
-}
-
       
             .no-breakfast-icon::after {
               content: "";
@@ -620,7 +598,7 @@ body:not(.logged-in) #loginBlocker {
 body:not(.logged-in) {
   overflow: hidden;
   height: 100vh;
-  touch-action: pan-y;
+  
 }
 
 
@@ -737,10 +715,6 @@ body.moving .booking:hover .text {
 
 @media (max-width: 600px) {
 
-  
-  html, body {
-    touch-action: pan-y;
-  }
 
 body {
   -webkit-tap-highlight-color: transparent;
@@ -6857,6 +6831,9 @@ async function saveBatchBookings(list) {
 const calendar = document.getElementById("calendar");
 const bg = document.getElementById("swipeBackground");
 
+// Rand-Breite für Swipe in Pixeln
+const SWIPE_EDGE_WIDTH = 80;
+
 calendar.addEventListener("touchstart", (e) => {
   
  startX = e.touches[0].clientX;
@@ -6864,6 +6841,11 @@ calendar.addEventListener("touchstart", (e) => {
 
   isSwiping = false;
 
+  // ✅ Nur Swipes am Rand erlauben (linke oder rechte 80px)
+  let isAtEdge = startX < SWIPE_EDGE_WIDTH || startX > window.innerWidth - SWIPE_EDGE_WIDTH;
+  if (!isAtEdge) {
+    return; // Swipe wird ignoriert wenn nicht am Rand
+  }
 
   calendar.style.transition = "none";
 });
