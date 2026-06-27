@@ -7,7 +7,7 @@
   
 <meta 
   name="viewport" 
-  content="width=device-width, initial-scale=1, minimum-scale=0.5, maximum-scale=0.5, viewport-fit=cover"
+  content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover"
 />
 
 
@@ -819,8 +819,6 @@ body {
     display: none !important;
   }
 
- 
-
   body.logged-in #logoutBtn {
     display: inline-block !important;
   }
@@ -861,6 +859,7 @@ body {
   </head>
 
   <body>
+    <div id="appWrapper">
     <div id="loginBlocker"></div>
     
 <div id="swipeBackground"></div>
@@ -7094,5 +7093,6 @@ window.addEventListener("resize", () => {
   
 
     </script>
+    </div>
   </body>
 </html>
