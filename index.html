@@ -704,19 +704,17 @@ body.moving .booking:hover .text {
               width: 6px;
             }
 
-            #logContent::-webkit-scrollbar-thumb {
+            #logContent::-webkit-scrollbar-thumb,
+                #backupList::-webkit-scrollbar-thumb {
               background: #bbb;
               border-radius: 4px;
             }
-
-            #backupList::-webkit-scrollbar-thumb {
-              background: #bbb;
-              border-radius: 4px;
-            }
-
+      
 @media (max-width: 600px) {
 
-
+  html, body {
+    touch-action: pan-y;
+  }
   
 
   /* ✅ HEADER */
@@ -1290,15 +1288,11 @@ body.moving .booking:hover .text {
       let currentRole = "read";
       let userMap = {};
       let allLogs = [];
-      let isDraggingUpdate = false;
       let groupsMap = {};
       let isLocalInsert = false;
       let lastChangeTime = 0;
       let isSwiping = false;
       let swipeStartX = 0;
-      let currentOffsetX = 0;      
-      let touchStartY = 0;
-      let isMultiTouch = false;
       let savedWeek = localStorage.getItem("calendar_current_week");
       let startX = 0;
       let colorPickerOpen = false
@@ -1657,7 +1651,6 @@ groups.forEach((g) => {
   groupSelect.appendChild(opt);
 });
 
-// ✅ onchange Verhalten
 groupSelect.onchange = (e) => {
   let selected = e.target.options[e.target.selectedIndex];
 
@@ -1733,7 +1726,7 @@ async function logBookingAction({
   oldValue = null,
   newValue = null,
   room = null,
-  bookingAt = null // ✅ NEU
+  bookingAt = null
 }) {
   const user = currentUser;
   if (!user) return;
@@ -1755,7 +1748,7 @@ async function logBookingAction({
 
       room: room || "-",
 
-      booking_at: bookingAt // ✅ HIER REIN
+      booking_at: bookingAt 
     }]);
   } catch (err) {
     console.error("Log fehlgeschlagen:", err);
@@ -1820,6 +1813,11 @@ async function logBookingAction({
 
         let start = new Date(startVal);
         let end = new Date(endVal);
+
+        
+current = new Date(start);
+localStorage.setItem("calendar_current_week", current.toISOString());
+render();
 
         if (end <= start) {
           return alert("Abreise muss nach Anreise liegen");
@@ -1980,35 +1978,91 @@ box.onclick = (e) => {
 
 function getFloorPriorityGroups() {
   return [
-    // 1️⃣ EG
+  
     ["101","102","103","104","52","53","54","55","56","57"],
 
-    // 2️⃣ Mitte
+   
     ["201","202","203","204","205","206","207","208","209","210","212","214","216","218","219",
      "50","51","58","59","60","61","62","63","64"],
 
-    // 3️⃣ oben
+ 
     ["301","302","303","304","305","306","307","308","309","310","311","312","314","315","316","317","318","319",
      "65","66","67","68","69","70"]
   ];
 }
     
-      function getBuildingPriorityGroups() {
-  return [
-    // 1. EZ
-    ["206","207","208","209","210","304","306","307","308","309","310","314","316","318","319","52","53","56","57",
-     "58","59","62","63","67","68"],
-   
-    // 2. DZ
-    ["101","102","103","104","201","202","203","204","205","212","214","219","301","303","305","311","312","315","50","51","54","55","60","61","66","69"],
-    
-    // 3. 3er
-    ["302","317","64","70"],
+function getBuildingPriorityGroups(type) {
 
-    // 4. Altbau 4er
-    ["216","218","65"]
-  ];
+  switch (type) {
+
+    case "EZ":
+   
+      return [
+       
+        ["206","207","208","209","210","304","306","307","308","309","310","314","316","318","319",
+         "52","53","56","57","58","59","62","63","67","68"],
+
+        ["219","303","305","315","69"],  
+            
+        ["101","102","103","104","201","202","203","204","205","212","214",
+         "301","311","312",
+         "50","51","54","55","60","61","66"],
+
+       
+        ["302","317","64","70"],
+            
+             ["216","218","65"]
+      ];
+ case "EZ B":
+      return [
+        ["52", "53","58","59"],
+        
+         ["101","102","103","104","201","202","203","204","205","212",
+          "214","301","311","312","50","51","54","55","60","61","66"],
+        
+        ["67","65"]
+      ];
+    case "DZ":
+          return [
+        
+          ["219","303","305","315","69"],  
+            
+        ["101","102","103","104","201","202","203","204","205","212","214",
+         "301","311","312",
+         "50","51","54","55","60","61","66"],
+
+      
+        ["302","317","64","70"],
+            
+             ["216","218","65"],
+            
+            ["206","207","208","209","210","306","307","308","309","310","56","57","62","63"]
+      ];
+case "DZ B":
+      return [
+        ["101","102","103","104","201","202","203","204","205","212",
+          "214","301","311","312","50","51","54","55","60","61","66"],
+        
+        ["65"]
+      ];
+    case "3er":
+      return [
+        ["302","317","64","70"],
+
+      
+        ["216","218","65"]
+      ];
+
+    case "4er":
+      return [
+        ["216","218","65"]
+      ];
+
+    default:
+      return [];
+  }
 }
+
 function calculateAvailability(start, end, data) {
 
   let tempUsed = new Set();
@@ -2168,63 +2222,65 @@ function isLightColor(color) {
         box.innerHTML = html;
       }
       
-      async function autoPlaceGroup() {
+async function autoPlaceGroup() {
 
   const placement = groupPlacement;
   if (!placement || !placement.data) return;
 
   let { start, end } = placement;
 
-  // ✅ richtige Gruppen wählen
-  let rawGroups = placement.floorPriority
-    ? getFloorPriorityGroups()
-    : getBuildingPriorityGroups();
+  let counter = 0;
 
-  // ✅ in echte room-Indices umwandeln
-  let groups = rawGroups.map(g =>
-    g.map(num => rooms.findIndex(r => r.startsWith(num + " ")))
-     .filter(i => i !== -1)
-  );
 
- let counter = 0; // ✅ EINMAL
+  for (let item of placement.data) {
 
-for (let group of groups) {
+    if (item.count <= 0) continue;
 
-  for (let row of group) {
+ 
+    let rawGroups = placement.floorPriority
+      ? getFloorPriorityGroups()
+      : getBuildingPriorityGroups(item.type);
 
-    let roomName = rooms[row];
-    if (!roomName || roomName.trim() === "") continue;
-
-    if (overlapDates(row, start, end, -1)) continue;
-
-    let item = placement.data.find(d =>
-      d.count > 0 && canUseRoomSimple(roomName, d.type)
+   
+    let groups = rawGroups.map(g =>
+      g.map(num => rooms.findIndex(r => r.startsWith(num + " ")))
+       .filter(i => i !== -1)
     );
 
-    if (!item) continue;
+    for (let group of groups) {
 
-    let booking = await assignRoom(row, item.type, false, true);
+      for (let row of group) {
 
-    if (booking) {
-      bookings.push(booking);
-      counter++;
+        if (item.count <= 0) break;
 
-      if (counter % 3 === 0) {
-        await new Promise(r => setTimeout(r, 0));
+        let roomName = rooms[row];
+        if (!roomName || roomName.trim() === "") continue;
+
+        if (overlapDates(row, start, end, -1)) continue;
+
+        if (!canUseRoomSimple(roomName, item.type)) continue;
+
+        let booking = await assignRoom(row, item.type, false, true);
+
+        if (booking) {
+          bookings.push(booking);
+          counter++;
+
+          if (counter % 3 === 0) {
+            await new Promise(r => setTimeout(r, 0));
+          }
+        }
+
+        if (placement.data.every(d => d.count === 0)) break;
       }
+
+      if (placement.data.every(d => d.count === 0)) break;
     }
-
-    if (placement.data.every(d => d.count === 0)) break;
   }
-
-  if (placement.data.every(d => d.count === 0)) break;
-}
-
 
   draw();
   updatePlacementBox();
 
-  // ✅ WENN fertig → speichern
   let done = placement.data.every(d => d.count === 0);
 
   if (done) {
@@ -2284,6 +2340,11 @@ for (let group of groups) {
         return currentRole === "admin";
       }
       
+      function isValidRoom(row) {
+  return rooms[row] && rooms[row].trim() !== "";
+}
+      
+      
       function openPrintOptions() {
 
   let overlay = document.createElement("div");
@@ -2318,7 +2379,36 @@ for (let group of groups) {
     <label><input type="checkbox" class="list-option"> Check-In</label><br>
     <label><input type="checkbox" class="list-option"> Check-Out</label><br>
     <label><input type="checkbox" class="list-option"> Freie Zimmer</label><br>
-    <label><input type="checkbox" class="list-option"> Housekeeping</label><br>
+   
+
+<label>
+  <input type="checkbox" id="chk_housekeeping" class="list-option">
+  Housekeeping
+</label>
+
+<input 
+  type="number" 
+  id="hkRooms" 
+  style="width:60px; margin-left:6px;"
+>
+
+<button id="hkExtrasBtn" type="button" style="margin-left:6px;">
+extra Räume
+</button>
+
+<div id="hkExtrasBox" style="
+  display:none;
+  border:1px solid #ccc;
+  padding:10px;
+  margin-top:8px;
+  max-height:200px;
+  overflow:auto;
+  border-radius:6px;
+">
+</div>
+
+<br>
+
     <label><input type="checkbox" class="list-option"> Frühstück</label><br>
 
     <br>
@@ -2336,45 +2426,131 @@ for (let group of groups) {
 
   overlay.appendChild(box);
   document.body.appendChild(overlay);
+        
+       const HK_AREAS = [
+  "Rezeption","Treppenhaus","Toiletten","Saal",
+  "Restaurant","Fachwerk","Schenke","Kegelbahn",
+  "Grillhütte","Bar",
+  "Semi 1","Semi 2","Semi 3","Semi 4","Semi 4a","Semi 5"
+];
+
+function getDefaultAreas(date) {
+
+  let d = new Date(date);
+  let day = d.getDay();
+
+  let base = ["Rezeption","Treppenhaus","Toiletten","Saal"];
+
+  if (day === 0) {
+    base.push("Restaurant","Fachwerk","Schenke","Kegelbahn");
+  }
+
+  return base;
+}
+
+const hkBox = document.getElementById("hkExtrasBox");
+const hkBtn = document.getElementById("hkExtrasBtn");
+const dateInput = document.getElementById("printDate");
+   
+        function buildExtrasHTML() {
+  const date = dateInput.value || new Date().toISOString().slice(0,10);
+  const defaults = getDefaultAreas(date);
+
+  let html = "";
+
+  HK_AREAS.forEach(area => {
+    html += `
+      <label>
+        <input type="checkbox" class="hk-extra"
+          ${defaults.includes(area) ? "checked" : ""}>
+        ${area}
+      </label><br>
+    `;
+  });
+
+  hkBox.innerHTML = html;
+} 
+        
+        buildExtrasHTML();
+        
+        
+dateInput.addEventListener("change", () => {
+  buildExtrasHTML();
+});
+
+        
+hkBtn.onclick = () => {
+  if (hkBox.style.display === "none") {
+    hkBox.style.display = "block";
+  } else {
+    hkBox.style.display = "none";
+  }
+}; 
 
 document.getElementById("printConfirm").onclick = () => {
-
+  const hkValue = document.getElementById("hkRooms").value;
   const date = document.getElementById("printDate").value;
   const options = [...box.querySelectorAll(".list-option")];
 
   let content = "";
 
-  if (options[0].checked) {
-   
- content += `<div class="print-section">` +
-    buildCheckInHTML(date) +
-    `</div>`;
+if (options[0].checked) {
 
+  let html = buildCheckInHTML(date);
+
+  if (html && html.trim() !== "") {
+    content += `<div class="print-section">${html}</div>`;
   }
+}
 
-  if (options[1].checked) {
- 
- content += `<div class="print-section">` +
-    buildCheckOutHTML(date) +
-    `</div>`;
+ if (options[1].checked) {
 
+  let html = buildCheckOutHTML(date);
+
+  if (html && html.trim() !== "") {
+    content += `<div class="print-section">${html}</div>`;
   }
+}
   
-if (options[2].checked) {
-  if (content) content += `<div class="print-section">`;
-  content += buildFreeRoomsHTML(date);
-  content += `</div>`;
+ if (options[2].checked) {
+
+  let html = buildFreeRoomsHTML(date);
+
+  if (html && html.trim() !== "") {
+    content += `<div class="print-section">${html}</div>`;
+  }
 }
+  
+if (options[3] && options[3].checked) {
+
+  let limit = parseInt(hkValue);
+
+  if (!limit) {
+    alert("Bitte Personalanzahl vom Housekeeping angeben!");
+    return;
+  }
+
+ 
+  
+let extras = [...document.querySelectorAll(".hk-extra:checked")]
+  .map(x => x.parentElement.textContent.replace(/\s+/g, " ").trim());
 
 
+  let html = buildHousekeepingHTML(date, limit, extras);
+
+  if (html && html.trim() !== "") {
+    content += `<div class="print-section">${html}</div>`;
+  }
+}
+  
 if (options[4].checked) {
-  content += `<div class="print-section">`;
-  content += buildBreakfastHTML(date);
-  content += `</div>`;
-}
 
-  // 👉 später einfach erweitern:
-  // Freie Zimmer, Frühstück etc.
+  let html = buildBreakfastHTML(date);
+
+  if (html && html.trim() !== "") {
+    content += `<div class="print-section">${html}</div>`;
+  }
+}
 
   if (!content) {
     alert("Bitte mindestens eine Liste auswählen");
@@ -2450,11 +2626,11 @@ document.getElementById("printCancel").onclick = () => {
   overlay.remove();
 };
 
-  // ✅ Default Datum = heute
+ 
   document.getElementById("printDate").value =
     new Date().toISOString().slice(0,10);
 
-  // ✅ LOGIK: Alle auswählen
+
   const allCheckbox = document.getElementById("chk_all");
   const options = box.querySelectorAll(".list-option");
 
@@ -2464,7 +2640,7 @@ document.getElementById("printCancel").onclick = () => {
     });
   };
 
-  // ✅ optional: wenn alle einzeln -> Alle automatisch aktivieren
+
   options.forEach(opt => {
     opt.onchange = () => {
       const allChecked = [...options].every(o => o.checked);
@@ -2472,7 +2648,7 @@ document.getElementById("printCancel").onclick = () => {
     };
   });
 
-  // ✅ Buttons
+ 
   document.getElementById("printCancel").onclick = () => {
     overlay.remove();
   };
@@ -2489,6 +2665,7 @@ function buildCheckInHTML(dateStr) {
   );
 
   const arrivals = uniqueBookings.filter(b => {
+    if (!isValidRoom(b.row)) return false;
     if (!b.start) return false;
     if (b.checkin) return false;
     if (b.guests === "BLOCK") return false;
@@ -2515,6 +2692,7 @@ function buildCheckOutHTML(dateStr) {
   );
 
   const departures = uniqueBookings.filter(b => {
+    if (!isValidRoom(b.row)) return false;
     if (!b.end) return false;
     if (b.guests === "BLOCK") return false;
 
@@ -2551,7 +2729,7 @@ function buildCheckOutHTML(dateStr) {
       let occupied = bookings.some(b => {
 
         if (b.row !== rowIndex) return false;
-        if (b.guests === "BLOCK") return true; // BLOCK zählt als belegt
+        if (b.guests === "BLOCK") return true;
 
         let start = new Date(b.start);
         let end = new Date(b.end);
@@ -2564,10 +2742,10 @@ function buildCheckOutHTML(dateStr) {
       consecutiveFreeNights++;
     }
 
-    // ❌ nicht frei in der ersten Nacht → raus
+  
     if (consecutiveFreeNights === 0) return;
 
-    let roomLabel = roomName; // z.B. "101 - DZ B"
+    let roomLabel = roomName;
 
     let text = "";
 
@@ -2593,6 +2771,401 @@ function buildCheckOutHTML(dateStr) {
   return html;
 }
   
+function buildHousekeepingHTML(dateStr, staffCount, extras = []) {
+ function getRoomNumberText(roomName) {
+  return (roomName || "").split(" - ")[0];
+}
+
+function getRoomBaseType(roomName) {
+  let t = roomName || "";
+
+  if (t.includes("EZ")) return "EZ";
+  if (t.includes("DZ")) return "DZ";
+
+  return "";
+}
+
+function getBookingType(b) {
+  if (!b || !b.guests) return "";
+
+  let t = b.guests;
+
+  if (t.includes("EZ")) return "EZ";
+  if (t.includes("DZ")) return "DZ";
+  if (t.includes("3")) return "DZ";  
+  if (t.includes("4")) return "DZ";  
+
+  return "";
+}
+  
+function isBuilding2(roomName) {
+  let num = parseInt((roomName || "").split(" - ")[0]);
+  return num >= 50 && num <= 70;
+}
+
+  const base = new Date(dateStr);
+  base.setHours(0,0,0,0);
+
+  const targetDate = new Date(base);
+  targetDate.setDate(base.getDate() + 1);
+
+  
+  const relevant = bookings.filter(b => {
+    if (!isValidRoom(b.row)) return false;
+    if (b.guests === "BLOCK") return false;
+
+    let start = new Date(b.start);
+    let end = new Date(b.end);
+
+    start.setHours(0,0,0,0);
+    end.setHours(0,0,0,0);
+
+
+    return start <= targetDate && end >= targetDate;
+  });
+
+  let neu = [];
+  let zuleger = [];
+  let kontrolle = [];
+ relevant.forEach(b => {
+
+  let start = new Date(b.start);
+  let end = new Date(b.end);
+
+  start.setHours(0,0,0,0);
+  end.setHours(0,0,0,0);
+
+ 
+  if (start.getTime() === targetDate.getTime()) {
+    kontrolle.push(b);
+  }
+
+
+  if (end.getTime() === targetDate.getTime()) {
+    neu.push(b);
+  } else {
+    zuleger.push(b);
+  }
+});
+function findNextBookingSameRoom(b) {
+
+  let end = new Date(b.end);
+  end.setHours(0,0,0,0);
+
+  return bookings.find(x => {
+    if (!isValidRoom(b.row)) return false;
+    if (!x || x.id === b.id) return false;
+    if (x.row !== b.row) return false;
+    if (x.guests === "BLOCK") return false;
+
+    let start = new Date(x.start);
+    start.setHours(0,0,0,0);
+
+ 
+    let diff = (start - end) / (1000 * 60 * 60 * 24);
+
+    return diff === 0 || diff === 1;
+  });
+}
+
+ 
+ const getRoomNumber = b =>
+  b && b.row !== undefined
+    ? parseInt((rooms[b.row] || "").split(" - ")[0])
+    : 999;
+
+  neu.sort((a,b) => getRoomNumber(a) - getRoomNumber(b));
+  zuleger.sort((a,b) => getRoomNumber(a) - getRoomNumber(b));
+
+let tasks = [];
+
+neu.forEach(b => {
+  tasks.push({
+  type: "Neu", 
+  weight: 2, 
+  room: rooms[b.row], 
+  name: b.name,
+  booking: b 
+});
+});
+
+
+zuleger.forEach(b => {
+ 
+tasks.push({ 
+  type: "Zuleger", 
+  weight: 1, 
+  room: rooms[b.row], 
+  name: b.name,
+  booking: b 
+});
+
+});
+
+extras.forEach(e => {
+  tasks.push({
+    type: "Extra",
+    weight: 1,
+    extra: e
+  });
+});
+kontrolle = kontrolle.filter(k => {
+
+  let matchingNeu = neu.find(n => {
+
+    if (n.row !== k.row) return false;
+
+    let next = findNextBookingSameRoom(n, targetDate);
+
+    return next && next.id === k.id;
+  });
+
+  return !matchingNeu;
+});
+  
+let countTotal = {
+  neu: neu.length,
+  zuleger: zuleger.length,
+  kontrolle: kontrolle.length
+};
+  
+function calcLoad(n, z, k) {
+  return n * 2 + z * 1 + k * 0.5;
+}
+
+
+function getTargets(list, staff) {
+  return Math.ceil(list.length / staff);
+}
+
+
+
+let neuB1 = neu.filter(b => !isBuilding2(rooms[b.row]));
+let neuB2 = neu.filter(b => isBuilding2(rooms[b.row]));
+
+let zulB1 = zuleger.filter(b => !isBuilding2(rooms[b.row]));
+let zulB2 = zuleger.filter(b => isBuilding2(rooms[b.row]));
+
+let konB1 = kontrolle.filter(b => !isBuilding2(rooms[b.row]));
+let konB2 = kontrolle.filter(b => isBuilding2(rooms[b.row]));
+
+  let loadB1 = calcLoad(neuB1.length, zulB1.length, konB1.length);
+let loadB2 = calcLoad(neuB2.length, zulB2.length, konB2.length);
+
+  let totalLoad = loadB1 + loadB2;
+
+let staffB1 = Math.round((loadB1 / totalLoad) * staffCount);
+let staffB2 = staffCount - staffB1;
+
+  if (staffB1 === 0) staffB1 = 1;
+if (staffB2 === 0 && staffCount > 1) staffB2 = 1;
+
+let target = {
+  b1: {
+    neu: getTargets(neuB1, staffB1),
+    zul: getTargets(zulB1, staffB1),
+    kon: getTargets(konB1, staffB1)
+  },
+  b2: {
+    neu: getTargets(neuB2, staffB2),
+    zul: getTargets(zulB2, staffB2),
+    kon: getTargets(konB2, staffB2)
+  }
+};
+  
+let building1 = tasks.filter(t => {
+  return t.room && !isBuilding2(t.room);
+});
+
+let building2 = tasks.filter(t => {
+  return t.room && isBuilding2(t.room);
+});
+
+let extraTasks = tasks.filter(t => t.type === "Extra");
+
+
+let people = [];
+
+
+for (let i = 0; i < staffCount; i++) {
+  people.push({
+    neu: [],
+    zuleger: [],
+    extras: [],
+    kontrolle: [],
+    load: 0
+  });
+}
+
+people.forEach((p, i) => {
+  p.building = (i < staffB1) ? 1 : 2;
+});
+
+
+assignByTarget(neuB1, "neu", 1);
+assignByTarget(zulB1, "zul", 1);
+assignByTarget(konB1, "kon", 1);
+
+assignByTarget(neuB2, "neu", 2);
+assignByTarget(zulB2, "zul", 2);
+assignByTarget(konB2, "kon", 2);
+
+
+  
+if (extraTasks.length) {
+  let index = 0;
+
+  extraTasks.forEach(task => {
+    people[index].extras.push(task);
+    index = (index + 1) % people.length;
+  });
+}
+  
+function assignByTarget(list, type, building) {
+
+  let group = people.filter(p => p.building === building);
+  if (!target["b" + building][type]) return;
+
+  let t = target["b" + building][type];
+
+  let pIndex = 0;
+  let counter = 0;
+
+  list.forEach(item => {
+
+    let person = group[pIndex];
+
+    if (type === "neu") {
+      person.neu.push({ room: rooms[item.row], booking: item });
+    }
+    else if (type === "zul") {
+      person.zuleger.push({ room: rooms[item.row], booking: item });
+    }
+    else {
+      person.kontrolle.push(item);
+    }
+
+    counter++;
+
+    if (counter >= t) {
+      counter = 0;
+      pIndex = (pIndex + 1) % group.length;
+    }
+  });
+}
+
+
+function assignInBlocks(tasksList, buildingNumber) {
+
+  let filteredPeople = people.filter(p => p.building === buildingNumber);
+
+  if (!tasksList.length || !filteredPeople.length) return;
+
+  let perPerson = Math.ceil(tasksList.length / filteredPeople.length);
+
+  let index = 0;
+
+  filteredPeople.forEach(person => {
+    for (let i = 0; i < perPerson; i++) {
+
+      let task = tasksList[index];
+      if (!task) return;
+
+      if (task.type === "Neu") {
+        person.neu.push(task);
+      } else {
+        person.zuleger.push(task);
+      }
+
+      index++;
+    }
+  });
+}
+
+  let html = "";
+
+  people.forEach((p, i) => {
+
+    html += `
+<div style="page-break-inside: avoid; border-bottom:2px dashed #000; padding-bottom:10px; margin-bottom:15px;">
+
+<h2>Name:_______________________ – ${targetDate.toLocaleDateString("de-DE")}</h2>
+
+
+<table style="width:100%; table-layout:fixed;">
+<tr>
+  
+  <th align="left" style="width:33%">Neu</th>
+  <th align="left" style="width:33%">Zuleger</th>
+  <th align="left" style="width:33%">Kontrolle</th>
+
+</tr>
+<tr>
+  <td valign="top" style="padding-right:10px;">
+
+`;
+
+  
+p.neu.forEach(task => {
+
+  let roomNumber = getRoomNumberText(task.room);
+
+  let next = findNextBookingSameRoom(task.booking); 
+
+  let type;
+
+  if (next) {
+    type = getBookingType(next);   
+  } else {
+    type = getRoomBaseType(task.room);
+  }
+
+  html += `${roomNumber} – ${type}<br>`;
+});
+
+
+    html += `</td><td valign="top">`;
+
+  
+
+
+
+p.zuleger.forEach(task => {
+  let roomNumber = getRoomNumberText(task.room);
+  let type = getBookingType(task.booking);
+  html += `${roomNumber} – ${type}<br>`;
+});
+
+    html += `</td><td valign="top" style="padding-right:10px">`
+
+
+p.kontrolle.forEach(task => {
+  let roomNumber = getRoomNumberText(rooms[task.row]);
+  let type = getBookingType(task); 
+  html += `${roomNumber} – ${type}<br>`;
+});
+
+
+
+    html += `</td></tr></table>`;
+
+if (p.extras.length) {
+  html += `
+    <div style="margin-top:10px;">
+  `;
+
+  p.extras.forEach(task => {
+    html += `${task.extra}<br>`;
+  });
+
+  html += `</div>`;
+}
+    html += `</div>`;
+  });
+
+  return `<h1>Housekeeping ${targetDate.toLocaleDateString("de-DE")}</h1>${html}`;
+}
+      
 function buildBreakfastHTML(dateStr) {
 
   const base = new Date(dateStr);
@@ -2606,7 +3179,7 @@ function buildBreakfastHTML(dateStr) {
   );
 
   const relevant = uniqueBookings.filter(b => {
-
+    if (!isValidRoom(b.row)) return false;
     if (b.guests === "BLOCK") return false;
     if (b.breakfast === false) return false;
 
@@ -2631,12 +3204,12 @@ function buildBreakfastHTML(dateStr) {
   const groupedByCompany = {};
   const singles = [];
 
-  let totalGuests = 0; // ✅ NEU
+  let totalGuests = 0;
 
   relevant.forEach(b => {
 
     let count = getGuestCount(b.guests);
-    totalGuests += count; // ✅ NEU
+    totalGuests += count;
 
     if (b.group_id && groupsMap[b.group_id]) {
 
@@ -2669,7 +3242,7 @@ function buildBreakfastHTML(dateStr) {
     }
   });
 
-  // ✅ NEUE ÜBERSCHRIFT MIT GESAMTZAHL
+ 
   let html = `
     <h1>
       Frühstücksliste ${breakfastDate.toLocaleDateString("de-DE")}
@@ -2678,7 +3251,7 @@ function buildBreakfastHTML(dateStr) {
     </h1>
   `;
 
-  // Gruppen
+ 
   Object.values(groupedByGroup).forEach(g => {
     html += `
       <div class="row">
@@ -2687,7 +3260,7 @@ function buildBreakfastHTML(dateStr) {
     `;
   });
 
-  // Firmen
+ 
   Object.entries(groupedByCompany).forEach(([company, guests]) => {
     html += `
       <div class="row">
@@ -2696,7 +3269,7 @@ function buildBreakfastHTML(dateStr) {
     `;
   });
 
-  // Einzelgäste
+
   if (singles.length) {
 
     html += `<h2>Einzelgäste</h2>`;
@@ -2720,7 +3293,9 @@ function buildListHTML(title, date, list) {
   const singles = [];
 
   list.forEach(b => {
-
+      if (b.guests === "BLOCK") return;
+     if (!isValidRoom(b.row)) return;
+    
     if (b.group_id && groupsMap[b.group_id]) {
       const g = groupsMap[b.group_id];
 
@@ -2790,12 +3365,12 @@ function runMonthlyStats() {
 
   const now = new Date();
 
-  // ✅ letzter Monat bestimmen
+
   const year = now.getFullYear();
-  const month = now.getMonth(); // aktueller Monat
+  const month = now.getMonth(); 
 
   const lastMonthStart = new Date(year, month - 1, 1);
-  const lastMonthEnd = new Date(year, month, 0); // letzter Tag vom Monat
+  const lastMonthEnd = new Date(year, month, 0); 
 
 
 const uniqueBookings = Object.values(
@@ -2815,23 +3390,23 @@ uniqueBookings.forEach(b => {
   let start = new Date(b.start);
   let end = new Date(b.end);
 
-  // ❌ BLOCK ignorieren
+ 
   if (b.guests === "BLOCK") return;
 
-  // ✅ Gewicht bestimmen
+ 
   let factor = 1;
 
   if (b.guests.includes("DZ")) factor = 2;
   else if (b.guests.includes("3")) factor = 3;
   else if (b.guests.includes("4")) factor = 4;
-  // EZ und EZ B bleiben 1
+ 
 
   if (start <= lastMonthEnd && end >= lastMonthStart) {
 
-    // ✅ Anreisen gewichtet zählen
+  
     bookingsCount += factor;
 
-    // ✅ Zeitraum begrenzen
+ 
     let realStart = start < lastMonthStart ? lastMonthStart : start;
     let realEnd = end > lastMonthEnd ? lastMonthEnd : end;
 
@@ -2891,7 +3466,8 @@ uniqueBookings.forEach(b => {
 
   overlay.appendChild(box);
   document.body.appendChild(overlay);
-}
+      
+      }
       
       async function checkAuth() {
         const newBookingBtn = document.getElementById("newBookingBtn");
@@ -2961,14 +3537,12 @@ if (monthlyBtn) {
         } else {
            document.body.classList.remove("logged-in");
           document.getElementById("loginBox").style.display = "block";
-          document.getElementById("loginBlocker").style.display = "block"; // ✅ NEU
+          document.getElementById("loginBlocker").style.display = "block"; 
           
           render();
         }
 
- setTimeout(() => {
-  updateStickyPositions();
-}, 120);
+ requestAnimationFrame(updateStickyPositions);
       }
 
       const loginForm = document.getElementById("loginForm");
@@ -3030,7 +3604,6 @@ if (monthlyBtn) {
     return;
   }
 
-  // ✅ speichern für toggleLog (optional)
   window.currentLogs = data;
 
   let html = "";
@@ -3115,12 +3688,12 @@ for (let d = 0; d < 7; d++) {
 
 let isBlocked = isEmptyRoom;
 
-// ✅ nur im Placement prüfen
+
 if (groupPlacement || singlePlacement) {
 
   let possible = false;
 
-  // ✅ GROUP MODE
+
   if (groupPlacement) {
 
     possible = groupPlacement.data.some(d =>
@@ -3129,7 +3702,6 @@ if (groupPlacement || singlePlacement) {
     );
   }
 
-  // ✅ SINGLE MODE
   if (singlePlacement) {
 
     possible = canPlaceInRoom(
@@ -3160,13 +3732,7 @@ if (groupPlacement || singlePlacement) {
   draw();
   drawLegend();
 
-
-requestAnimationFrame(() => {
-  requestAnimationFrame(() => {
-    updateStickyPositions();
-  });
-});
-
+requestAnimationFrame(updateStickyPositions);
 
 
 }
@@ -3179,19 +3745,6 @@ requestAnimationFrame(() => {
         if (!type) return false;
         return type.includes("3");
       }
-
-
-
-
-function canUseRoom(roomName, start, end, type) {
-
-  if (type === "BLOCK") return true;
-
-  return canUseRoomSimple(roomName, type);
-}
-
-
-
 
       function isFourRoom(room) {
         let type = getRoomType(room);
@@ -3286,13 +3839,11 @@ for (let [id, cur] of currentMap) {
 
   if (!snapshotMap.has(id)) {
 
-    // ✅ fremde Buchung → skip
     if (cur.user_id && cur.user_id !== userId) {
       skippedForeign.push(cur);
       continue;
     }
 
-    // ✅ wenn Teil einer Gruppe → merken
     if (cur.group_id) {
       groupDeletes.add(cur.group_id);
     } else {
@@ -3301,14 +3852,12 @@ for (let [id, cur] of currentMap) {
   }
 }
 
-// ✅ komplette Gruppen hinzufügen
 for (let groupId of groupDeletes) {
 
   for (let [id, cur] of currentMap) {
 
     if (cur.group_id === groupId) {
 
-      // ✅ wieder foreign prüfen!
       if (cur.user_id && cur.user_id !== userId) {
         skippedForeign.push(cur);
         continue;
@@ -3325,7 +3874,6 @@ for (let groupId of groupDeletes) {
 if (toDelete.length) {
   await supa.from("bookings").delete().in("id", toDelete);
 
-  // ✅ NEU: auch lokal richtig löschen
   if (groupDeletes.size > 0) {
     bookings = bookings.filter(b => !groupDeletes.has(b.group_id));
   } else {
@@ -3362,7 +3910,6 @@ if (toDelete.length) {
   current.setDate(current.getDate() + 7 * n);
   localStorage.setItem("calendar_current_week", current.toISOString());
 
-  // ✅ FIX: Placement zurücksetzen
   groupPlacement = null;
   singlePlacement = null;
  await loadUserRole();
@@ -3377,29 +3924,32 @@ if (toDelete.length) {
 
   if (!roomName || roomName.trim() === "") return false;
 
-  // ✅ Typ passt?
   if (!canUseRoomSimple(roomName, type)) return false;
 
-  // ✅ Zeitraum frei?
   if (overlapDates(row, start, end, ignoreIndex)) return false;
 
   return true;
 }
 
-      function overlapDates(row, start, end, ignoreIndex) {
-        const s = normalizeDate(start);
-        const e = normalizeDate(end);
+function overlapDates(row, start, end, ignoreId = null) {
+  const s = normalizeDate(start);
+  const e = normalizeDate(end);
 
-        return bookings.some((b, i) => {
-          if (i === ignoreIndex) return false;
-          if (b.row !== row) return false;
+  return bookings.some((b) => {
+    if (String(b.id).startsWith("tmp_")) return false;
+ 
+    if (ignoreId !== null && String(b.id) === String(ignoreId)) {
+      return false;
+    }
 
-          const bs = normalizeDate(b.start);
-          const be = normalizeDate(b.end);
+    if (b.row !== row) return false;
 
-          return s < be && e > bs;
-        });
-      }
+    const bs = normalizeDate(b.start);
+    const be = normalizeDate(b.end);
+
+    return s < be && e > bs;
+  });
+}
 
       function isPreferredEZRoom(roomName) {
         return roomName.includes("EZ") || roomName.includes("kl. DZ");
@@ -3441,7 +3991,7 @@ let canUse;
 if (forcedType === "EZ") {
   canUse = getGuestOptions(roomName).includes("EZ");
 } else {
-  canUse = canUseRoomSimple(roomName, forcedType); // ✅ ohne let
+  canUse = canUseRoomSimple(roomName, forcedType);
 }
 
 
@@ -3499,13 +4049,11 @@ if (!canUse) return false;
         item.count--;
         
 if (!batch) {
-  bookings.push(temp); // normaler Modus (manuell)
+  bookings.push(temp);
 }
 
 return temp;
 
-
-        return temp;
       }
 
       function isAnyDZ(room) {
@@ -3535,7 +4083,6 @@ return temp;
         }
 
         let roomName = rooms[row];
-        let allowed = getGuestOptions(roomName);
 
         if (!canUseRoomSimple(roomName, singlePlacement.guests)) {
           alert("Zimmer passt nicht zur aktuellen Regel");
@@ -3599,10 +4146,10 @@ function resetMoveHighlight() {
       b.guests,
       new Date(b.start),
       new Date(b.end),
-      moving.index
+      moving.id
     );
 
-    // ✅ Alle Zellen der Zeile
+ 
     let tds = tr.querySelectorAll("td");
 
     tds.forEach(td => {
@@ -3620,11 +4167,9 @@ function resetMoveHighlight() {
         
 
 
-if (f) {
-  return; // ✅ verhindert neue Buchung im Select-Mode
-}
+if (f) return;
 
- // ✅ blockierte Räume nicht klickbar
+
   let weekStart = normalizeDate(startOfWeek(current));
   let date = new Date(weekStart);
   date.setDate(weekStart.getDate() + day);
@@ -3684,10 +4229,10 @@ if (groupPlacement) {
 
   if (result) {
  
-    updatePlacementBox();  // ✅ Zähler geht runter
+    updatePlacementBox(); 
     draw();
     
- // ✅ NEU: Fertig-Check
+
     let done = groupPlacement.data.every(d => d.count === 0);
 
     if (done) {
@@ -3716,11 +4261,10 @@ if (groupPlacement) {
         let isBlocked = bookings.some((b) => {
           if (b.row !== row) return false;
 
-          let s = new Date(b.start);
-          let e = new Date(b.end);
+        
+let s = normalizeDate(b.start);
+let e = normalizeDate(b.end);
 
-          s.setHours(0, 0, 0, 0);
-          e.setHours(0, 0, 0, 0);
 
           return clickedDate >= s && clickedDate < e;
         });
@@ -3778,7 +4322,7 @@ if (groupPlacement) {
   opt.textContent = trimGroupName(g.name);
   opt.dataset.color = g.color;
 
-  // ✅ FARBE setzen
+ 
   opt.style.background = g.color;
   opt.style.color = isLightColor(g.color) ? "black" : "white";
 
@@ -3884,13 +4428,13 @@ if (groupPlacement) {
         } else {
           let b = bookings[editIndex];
 
-          if (overlapDates(b.row, start, end, editIndex)) {
+          if (overlapDates(b.row, start, end, b.id)) {
             return alert("Zimmer bereits belegt!");
           }
 
           saveHistory();
 
-         // 🔥 ALTE WERTE sichern
+
 let oldStart = b.start;
 let oldEnd = b.end;
 let oldName = b.name;
@@ -3899,10 +4443,10 @@ let oldComment = b.comment;
 let oldGuests = b.guests;
 let oldBreakfast = b.breakfast;
 
-// ✅ USER holen (NEU!)
+
 const user = currentUser;
 
-// ✅ UI sofort updaten
+
 b.start = start.toISOString();
 b.end = end.toISOString();
 b.name = name;
@@ -3914,7 +4458,7 @@ b.breakfast = breakfast;
 
 render();
 
-// ✅ DB UPDATE (inkl. user_id!)
+
 supa
   .from("bookings")
   .update({
@@ -3928,7 +4472,7 @@ supa
     breakfast,
     group_id: b.group_id,
 
-    user_id: user?.id // ✅ GANZ WICHTIG
+    user_id: user?.id 
   })
   .eq("id", b.id)
   .then(async ({ error }) => {
@@ -3940,7 +4484,7 @@ supa
 
    let changes = {};
 
-// ✅ Änderungen sammeln
+
 
 if (oldStart !== b.start) {
   changes.start = {
@@ -3991,7 +4535,7 @@ if (oldBreakfast !== b.breakfast) {
   };
 }
 
-// ✅ EIN LOG statt viele
+
 if (Object.keys(changes).length > 0) {
   logBookingAction({
     bookingId: b.id,
@@ -4139,8 +4683,32 @@ opts.forEach((o) => {
   select.appendChild(opt);
 });
 
-select.value = b.guests || opts[0];
-  // ✅ richtiger Index
+   let groupSelect = document.getElementById("f_group");
+groupSelect.innerHTML = "";
+
+let optNone = document.createElement("option");
+optNone.value = "";
+optNone.text = "– keine Gruppe –";
+groupSelect.appendChild(optNone);
+
+let groups = getGroupsInWeek();
+
+groups.forEach((g) => {
+  let opt = document.createElement("option");
+
+  opt.value = g.id;
+  opt.textContent = trimGroupName(g.name);
+  opt.dataset.color = g.color;
+
+  opt.style.background = g.color;
+  opt.style.color = isLightColor(g.color) ? "black" : "white";
+
+  groupSelect.appendChild(opt);
+});
+
+
+groupSelect.value = b.group_id || "";
+
   editIndex = bookings.findIndex(x => x.id === b.id);
 
   document.getElementById("bookingForm").style.display = "block";
@@ -4164,12 +4732,10 @@ select.value = b.guests || opts[0];
     ? new Date(b.end).toISOString().slice(0, 10)
     : "";
 
-  document.getElementById("f_guests").value = b.guests || "EZ";
+
 
   document.getElementById("f_breakfast").value =
-    b.breakfast !== undefined ? String(b.breakfast) : "true";
-
-  document.getElementById("f_group").value = b.group_id || "";
+    b.breakfast === false ? "false" : "true";
 }
 
       
@@ -4179,7 +4745,6 @@ function closeForm() {
 
   editIndex = null;
 
-  // ✅ ALLES resetten
   document.getElementById("f_name").value = "";
   document.getElementById("f_company").value = "";
   document.getElementById("f_price").value = "";
@@ -4212,7 +4777,6 @@ function updateStickyPositions() {
 
   if (!header || !calendar) return;
 
-  // ✅ FIX: stabile Höhe via offsetHeight (NICHT boundingRect)
   const height = header.scrollHeight;
 
   calendar.style.marginTop = height - 1 + "px";
@@ -4426,7 +4990,6 @@ if (b.checkin) {
   let oldVal = b.paid;
   let newVal = !b.paid;
 
-  // ✅ UI sofort
   b.paid = newVal;
   render();
 
@@ -4441,7 +5004,7 @@ const user = currentUser;
     .eq("id", b.id);
 
   if (error) {
-    // ❌ rollback
+
     b.paid = oldVal;
     render();
 
@@ -4450,7 +5013,6 @@ const user = currentUser;
     return;
   }
 
-  // ✅ NUR hier loggen!
   logBookingAction({
     bookingId: b.id,
     action: "update",
@@ -4462,8 +5024,6 @@ const user = currentUser;
   });
 };
 
-
-          // ✅ CHECK-IN (●)
           let check = document.createElement("div");
           check.className = "flag ";
           check.innerHTML = "✔";
@@ -4497,7 +5057,7 @@ const { error } = await supa
   .eq("id", b.id);
 
   if (error) {
-    // ❌ rollback
+ 
     b.checkin = oldVal;
     render();
 
@@ -4523,7 +5083,6 @@ logBookingAction({
           flags.appendChild(paid);
           flags.appendChild(check);
 
-          // ✅ TEXT
           let commentText = b.comment ? " - " + b.comment : "";
           let frText = b.breakfast === false ? " <span class='no-breakfast-icon'><span>☕</span></span>" : "";
           let companyText = b.company ? ` 🏢 ${b.company}` : "";
@@ -4554,9 +5113,9 @@ logBookingAction({
           if (!b.price) {
             pr.innerHTML = "";
           } else if (isNaN(b.price)) {
-            pr.innerHTML = b.price; // Text (bez., Rg., etc.)
+            pr.innerHTML = b.price;
           } else {
-            pr.innerHTML = b.price + "€"; // Zahl
+            pr.innerHTML = b.price + "€"; 
           }
 
           let r = document.createElement("div");
@@ -4578,7 +5137,6 @@ logBookingAction({
             e.stopPropagation();
             e.preventDefault();
 
-            // ✅ DAS ist der entscheidende Fix:
             e.stopImmediatePropagation();
 
             drag = null;
@@ -4587,8 +5145,6 @@ logBookingAction({
             resize(e, i, -1);
           };
 
-          // ✅ nur noch rechter Handle
-          // ✅ DRAG HANDLE (neu)
           let dragHandle = document.createElement("div");
 
           dragHandle.className = "drag-handle";
@@ -4599,26 +5155,22 @@ logBookingAction({
           dragHandle.style.background = "rgba(0,0,0,0.2)";
           dragHandle.style.borderRadius = "3px";
 
-          dragHandle.innerHTML = "⋮⋮"; // kleine Griffpunkte
+          dragHandle.innerHTML = "↔";
           dragHandle.style.fontSize = "12px";
           dragHandle.style.display = "flex";
           dragHandle.style.alignItems = "center";
           dragHandle.style.justifyContent = "center";
 
-          // 👉 wichtig: damit Events funktionieren
           dragHandle.style.pointerEvents = "auto";
 
-          // ✅ LEFT nur wenn Start in dieser Woche
           if (!startsBeforeWeek) {
             d.appendChild(l);
           }
 
-          // ✅ RIGHT nur wenn Ende in dieser Woche
           if (!endsAfterWeek) {
             d.appendChild(r);
           }
 
-         // ✅ MOVE BUTTON
 let moveBtn = document.createElement("div");
 
 moveBtn.className = "move-handle";
@@ -4626,14 +5178,14 @@ moveBtn.innerHTML = "↕";
 
 
 moveBtn.style.position = "absolute";
-moveBtn.style.left = "75px"; // leicht rechts vom dragHandle
+moveBtn.style.left = "75px";
 moveBtn.style.top = "50%";
 moveBtn.style.transform = "translateY(-50%)";
 
 moveBtn.style.display = "none";
 moveBtn.style.cursor = "ns-resize";
 
-// ✅ hover sichtbar
+
 d.addEventListener("mouseenter", () => {
   if (moving) return;
   moveBtn.style.display = "flex";
@@ -4645,8 +5197,6 @@ d.addEventListener("mouseleave", () => {
 
 d.append(flags, dragHandle, moveBtn, txt, pr);
 
-          // ✅ Drag aktivieren
-          // ✅ DRAG START
           dragHandle.onmousedown = (e) => {
             let el = document.querySelector(`.booking[data-index='${i}']`);
             let b = bookings[i];
@@ -4659,13 +5209,11 @@ d.append(flags, dragHandle, moveBtn, txt, pr);
             let layer = el.parentElement;
             let layerRect = layer.getBoundingClientRect();
 
-            // ✅ echte Zeiten
             let start = new Date(b.start);
             let end = new Date(b.end);
 
             let rowEl = document.querySelectorAll("tr")[b.row + 1];
 
-            // ✅ ZUERST cells definieren
             let cells = rowEl.querySelectorAll("td:not(.room)");
 
             let firstCellRect = cells[0].getBoundingClientRect();
@@ -4676,7 +5224,6 @@ d.append(flags, dragHandle, moveBtn, txt, pr);
 
             let durationDays = (end - start) / (1000 * 60 * 60 * 24);
 
-            // ✅ richtige Booking-Position!
             let elRect = el.getBoundingClientRect();
 
             let correctedLeft = elRect.left - layerRect.left;
@@ -4690,7 +5237,6 @@ d.append(flags, dragHandle, moveBtn, txt, pr);
             el.style.width = durationDays * dayWidth + "px";
             el.style.left = correctedLeft + "px";
 
-            // ✅ optional aber ok
             let closestDay = Math.round(offsetX / dayWidth);
             closestDay = Math.max(0, Math.min(6, closestDay));
 
@@ -4727,7 +5273,7 @@ document.body.classList.add("moving");
   document.body.style.userSelect = "none";
 };
 
-          // ✅ Bearbeiten
+ 
 
 d.ondblclick = (e) => {
   if (isMobile) return;
@@ -4741,11 +5287,11 @@ d.ondblclick = (e) => {
 
   clearTimeout(clickTimer);
 
-  openEditBooking(b); // ✅ DAS ist alles
+  openEditBooking(b); 
 };
 
 
-          // ✅ Löschen
+
           d.oncontextmenu = async (e) => {
             if (isMobile) return;
             e.preventDefault();
@@ -4760,7 +5306,7 @@ d.ondblclick = (e) => {
 
             if (!confirm("Löschen?")) return;
 
-            const id = d.dataset.id; // ✅ HIER IST DER FIX!!!
+            const id = d.dataset.id;
 
             if (!id) {
               console.warn("Keine ID gefunden!");
@@ -4770,9 +5316,7 @@ d.ondblclick = (e) => {
             isDeleting = true;
             saveHistory();
 
-            // ✅ 1. DB löschen
-
-            const { data, error } = await supa.from("bookings").delete().eq("id", id).select(); // ✅ GANZ WICHTIG
+            const { data, error } = await supa.from("bookings").delete().eq("id", id).select();
 
             
 
@@ -4783,13 +5327,10 @@ d.ondblclick = (e) => {
               return;
             }
 
-            // ✅ 2. lokal löschen
+        
             bookings = bookings.filter((x) => String(x.id) !== String(id));
 
             render();
-
-            // ✅ 3. Logging
-           
 
 logBookingAction({
   bookingId: id,
@@ -4805,31 +5346,9 @@ logBookingAction({
   newValue: "deleted",
   room: rooms[b.row],
 
-  bookingAt: b.end // ✅ NEU
+  bookingAt: b.end
 });
 
-if (b.group_id) {
-
-  const groupId = b.group_id;
-
-  const { data: remaining, error } = await supa
-    .from("bookings")
-    .select("id")
-    .eq("group_id", groupId)
-    .limit(1);
-
-  if (error) {
-    console.error("Fehler bei Gruppenprüfung:", error);
-  } else {
-    if (!remaining || remaining.length === 0) {
-
-      await supa.from("groups").delete().eq("id", groupId);
-
-      delete groupsMap[groupId];
-
-    }
-  }
-}
 
             isDeleting = false;
           };
@@ -4840,7 +5359,7 @@ if (b.group_id) {
 
     window.onmousemove = (e) => {
 
-  // ✅ ✅ ✅ MOVE (LIVE!)
+ 
   if (moving) {
 
     let b = bookings[moving.index];
@@ -4865,7 +5384,6 @@ if (b.group_id) {
       }
     });
 
-    // ✅ nur wenn wirklich andere Zeile
     if (closestRow !== b.row) {
 
       if (
@@ -4878,14 +5396,14 @@ if (b.group_id) {
       ) {
         b.row = closestRow;
 
-        draw(); // ✅ DAS ist der LIVE SPRUNG
+        draw(); 
       }
     }
 
-    return; // ✅ stoppt alles andere
+    return;
   }
 
-  // ✅ NORMALER DRAG (horizontal)
+ 
   if (drag && !resizing) {
 
     let el = document.querySelector(`.booking[data-index='${drag.i}']`);
@@ -4904,7 +5422,7 @@ if (b.group_id) {
 };
 
 
-      // ✅ DRAG END (SNAP TO GRID)
+
       window.onmouseup = async (event) => {
        if (moving) {
           resetMoveHighlight();
@@ -4936,7 +5454,7 @@ const { error } = await supa
 if (error) {
   console.error(error);
 
-  // ❌ rollback
+ 
   b.row = oldRow;
   render();
 
@@ -4951,7 +5469,7 @@ if (error) {
     field: "room",
     oldValue: String(oldRoom),
     newValue: String(newRoom),
-    room: newRoom, // aktueller Raum für Kontext
+    room: newRoom, 
     bookingAt: b.end
   });
 
@@ -4977,7 +5495,7 @@ if (error) {
         }
 
         document.body.style.userSelect = "auto";
-        // ✅ RESIZE ENDE
+  
         if (resizing) {
           resizing = false;
           drag = null;
@@ -5028,19 +5546,19 @@ if (error) {
           let baseStart = new Date(b.start);
           let baseEnd = new Date(b.end);
 
-          // ✅ Dauer exakt berechnen (in ms!)
+      
           let duration = baseEnd - baseStart;
 
-          // ✅ neuen Start berechnen
+     
           let newStart = new Date(baseStart);
           newStart.setDate(newStart.getDate() + moveDays);
 
-          // ✅ Ende IMMER aus Dauer neu berechnen
+        
           let newEnd = new Date(newStart.getTime() + duration);
           newStart.setHours(CHECKIN_HOUR, 0, 0, 0);
           newEnd.setHours(CHECKOUT_HOUR, 0, 0, 0);
 
-          if (!overlapDates(b.row, newStart, newEnd, currentDrag.i)) {
+          if (!overlapDates(b.row, newStart, newEnd, currentDrag.id)) {
             saveHistory();
 
             b.start = newStart.toISOString();
@@ -5081,14 +5599,14 @@ const user = currentUser;
   if (error) {
     console.error("Update Fehler:", error);
 
-    // rollback
+ 
     b.start = oldStart;
     b.end = oldEnd;
     render();
     return;
   }
 
-  // ✅ ERST HIER loggen
+  
 logBookingAction({
     bookingId: b.id,
     action: "update",
@@ -5102,7 +5620,7 @@ logBookingAction({
       end: b.end
     },
     room: rooms[b.row],
-    bookingeAt: b.end
+    bookingAt: b.end
   });
 
   if (data && data[0]) {
@@ -5116,7 +5634,7 @@ logBookingAction({
       async function resize(e, i, dir) {
         if (!isEditAllowed()) return;
 
-        if (e.button !== 0) return; // ✅ nur Linksklick erlaubt
+        if (e.button !== 0) return;
         e.preventDefault();
 
         drag = null;
@@ -5132,12 +5650,12 @@ logBookingAction({
           let base = normalizeDate(baseStart);
           let week = normalizeDate(weekStart);
 
-          // ✅ nur blockieren wenn wirklich VOR der Woche
+        
           if (base < week) {
             return;
           }
         }
-        // ✅ sichtbaren Start berechnen
+     
         let visibleStart = baseStart < weekStart ? new Date(weekStart) : new Date(baseStart);
 
         let rowEl = document.querySelectorAll("tr")[b.row + 1];
@@ -5155,7 +5673,7 @@ logBookingAction({
         let resizeState = {
           mouseStartX: e.clientX,
           startWidth: rect.width,
-          startLeft: rect.left - layerRect.left // ✅ RELATIV!
+          startLeft: rect.left - layerRect.left
         };
 
         if (!el) return;
@@ -5163,7 +5681,7 @@ logBookingAction({
         const resizeMove = (ev) => {
           if (!resizing) return;
 
-          lastMouseX = ev.clientX; // ✅ HIER!
+          lastMouseX = ev.clientX;
 
           let deltaX = ev.clientX - resizeState.mouseStartX;
 
@@ -5196,7 +5714,7 @@ logBookingAction({
           let closestSlot = 0;
           let closestDistance = Infinity;
 
-          // ✅ 14 Slots berechnen (2 pro Tag)
+         
           cells.forEach((cell, dayIndex) => {
             let rect = cell.getBoundingClientRect();
 
@@ -5222,7 +5740,7 @@ logBookingAction({
           let currentStartSlot = getSlotFromDate(b.start, weekStart, false);
           let currentEndSlot = getSlotFromDate(b.end, weekStart, true);
 
-          // ✅ PARITÄT ZUERST (ganz wichtig!)
+        
           if (dir === -1 && closestSlot % 2 === 1) {
             closestSlot--;
           }
@@ -5231,7 +5749,7 @@ logBookingAction({
             closestSlot++;
           }
 
-          // ✅ Mindestabstand erzwingen (JETZT, nicht vorher!)
+        
           if (dir === -1 && currentEndSlot - closestSlot < 2) {
             closestSlot = currentEndSlot - 2;
           }
@@ -5240,7 +5758,7 @@ logBookingAction({
             closestSlot = currentStartSlot + 2;
           }
 
-          // ✅ PARITÄT NOCHMAL SICHERN (weil wir Slot verändert haben!)
+        
           if (dir === -1 && closestSlot % 2 === 1) {
             closestSlot--;
           }
@@ -5249,14 +5767,14 @@ logBookingAction({
             closestSlot++;
           }
 
-          // ✅ CLAMP GANZ ZUM SCHLUSS
+         
           closestSlot = Math.max(0, Math.min(13, closestSlot));
 
           if (dir === -1) {
             let newStart = new Date(weekStart);
             newStart.setDate(weekStart.getDate() + Math.floor(closestSlot / 2));
 
-            // ✅ HIER setzen!
+            
             newStart.setHours(CHECKIN_HOUR, 0, 0, 0);
 
             if (!overlapDates(b.row, newStart, baseEnd, i)) {
@@ -5279,14 +5797,14 @@ const { error } = await supa
 if (error) {
   console.error(error);
 
-  // ❌ rollback
+ 
   b.start = oldStart;
   render();
 
   return;
 }
 
-// ✅ erst hier loggen
+
 logBookingAction({
   bookingId: b.id,
   action: "update",
@@ -5304,7 +5822,7 @@ logBookingAction({
             let newEnd = new Date(weekStart);
             newEnd.setDate(weekStart.getDate() + Math.floor(closestSlot / 2));
 
-            // ✅ HIER setzen!
+          
             newEnd.setHours(CHECKOUT_HOUR, 0, 0, 0);
 
             if (!overlapDates(b.row, baseStart, newEnd, i)) {
@@ -5320,11 +5838,10 @@ await supa
   .from("bookings")
   .update({
     end: b.end,
-    user_id: user?.id // ✅ NEU
+    user_id: user?.id 
   })
   .eq("id", b.id);
 
-// ✅ LOG
 logBookingAction({
   bookingId: b.id,
   action: "update",
@@ -5338,7 +5855,7 @@ logBookingAction({
             }
           }
 
-          // ✅ RESET
+      
 
           el.style.transform = "none";
           el.style.left = "";
@@ -5362,18 +5879,6 @@ logBookingAction({
         document.addEventListener("mousemove", resizeMove);
       }
 
-  
-
-      window.onkeyup = (e) => {
-        if (e.key.toLowerCase() === "f") {
-          f = false;
-          document.body.classList.remove("select-mode");
-          if (selected.length) {
-            document.getElementById("palette").style.display = "block";
-          }
-        }
-      };
-
     let colors = [
   "yellow",
   "orange",
@@ -5386,7 +5891,6 @@ logBookingAction({
   "brown",
   "lightgray",
 
-  // ✅ NEU (gut unterscheidbar)
   "gold",
   "teal",
   "indigo",
@@ -5418,7 +5922,6 @@ logBookingAction({
 
   saveHistory();
 
-  // ✅ STANDARDFARBEN (KEINE GRUPPE!)
   const simpleColors = ["yellow", "pink", "orange", "turquoise"];
 
   if (simpleColors.includes(c)) {
@@ -5426,8 +5929,8 @@ logBookingAction({
     for (const i of selected) {
       let b = bookings[i];
 
-      b.group_id = null;     // ✅ KEINE GRUPPE
-      b.color = c;           // ✅ nur Farbe setzen
+      b.group_id = null;    
+      b.color = c;          
     }
 
     let ids = selected.map(i => bookings[i].id);
@@ -5446,7 +5949,7 @@ logBookingAction({
     return;
   }
 
-  // ✅ NORMALE GRUPPEN (wie vorher)
+ 
   let name = prompt("Gruppenname");
   if (!name) return;
 
@@ -5513,25 +6016,24 @@ const fixedLegend = [
 
 fixedLegend.forEach(item => {
 
-  // ✅ prüfen ob Farbe in dieser Woche vorkommt
+ 
   let exists = bookings.some(b => {
 
-    let s = new Date(b.start);
-    let e = new Date(b.end);
+  
+let s = normalizeDate(b.start);
+let e = normalizeDate(b.end);
 
-    s.setHours(0, 0, 0, 0);
-    e.setHours(0, 0, 0, 0);
 
-    // ✅ überschneidet sich mit aktueller Woche
+
     let overlaps = s < weekEnd && e > weekStart;
 
     return overlaps && b.color === item.color;
   });
 
-  // ❌ wenn nicht vorhanden → überspringen
+ 
   if (!exists) return;
 
-  // ✅ ansonsten anzeigen
+
   let div = document.createElement("div");
 
   div.innerText = item.text;
@@ -5550,11 +6052,9 @@ fixedLegend.forEach(item => {
           let group = groupsMap[b.group_id];
           if (!group) return;
 
-          let s = new Date(b.start);
-          let e = new Date(b.end);
+let s = normalizeDate(b.start);
+let e = normalizeDate(b.end);
 
-          s.setHours(0, 0, 0, 0);
-          e.setHours(0, 0, 0, 0);
 
           if (s < weekEnd && e > weekStart) {
             if (!legendMap[group.color]) {
@@ -5599,12 +6099,7 @@ fixedLegend.forEach(item => {
         });
         
 
-requestAnimationFrame(() => {
-  requestAnimationFrame(() => {
-    updateStickyPositions();
-  });
-});
-
+requestAnimationFrame(updateStickyPositions);
 
       }
 
@@ -5667,7 +6162,7 @@ function applyStats(stats, type, count) {
           return;
         }
 
-        // ✅ Datei-Datensatz aus DB entfernen
+  
         const { error } = await supa.from("group_files").delete().eq("id", fileId);
 
         if (error) {
@@ -5676,7 +6171,7 @@ function applyStats(stats, type, count) {
           return;
         }
 
-        // ✅ Ansicht neu laden
+  
         openGroupInfo(groupId);
       }
 
@@ -5763,7 +6258,7 @@ let checkinButton = showCheckinBtn
         fileContainer.innerHTML = info + "Lade...";
         box.style.display = "block";
 
-        // ✅ Dateien aus DB holen
+     
         const { data, error } = await supa.from("group_files").select("*").eq("group_id", groupId);
 
         if (error) {
@@ -5808,19 +6303,19 @@ let checkinButton = showCheckinBtn
 
         let uploadArea = document.getElementById("uploadArea");
 
-        // ✅ MOBILE ODER KEIN EDIT → ausblenden
+     
         if (isMobile || !isEditAllowed()) {
           uploadArea.style.display = "none";
         } else {
           uploadArea.style.display = "block";
-          setupUpload(groupId); // ✅ NUR dann aktivieren
+          setupUpload(groupId);
         }
       }
 
 async function checkinGroup(groupId) {
 
 
-  // ✅ relevante Buchungen holen
+ 
   let groupBookings = bookings.filter(b => b.group_id === groupId);
 
   if (!groupBookings.length) {
@@ -5828,7 +6323,7 @@ async function checkinGroup(groupId) {
     return;
   }
 
-  // ✅ UI sofort updaten
+ 
   groupBookings.forEach(b => {
     b.checkin = true;
   });
@@ -5839,7 +6334,7 @@ async function checkinGroup(groupId) {
 
   let ids = groupBookings.map(b => b.id);
 
-  // ✅ Batch Update (WICHTIG → schnell!)
+ 
   const { error } = await supa
     .from("bookings")
     .update({
@@ -5854,7 +6349,7 @@ async function checkinGroup(groupId) {
     return;
   }
 
-  // ✅ Logging (ohne await → locker)
+ 
   groupBookings.forEach(b => {
     logBookingAction({
       bookingId: b.id,
@@ -5875,14 +6370,14 @@ async function checkinGroup(groupId) {
         let area = document.getElementById("uploadArea");
         let input = document.getElementById("fileInput");
 
-        // ✅ Klick Upload
+      
         area.onclick = () => input.click();
 
         input.onchange = () => {
           handleFiles(input.files, groupId);
         };
 
-        // ✅ Drag & Drop
+      
         area.ondragover = (e) => {
           e.preventDefault();
           area.style.background = "#f0f0f0";
@@ -5911,7 +6406,7 @@ async function checkinGroup(groupId) {
           let cleanName = sanitizeFileName(file.name);
           let filePath = `${groupId}/${Date.now()}_${cleanName}`;
 
-          // ✅ Upload
+      
           const { data: uploadData, error: uploadError } = await supa.storage
             .from("group-files")
             .upload(filePath, file);
@@ -5921,7 +6416,7 @@ async function checkinGroup(groupId) {
             continue;
           }
 
-          // ✅ Signed URL holen
+     
           const { data: urlData, error: urlError } = await supa.storage
             .from("group-files")
             .createSignedUrl(filePath, 60 * 60);
@@ -5933,7 +6428,7 @@ async function checkinGroup(groupId) {
 
           let url = urlData.signedUrl;
 
-          // ✅ DB speichern
+      
           await supa.from("group_files").insert([
             {
               group_id: groupId,
@@ -5943,7 +6438,7 @@ async function checkinGroup(groupId) {
           ]);
         }
 
-        // ✅ neu laden
+ 
         openGroupInfo(groupId);
       }
 
@@ -5960,7 +6455,7 @@ const user = userData.user;
 let insertObj = {
   name,
   color,
-  user_id: user?.id || null // ✅ NEU
+  user_id: user?.id || null
 };
 
 
@@ -5999,11 +6494,8 @@ let insertObj = {
           let group = groupsMap[b.group_id];
           if (!group) return;
 
-          let s = new Date(b.start);
-          let e = new Date(b.end);
-
-          s.setHours(0, 0, 0, 0);
-          e.setHours(0, 0, 0, 0);
+let s = normalizeDate(b.start);
+let e = normalizeDate(b.end);
 
           if (s < weekEnd && e > weekStart) {
             usedColors.add(group.color);
@@ -6077,10 +6569,10 @@ supa
 
     const logBox = document.getElementById("logContent");
 
-    // ✅ nur wenn Log sichtbar ist
+ 
     if (logBox && logBox.style.display === "block") {
 
-      // 👉 aktuelle Buchung ermitteln
+
       const currentBookingId = window.currentLogs?.[0]?.booking_id;
 
       if (currentBookingId) {
@@ -6137,7 +6629,7 @@ supa
 
   const workbook = XLSX.utils.book_new();
 
-  // ✅ 1️⃣ BOOKINGS SHEET
+ 
   const bookingRows = bookingsData.map(b => ({
     id: b.id ?? "",   
     start: b.start ? new Date(b.start) : "",
@@ -6159,7 +6651,7 @@ supa
   XLSX.utils.book_append_sheet(workbook, bookingSheet, "Bookings");
 
 
-  // ✅ 2️⃣ GROUPS SHEET
+
   const groupRows = groupsData.map(g => ({
     id: g.id ?? "",
     name: g.name ?? "",
@@ -6179,10 +6671,10 @@ supa
   XLSX.utils.book_append_sheet(workbook, groupSheet, "Groups");
 
 
-  // ✅ Download
+ 
   XLSX.writeFile(workbook, `backup_${getTimestamp()}.xlsx`);
 }
-``
+
 
       
   async function createBackup() {
@@ -6205,7 +6697,7 @@ if (groupsError) {
 }
 
 
-  // ✅ JSON Backup (für Import später)
+ 
   const jsonBlob = new Blob(
     [JSON.stringify(bookingsData, null, 2)],
     { type: "application/json" }
@@ -6215,7 +6707,7 @@ if (groupsError) {
 
   downloadFile(jsonUrl, `backup_${getTimestamp()}.json`);
 
-  // ✅ Excel Backup
+ 
   exportToExcel(bookingsData, groupsData);
 }
 
@@ -6233,7 +6725,7 @@ if (groupsError) {
 if (currentRole !== "staff" || isMobile) return;
   const INTERVAL = 24 * 60 * 60 * 1000; 
 
-  // ✅ aktuellen Stand holen
+ 
   const { data, error } = await supa
     .from("backup_meta")
     .select("*")
@@ -6254,7 +6746,7 @@ if (currentRole !== "staff" || isMobile) return;
 
   await createBackup();
 
-  // ✅ Zeit aktualisieren (zentral!)
+  
   await supa
     .from("backup_meta")
     .update({
@@ -6267,7 +6759,7 @@ function resetGroupForm() {
   document.getElementById("g_start").value = "";
   document.getElementById("g_end").value = "";
 
-  // Kategorien zurücksetzen
+
   document.querySelectorAll(".g_count").forEach(el => el.value = "");
   document.querySelectorAll(".g_price").forEach(el => el.value = "");
   document.getElementById("g_floorPriority").checked = false;
@@ -6281,18 +6773,17 @@ async function tryStartBackup() {
 
   if (!supa) return;
 
-  // ✅ User holen
+
   const { data } = await supa.auth.getUser();
   const user = data.user;
 
   if (!user) return;
 
-  // ✅ Rolle prüfen
+ 
   if (currentRole !== "staff") {
     return;
   }
-
-  // ✅ nur Desktop
+ 
   if (isMobile) {
     return;
   }
@@ -6349,7 +6840,7 @@ logBookingAction({
   newValue: "created",
   room: rooms[data[0].row],
 
-  bookingAt: data[0].end // ✅ NEU
+  bookingAt: data[0].end
 });
 
           bookings = bookings.map((x) => (x.id === tempId ? data[0] : x));
@@ -6417,35 +6908,16 @@ document.getElementById("overlay").onclick = () => {
 
   let ids = toDelete.map((b) => b.id);
 
-  // ✅ lokal entfernen
+ 
   bookings = bookings.filter((b) => !ids.includes(b.id));
 
   render();
 
-  // ✅ DB: Buchungen löschen
+ 
   await supa.from("bookings").delete().in("id", ids);
 
-  // ✅ NEU: prüfen ob Gruppe noch Buchungen hat
-  const { data: remaining, error } = await supa
-    .from("bookings")
-    .select("id")
-    .eq("group_id", groupId)
-    .limit(1);
-
-  if (error) {
-    console.error("Fehler beim Prüfen der Gruppe:", error);
-    return;
   }
 
-  // ✅ wenn KEINE Buchungen mehr → Gruppe löschen
-  if (!remaining || remaining.length === 0) {
-    await supa.from("groups").delete().eq("id", groupId);
-
-    // ✅ auch lokal entfernen
-    delete groupsMap[groupId];
-
-  }
-}
 
 document.addEventListener("keydown", async (e) => {
 
@@ -6460,7 +6932,7 @@ document.addEventListener("keydown", async (e) => {
     return;
   }
 
-  // ✅ ENTER
+
   if (e.key === "Enter") {
 
     const loginBox = document.getElementById("loginBox");
@@ -6476,21 +6948,21 @@ document.addEventListener("keydown", async (e) => {
     }
   }
 
-  // ✅ CTRL+Z
+  
   if (e.ctrlKey && e.key.toLowerCase() === "z") {
     e.preventDefault();
     undo();
     return;
   }
 
-  // ✅ F SELECT MODE
+ 
   if (e.key.toLowerCase() === "f") {
     f = true;
     document.body.classList.add("select-mode");
     return;
   }
 
-  // ✅ ESC
+
   if (e.key === "Escape") {
 
     e.preventDefault();
@@ -6506,7 +6978,7 @@ document.addEventListener("keydown", async (e) => {
     render();
     return;
  }
-    // Palette
+  
     const palette = document.getElementById("palette");
     if (palette && palette.style.display === "block") {
       selected = [];
@@ -6515,20 +6987,20 @@ document.addEventListener("keydown", async (e) => {
       return;
     }
 
-    // ColorPicker
+  
     if (document.getElementById("colorPicker")) {
       closeColorPicker();
       return;
     }
 
-    // Form
+ 
     const form = document.getElementById("bookingForm");
     if (form && form.style.display === "block") {
       closeForm();
       return;
     }
 
-    // Info
+
     const info = document.getElementById("bookingInfo");
     if (info && info.style.display === "block") {
       closeInfo();
@@ -6542,7 +7014,7 @@ if (groupBox && groupBox.style.display === "block") {
   return;
 }
 
-    // Log
+ 
     const log = document.getElementById("logOverview");
     if (log && log.style.display === "block") {
       log.style.display = "none";
@@ -6568,12 +7040,9 @@ if (groupBox && groupBox.style.display === "block") {
           bookings.forEach((b) => {
             let group = groupsMap[b.group_id];
             if (!group) return;
-
-            let s = new Date(b.start);
-            let e = new Date(b.end);
-
-            s.setHours(0, 0, 0, 0);
-            e.setHours(0, 0, 0, 0);
+       
+let s = normalizeDate(b.start);
+let e = normalizeDate(b.end);
 
             if (s < weekEnd && e > weekStart) {
               usedColors.add(group.color);
@@ -6682,7 +7151,6 @@ if (groupBox && groupBox.style.display === "block") {
 
             i++;
           } else {
-            console.log("BEFORE SWITCH", log.field);
           switch ((log.field || "").trim().toLowerCase()) {
 
   case "paid":
@@ -6799,7 +7267,7 @@ if (pickerLabel) {
     e.stopPropagation();
    
 if (!confirm("Sind Sie sicher, dass Sie sich ausloggen wollen?")) {
-    return; // ✅ abgebrochen
+    return;
   }
 
     logout();
@@ -6809,11 +7277,7 @@ if (!confirm("Sind Sie sicher, dass Sie sich ausloggen wollen?")) {
 
       window.onload = () => {
         render();
-        
-setTimeout(() => {
-    updateStickyPositions();
-  }, 150);
-
+requestAnimationFrame(updateStickyPositions);
       };
 
 
@@ -6882,7 +7346,7 @@ let clean = await enrichWithUser(tempBookings);
           return;
         }
 
-        // ✅ TMP → echt ersetzen
+      
         let realIndex = 0;
 
         for (let i = 0; i < bookings.length; i++) {
@@ -7030,7 +7494,7 @@ async function saveBatchBookings(list) {
 const calendar = document.getElementById("calendar");
 const bg = document.getElementById("swipeBackground");
 
-// Rand-Breite für Swipe in Pixeln
+
 const SWIPE_EDGE_WIDTH = 80;
 
 calendar.addEventListener("touchstart", (e) => {
@@ -7040,10 +7504,10 @@ calendar.addEventListener("touchstart", (e) => {
 
   isSwiping = false;
 
-  // ✅ Nur Swipes am Rand erlauben (linke oder rechte 80px)
+  
   let isAtEdge = startX < SWIPE_EDGE_WIDTH || startX > window.innerWidth - SWIPE_EDGE_WIDTH;
   if (!isAtEdge) {
-    return; // Swipe wird ignoriert wenn nicht am Rand
+    return;
   }
 
   calendar.style.transition = "none";
@@ -7058,10 +7522,10 @@ calendar.addEventListener("touchmove", (e) => {
   let diffX = currentX - startX;
   let diffY = currentY - startY;
 
-  // ✅ kleine Bewegungen ignorieren
+ 
   if (Math.abs(diffX) < 15) return;
 
-  // ✅ vertikales Scrollen blockt Swipe
+ 
   if (!isSwiping) {
     if (Math.abs(diffY) > Math.abs(diffX)) return;
 
@@ -7073,11 +7537,11 @@ calendar.addEventListener("touchmove", (e) => {
 
  calendar.style.transform = `translateX(${diffX}px) translateZ(0)`;
 
-  // ✅ TEXT LOGIK
+  
   let width = window.innerWidth;
   let progress = Math.min(Math.abs(diffX) / width, 1);
 
-  // 👉 Text setzen
+ 
   if (diffX < 0) {
     bg.innerHTML = `<span style="
       position:absolute;
@@ -7118,7 +7582,7 @@ calendar.addEventListener("touchend", () => {
     setTimeout(() => {
       changeWeek(1);
       resetCalendarPosition();
-      bg.innerHTML = ""; // ✅ hier auch sicherheitshalber
+      bg.innerHTML = ""; 
     }, 200);
 
   } else if (diff > threshold) {
@@ -7127,12 +7591,12 @@ calendar.addEventListener("touchend", () => {
     setTimeout(() => {
       changeWeek(-1);
       resetCalendarPosition();
-      bg.innerHTML = ""; // ✅ hier auch
+      bg.innerHTML = "";
     }, 200);
 
   } else {
     calendar.style.transform = "translateX(0)";
-    bg.innerHTML = ""; // ✅ hier wichtig
+    bg.innerHTML = ""; 
   }
 
 });
@@ -7165,7 +7629,7 @@ if (!overlayOpen) return;
 
  if (e.target.closest(".overlay-box")) return;
 
-  // ✅ Klick auf Buttons → NICHT sofort schließen
+
   
 if (
   e.target.closest("button") ||
@@ -7244,7 +7708,7 @@ document.getElementById("datePicker").addEventListener("change", async (e) => {
 
   current = startOfWeek(selectedDate);
 
-  // ✅ FIX hier auch!
+  
   groupPlacement = null;
   singlePlacement = null;
   await loadUserRole();
@@ -7286,10 +7750,7 @@ window.addEventListener("load", () => {
   }
 });
 
-    
-window.addEventListener("resize", () => {
-  setTimeout(updateStickyPositions, 100);
-});
+requestAnimationFrame(updateStickyPositions);
   
 
     </script>
