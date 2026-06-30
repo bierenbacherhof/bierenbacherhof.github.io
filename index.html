@@ -630,6 +630,20 @@
       body.moving .booking:hover .text {
         transform: none !important;
       }
+      
+      
+.blue-card {
+  display: inline-block;
+  width: 14px;
+  height: 18px;
+  background: #1976d2; /* schönes Blau */
+  border-radius: 3px;
+  border: 1px solid #0d47a1;
+  position: relative;
+  box-shadow: inset 0 0 1px rgba(255,255,255,0.6);
+}
+
+
 
       #swipeBackground {
         position: fixed;
@@ -667,10 +681,7 @@
       }
 
       @media (max-width: 600px) {
-        html,
-        body {
-          touch-action: pan-y;
-        }
+        
 
         /* ✅ HEADER */
         thead th {
@@ -700,7 +711,7 @@
           text-align: center;
         }
 
-        .paid-icon {
+        .icons {
           font-size: 35px; /* 👈 hier kannst du spielen */
         }
 
@@ -742,6 +753,13 @@
 
         #groupInfoTitle {
           font-size: 75px;
+        }
+        
+        #infoBox{
+          max-width: 150vw !important;
+          width: 150vw !important;
+          max-height: 750px !important;
+          font-size: 35px;
         }
 
         #groupInfoBox {
@@ -1036,9 +1054,14 @@
 
         <label>
           <input type="checkbox" id="f_breakfast" checked />
-          Frühstück </label
+          Frühstück ☕ </label
         ><br />
 
+         <label>
+          <input type="checkbox" id="b_card" checked />
+          blaue Karte </label
+        ><br />
+        
         <div style="display: flex; align-items: center; gap: 8px">
           <label for="f_pet">
             <input type="checkbox" id="f_pet" onchange="togglePetField()" />
@@ -1046,8 +1069,17 @@
           </label>
 
           <input type="number" id="f_pet_count" min="1" value="1" style="width: 60px" disabled />
-        </div>
+        </div><br />
 
+         <div style="display: flex; align-items: center; gap: 8px">
+          <label for="b_bed">
+            <input type="checkbox" id="b_bed" onchange="toggleBBedField()" />
+            Kinderbett
+          </label>
+
+          <input type="number" id="b_bed_count" min="1" value="1" style="width: 60px" disabled />
+        </div><br />
+        
         <br /><br />
 
         <label>Gruppe</label><br />
@@ -1380,6 +1412,23 @@
       function togglePetField() {
         let checkbox = document.getElementById("f_pet");
         let input = document.getElementById("f_pet_count");
+
+        if (checkbox.checked) {
+          input.disabled = false;
+
+          // wenn leer oder 0 → auf 1 setzen
+          if (!input.value || input.value == "0") {
+            input.value = 1;
+          }
+        } else {
+          input.disabled = true;
+          input.value = "";
+        }
+      }
+      
+       function toggleBBedField() {
+        let checkbox = document.getElementById("b_bed");
+        let input = document.getElementById("b_bed_count");
 
         if (checkbox.checked) {
           input.disabled = false;
@@ -2491,12 +2540,13 @@ extra Räume
 
         const HK_AREAS = [
           "Rezeption",
-          "Treppenhaus",
-          "Toiletten",
           "Saal",
+          "Toiletten",
+          "Treppenhaus",
           "Restaurant",
           "Fachwerk",
           "Schenke",
+          "Backoffice",
           "Kegelbahn",
           "Grillhütte",
           "Bar",
@@ -2512,10 +2562,10 @@ extra Räume
           let d = new Date(date);
           let day = d.getDay();
 
-          let base = ["Rezeption", "Treppenhaus", "Toiletten", "Saal"];
+          let base = ["Rezeption", "Toiletten", "Saal"];
 
           if (day === 0) {
-            base.push("Restaurant", "Fachwerk", "Schenke", "Kegelbahn");
+            base.push("Restaurant", "Fachwerk", "Schenke", "Backoffice", "Kegelbahn", "Treppenhaus");
           }
 
           return base;
@@ -2629,26 +2679,39 @@ extra Räume
 <title>Druck</title>
 
 <style>
+
+
+html, body {
+  zoom: 1;
+}
+
+page {
+  size: A4;
+  margin: 15mm;
+}
+
 body {
   font-family: Arial;
   padding: 20px;
+  width: 210mm;
+  margin: 0 auto;
 }
 
 h1 {
-  font-size: 20px;
+  font-size: 30px;
   margin-bottom: 20px;
   font-weight: bold;
 }
 
 h2 {
-  font-size: 16px;
+  font-size: 22px;
   margin-top: 25px;
   margin-bottom: 10px;
   font-weight: bold;
 }
 
 .row {
-  font-size: 12px;
+  font-size: 16px;
   margin-bottom: 6px;
   font-weight: normal;
 }
@@ -2656,6 +2719,10 @@ h2 {
 
 .print-section {
   page-break-after: always;
+  
+width: 100%;
+  min-height: 260mm;
+
 }
 
 
@@ -2817,389 +2884,203 @@ window.onload = function() {
         return html;
       }
 
-      function buildHousekeepingHTML(dateStr, staffCount, extras = []) {
-        function getPersonLoad(p) {
-          return (
-            p.neu.length * 2 + p.zuleger.length * 1 + p.kontrolle.length * 0.5 + p.extras.length * 1 // Extras zählen auch
-          );
-        }
+function buildHousekeepingHTML(dateStr, staffCount, extras = []) {
+  function getRoomNumberText(roomName) {
+    return (roomName || "").split(" - ")[0];
+  }
 
-        function getRoomNumberText(roomName) {
-          return (roomName || "").split(" - ")[0];
-        }
+  function getRoomBaseType(roomName) {
+    let t = roomName || "";
+    if (t.includes("EZ")) return "EZ";
+    if (t.includes("DZ")) return "DZ";
+    return "";
+  }
 
-        function getRoomBaseType(roomName) {
-          let t = roomName || "";
+  function getBookingType(b) {
+    if (!b || !b.guests) return "";
 
-          if (t.includes("EZ")) return "EZ";
-          if (t.includes("DZ")) return "DZ";
+    let t = b.guests;
 
-          return "";
-        }
-
-        function getBookingType(b) {
-          if (!b || !b.guests) return "";
-
-          let t = b.guests;
-
-          if (t.includes("EZ")) return "EZ";
-          if (t.includes("DZ")) return "DZ";
-          if (t.includes("3")) return "DZ";
-          if (t.includes("4")) return "DZ";
-
-          return "";
-        }
-
-        function isBuilding2(roomName) {
-          let num = parseInt((roomName || "").split(" - ")[0]);
-          return num >= 50 && num <= 70;
-        }
-
-        const base = new Date(dateStr);
-        base.setHours(0, 0, 0, 0);
-
-        const targetDate = new Date(base);
-        targetDate.setDate(base.getDate() + 1);
-
-        const relevant = bookings.filter((b) => {
-          if (!isValidRoom(b.row)) return false;
-          if (b.guests === "BLOCK") return false;
-
-          let start = new Date(b.start);
-          let end = new Date(b.end);
-
-          start.setHours(0, 0, 0, 0);
-          end.setHours(0, 0, 0, 0);
-
-          return start <= targetDate && end >= targetDate;
-        });
-
-        let neu = [];
-        let zuleger = [];
-        let kontrolle = [];
-        relevant.forEach((b) => {
-          let start = new Date(b.start);
-          let end = new Date(b.end);
-
-          start.setHours(0, 0, 0, 0);
-          end.setHours(0, 0, 0, 0);
-
-          // ✅ Kontrolle (Anreise heute)
-          if (start.getTime() === targetDate.getTime()) {
-            kontrolle.push(b);
-            return;
-          }
-
-          // ✅ Neu (Abreise heute → Zimmer muss komplett gemacht werden)
-          if (end.getTime() === targetDate.getTime()) {
-            neu.push(b);
-            return;
-          }
-
-          // ✅ Zuleger (deine richtige Definition)
-          if (start < targetDate && end > targetDate) {
-            zuleger.push(b);
-          }
-        });
-
-        function findNextBookingSameRoom(b) {
-          let end = new Date(b.end);
-          end.setHours(0, 0, 0, 0);
-
-          return bookings.find((x) => {
-            if (!isValidRoom(b.row)) return false;
-            if (!x || x.id === b.id) return false;
-            if (x.row !== b.row) return false;
-            if (x.guests === "BLOCK") return false;
-
-            let start = new Date(x.start);
-            start.setHours(0, 0, 0, 0);
-
-            let diff = (start - end) / (1000 * 60 * 60 * 24);
-
-            return diff === 0 || diff === 1;
-          });
-        }
-
-        const getRoomNumber = (b) => (b && b.row !== undefined ? parseInt((rooms[b.row] || "").split(" - ")[0]) : 999);
-
-        neu.sort((a, b) => getRoomNumber(a) - getRoomNumber(b));
-        zuleger.sort((a, b) => getRoomNumber(a) - getRoomNumber(b));
-
-        let tasks = [];
-
-        neu.forEach((b) => {
-          tasks.push({
-            type: "Neu",
-            weight: 2,
-            room: rooms[b.row],
-            name: b.name,
-            booking: b
-          });
-        });
-
-        zuleger.forEach((b) => {
-          tasks.push({
-            type: "Zuleger",
-            weight: 1,
-            room: rooms[b.row],
-            name: b.name,
-            booking: b
-          });
-        });
-
-        extras.forEach((e) => {
-          tasks.push({
-            type: "Extra",
-            weight: 1,
-            extra: e
-          });
-        });
-        kontrolle = kontrolle.filter((k) => {
-          let matchingNeu = neu.find((n) => {
-            if (n.row !== k.row) return false;
-
-            let next = findNextBookingSameRoom(n, targetDate);
-
-            return next && next.id === k.id;
-          });
-
-          return !matchingNeu;
-        });
-
-        let countTotal = {
-          neu: neu.length,
-          zuleger: zuleger.length,
-          kontrolle: kontrolle.length
-        };
-
-        function calcLoad(n, z, k) {
-          return n * 2 + z * 1 + k * 0.5;
-        }
-
-        function getTargets(list, staff) {
-          return Math.ceil(list.length / staff);
-        }
-
-        let neuB1 = neu.filter((b) => !isBuilding2(rooms[b.row]));
-        let neuB2 = neu.filter((b) => isBuilding2(rooms[b.row]));
-
-        let zulB1 = zuleger.filter((b) => !isBuilding2(rooms[b.row]));
-        let zulB2 = zuleger.filter((b) => isBuilding2(rooms[b.row]));
-
-        let konB1 = kontrolle.filter((b) => !isBuilding2(rooms[b.row]));
-        let konB2 = kontrolle.filter((b) => isBuilding2(rooms[b.row]));
-
-        let loadB1 = calcLoad(neuB1.length, zulB1.length, konB1.length);
-        let loadB2 = calcLoad(neuB2.length, zulB2.length, konB2.length);
-
-        let totalLoad = loadB1 + loadB2;
-
-        let staffB1;
-        let staffB2;
-
-        if (totalLoad === 0) {
-          staffB1 = Math.ceil(staffCount / 2);
-          staffB2 = staffCount - staffB1;
-        } else {
-          staffB1 = Math.round((loadB1 / totalLoad) * staffCount);
-          staffB2 = staffCount - staffB1;
-
-          // ✅ FIX gegen 0-Personal im belegten Gebäude
-          if (staffB1 === 0 && loadB1 > 0) staffB1 = 1;
-          if (staffB2 === 0 && loadB2 > 0) staffB2 = 1;
-        }
-
-        let target = {
-          b1: {
-            neu: getTargets(neuB1, staffB1),
-            zul: getTargets(zulB1, staffB1),
-            kon: getTargets(konB1, staffB1)
-          },
-          b2: {
-            neu: getTargets(neuB2, staffB2),
-            zul: getTargets(zulB2, staffB2),
-            kon: getTargets(konB2, staffB2)
-          }
-        };
-
-        let building1 = tasks.filter((t) => {
-          return t.room && !isBuilding2(t.room);
-        });
-
-        let building2 = tasks.filter((t) => {
-          return t.room && isBuilding2(t.room);
-        });
-
-        let extraTasks = tasks.filter((t) => t.type === "Extra");
-
-        let people = [];
-
-        for (let i = 0; i < staffCount; i++) {
-          people.push({
-            neu: [],
-            zuleger: [],
-            extras: [],
-            kontrolle: [],
-            load: 0
-          });
-        }
-
-        people.forEach((p, i) => {
-          p.building = i < staffB1 ? 1 : 2;
-        });
-
-        assignByTarget(neuB1, "neu", 1);
-        assignByTarget(zulB1, "zul", 1);
-        assignByTarget(konB1, "kon", 1);
-
-        assignByTarget(neuB2, "neu", 2);
-        assignByTarget(zulB2, "zul", 2);
-        assignByTarget(konB2, "kon", 2);
-
-        if (extraTasks.length) {
-          extraTasks.forEach((task) => {
-            // ✅ sortiere nach aktueller Last (leichteste zuerst)
-            people.sort((a, b) => getPersonLoad(a) - getPersonLoad(b));
-
-            // ✅ gib Extra der Person mit wenigster Arbeit
-            people[0].extras.push(task);
-          });
-        }
-
-        function assignByTarget(list, type, building) {
-          let group = people.filter((p) => p.building === building);
-
-          if (!group.length) {
-            console.warn("Keine Personen für Gebäude", building);
-            return;
-          }
-
-          let t = target["b" + building][type];
-          if (!t) return;
-
-          let pIndex = 0;
-          let counter = 0;
-
-          list.forEach((item) => {
-            let person = group[pIndex % group.length]; // ✅ FIX
-
-            if (!person) return;
-
-            if (type === "neu") {
-              person.neu.push({ room: rooms[item.row], booking: item });
-            } else if (type === "zul") {
-              person.zuleger.push({ room: rooms[item.row], booking: item });
-            } else {
-              person.kontrolle.push(item);
-            }
-
-            counter++;
-
-            if (counter >= t) {
-              counter = 0;
-              pIndex++;
-            }
-          });
-        }
-
-        function assignInBlocks(tasksList, buildingNumber) {
-          let filteredPeople = people.filter((p) => p.building === buildingNumber);
-
-          if (!tasksList.length || !filteredPeople.length) return;
-
-          let perPerson = Math.ceil(tasksList.length / filteredPeople.length);
-
-          let index = 0;
-
-          filteredPeople.forEach((person) => {
-            for (let i = 0; i < perPerson; i++) {
-              let task = tasksList[index];
-              if (!task) return;
-
-              if (task.type === "Neu") {
-                person.neu.push(task);
-              } else {
-                person.zuleger.push(task);
-              }
-
-              index++;
-            }
-          });
-        }
-
-        let html = "";
-
-        people.forEach((p, i) => {
-          html += `
+    if (t.includes("EZ")) return "EZ";
+    if (t.includes("DZ")) return "DZ";
+    if (t.includes("3")) return "DZ";
+    if (t.includes("4")) return "DZ";
+
+    return "";
+  }
+
+
+
+  const base = new Date(dateStr);
+  base.setHours(0, 0, 0, 0);
+
+  const targetDate = new Date(base);
+  targetDate.setDate(base.getDate() + 1);
+
+  const relevant = bookings.filter((b) => {
+    if (!isValidRoom(b.row)) return false;
+    if (b.guests === "BLOCK") return false;
+
+    let start = new Date(b.start);
+    let end = new Date(b.end);
+
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+
+    return start <= targetDate && end >= targetDate;
+  });
+
+  // ✅ Kategorien
+  let neu = [];
+  let zuleger = [];
+  let kontrolle = [];
+
+  relevant.forEach((b) => {
+    let start = new Date(b.start);
+    let end = new Date(b.end);
+
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+
+    if (start.getTime() === targetDate.getTime()) {
+      kontrolle.push(b);
+      return;
+    }
+
+    if (end.getTime() === targetDate.getTime()) {
+      neu.push(b);
+      return;
+    }
+
+    if (start < targetDate && end > targetDate) {
+      zuleger.push(b);
+    }
+  });
+
+
+
+// ✅ exakt wie im Belegungsplan
+neu.sort((a, b) => a.row - b.row);
+zuleger.sort((a, b) => a.row - b.row);
+kontrolle.sort((a, b) => a.row - b.row);
+
+
+
+  // ✅ Personen erstellen
+  let people = [];
+
+  for (let i = 0; i < staffCount; i++) {
+    people.push({
+      neu: [],
+      zuleger: [],
+      kontrolle: [],
+      extras: []
+    });
+  }
+ 
+  function assignSequential(list, key) {
+  if (!list.length) return;
+
+  let perPerson = Math.ceil(list.length / people.length);
+  let index = 0;
+
+  people.forEach((p) => {
+    for (let i = 0; i < perPerson; i++) {
+      let item = list[index];
+      if (!item) break;
+
+      if (key === "neu") {
+        p.neu.push({ room: rooms[item.row], booking: item });
+      } else if (key === "zul") {
+        p.zuleger.push({ room: rooms[item.row], booking: item });
+      } else {
+        p.kontrolle.push(item);
+      }
+
+      index++;
+    }
+  });
+}
+
+assignSequential(neu, "neu");
+assignSequential(zuleger, "zul");
+assignSequential(kontrolle, "kon");
+  
+  if (extras.length) {
+    let index = 0;
+
+    extras.forEach((e) => {
+      people[index].extras.push(e);
+
+      index++;
+      if (index >= people.length) index = 0;
+    });
+  }
+
+
+
+  // ✅ HTML bauen
+  let html = "";
+
+  people.forEach((p, i) => {
+    html += `
 <div style="page-break-inside: avoid; border-bottom:2px dashed #000; padding-bottom:10px; margin-bottom:15px;">
 
 <h2>Name:_______________________ – ${targetDate.toLocaleDateString("de-DE")}</h2>
 
-
 <table style="width:100%; table-layout:fixed;">
 <tr>
-  
-  <th align="left" style="width:33%">Neu</th>
-  <th align="left" style="width:33%">Zuleger</th>
-  <th align="left" style="width:33%">Kontrolle</th>
-
+  <th align="left" style="width:33%"><h2>Neu</h2></th>
+  <th align="left" style="width:33%"><h2>Zuleger</h2></th>
+  <th align="left" style="width:33%"><h2>Kontrolle</h2></th>
 </tr>
 <tr>
-  <td valign="top" style="padding-right:10px;">
 
+<td valign="top">
 `;
 
-          p.neu.forEach((task) => {
-            let roomNumber = getRoomNumberText(task.room);
+    p.neu.forEach((task) => {
+      let roomNumber = getRoomNumberText(task.room);
+      let type = getBookingType(task.booking) || getRoomBaseType(task.room);
 
-            let next = findNextBookingSameRoom(task.booking);
+      html += `<div class="row">${roomNumber} – ${type}<br></div>`;
+    });
+    html +=`<br><br><br><br><br>`;
+    html += `</td><td valign="top">`;
 
-            let type;
+    p.zuleger.forEach((task) => {
+      let roomNumber = getRoomNumberText(task.room);
+      let type = getBookingType(task.booking);
+      
+      html += `<div class="row">${roomNumber} – ${type}<br></div>`;
+    });
+    html +=`<br><br><br><br><br>`;
+    html += `</td><td valign="top">`;
 
-            if (next) {
-              type = getBookingType(next);
-            } else {
-              type = getRoomBaseType(task.room);
-            }
+    p.kontrolle.forEach((task) => {
+      let roomNumber = getRoomNumberText(rooms[task.row]);
+      let type = getBookingType(task);
 
-            html += `${roomNumber} – ${type}<br>`;
-          });
+      html += `<div class="row">${roomNumber} – ${type}<br></div>`;
+    });
+    html +=`<br><br><br><br><br>`;
+    html += `</td></tr></table>`;
 
-          html += `</td><td valign="top">`;
+    if (p.extras.length) {
+      html += `<div style="margin-top:10px;">`;
 
-          p.zuleger.forEach((task) => {
-            let roomNumber = getRoomNumberText(task.room);
-            let type = getBookingType(task.booking);
-            html += `${roomNumber} – ${type}<br>`;
-          });
+      p.extras.forEach((e) => {
+        html += `<div class="row">${e}   </div>`;
+      });
+      html +=`<br><br>`;
+      html += `</div>`;
+    }
 
-          html += `</td><td valign="top" style="padding-right:10px">`;
+    html += `</div>`;
+  });
 
-          p.kontrolle.forEach((task) => {
-            let roomNumber = getRoomNumberText(rooms[task.row]);
-            let type = getBookingType(task);
-            html += `${roomNumber} – ${type}<br>`;
-          });
-
-          html += `</td></tr></table>`;
-
-          if (p.extras.length) {
-            html += `
-    <div style="margin-top:10px;">
-  `;
-
-            p.extras.forEach((task) => {
-              html += `${task.extra}<br>`;
-            });
-
-            html += `</div>`;
-          }
-          html += `</div>`;
-        });
-
-        return `<h1>Housekeeping ${targetDate.toLocaleDateString("de-DE")}</h1>${html}`;
-      }
+  return `${html}`;
+}
 
       function buildBreakfastHTML(dateStr) {
         const base = new Date(dateStr);
@@ -3278,7 +3159,7 @@ window.onload = function() {
         Object.values(groupedByGroup).forEach((g) => {
           html += `
       <div class="row">
-        Gruppe: ${g.name} – ${g.guests} Personen
+        Gruppe: ${trimText(g.name,15)} – ${g.guests} Personen
       </div>
     `;
         });
@@ -4718,6 +4599,18 @@ ${d.toLocaleDateString("de-DE", {
 
         let start = new Date(b.start).toLocaleDateString();
         let end = new Date(b.end).toLocaleDateString();
+        
+let extra = "";
+
+if (b.breakfast === false) {
+  extra += "<span class='no-breakfast-icon'><span>☕</span></span>";
+}
+if (b.pet) {
+  extra += "🐕".repeat(b.pet_count || 1);
+}
+if (b.crib) {
+  extra += "👶";
+}
 
         let html = `
     <b>👥 Zimmerkategorie:</b>${b.guests || "-"}<br><br>
@@ -4727,7 +4620,7 @@ ${d.toLocaleDateString("de-DE", {
     <b>📅 Abreise:</b>${end}<br><br>
     <b>💲 Preis:</b>${b.price || "-"}<br><br>
     <b>💬 Kommentar:</b>${b.comment || "-"}<br><br>
-    <b>☕ Frühstück:</b>${b.breakfast !== false ? "Ja" : "Nein"}<br><br>
+    <b>☕ Extrainfo:</b>${extra || "-"}<br><br>
 
 
 <b>🎨 Gruppe:</b>
@@ -4804,7 +4697,8 @@ ${renderGroupBadge(groupsMap[b.group_id])}
           d.dataset.id = b.id;
           d.dataset.index = i;
 
-d.onclick = (e) => {
+         d.onclick = (e) => {
+  // ✅ Mehrfachauswahl
   if (f) {
     e.stopPropagation();
 
@@ -4818,19 +4712,25 @@ d.onclick = (e) => {
     return;
   }
 
-  // ✅ Mobile: sofort öffnen
+  // ✅ Mobile ohne Admin → blockieren
   if (isMobile) {
-    openInfo(i);
-    return;
+    if (!isAdmin()) {
+      return;
+    } else {
+      // ✅ Admin auf Mobile → DIREKT öffnen (kein Timer)
+      openInfo(i);
+      return;
+    }
   }
 
-  // ✅ Desktop: Einzelklick (mit Delay für DoubleClick)
+  // ✅ Desktop → Timer nutzen
   clearTimeout(clickTimer);
 
   clickTimer = setTimeout(() => {
     openInfo(i);
   }, 200);
 };
+
 
           if (selected.includes(i)) {
             d.classList.add("selected");
@@ -4991,12 +4891,14 @@ d.onclick = (e) => {
           let icons = "";
           let commentText = b.comment ? " - " + b.comment : "";
           if (b.breakfast === false) {
-            icons += `<span class='no-breakfast-icon'><span>☕</span></span>`;
+            icons += `<span class="icons"><span class='no-breakfast-icon'><span>☕</span></span></span>`;
           }
 
           if (b.pet) {
-            icons += `<span title="Hund">${"🐕".repeat(b.pet_count || 1)}</span>`;
+            icons += `<span class="icons"><span title="Hund">${"🐕".repeat(b.pet_count || 1)}</span></span>`;
           }
+          
+          
 
           let companyText = b.company ? ` 🏢 ${b.company}` : "";
           let txt = document.createElement("span");
@@ -5004,15 +4906,19 @@ d.onclick = (e) => {
           txt.className = "text";
           txt.style.flex = 1;
 
-          let paidIcon = b.paid ? `<span class="paid-icon">💰</span> ` : "";
+          let paidIcon = b.paid ? `<span class="icons"><span class="paid-icon">💰</span></span> ` : "";
 
           if (isMobile) {
             if (b.guests === "BLOCK") {
               txt.innerHTML = "🚫";
-            } else {
-              txt.innerHTML = `${paidIcon}${icons}`;
+            } else{
+              if(!isAdmin()){
+                   txt.innerHTML = ``;
+              }else{
+              txt.innerHTML = `${paidIcon}${b.guests} ${b.name || (group ? group.name : "")}${companyText}${icons}`;
             }
-          } else {
+            }
+          }else{
             if (b.guests === "BLOCK") {
               txt.innerHTML = "🚫 BLOCKIERT";
             } else {
@@ -7431,7 +7337,7 @@ d.onclick = (e) => {
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
 
-        isSwiping = false;
+        Swiping = false;
 
         let isAtEdge = startX < SWIPE_EDGE_WIDTH || startX > window.innerWidth - SWIPE_EDGE_WIDTH;
         if (!isAtEdge) {
