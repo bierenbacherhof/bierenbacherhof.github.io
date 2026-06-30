@@ -1034,11 +1034,21 @@
         <label>Kommentar</label><br />
         <input type="text" id="f_comment" /><br /><br />
 
-        <label>Frühstück</label><br />
-        <select id="f_breakfast">
-          <option value="true">Ja</option>
-          <option value="false">Nein</option></select
-        ><br /><br />
+        <label>
+          <input type="checkbox" id="f_breakfast" checked />
+          Frühstück </label
+        ><br />
+
+        <div style="display: flex; align-items: center; gap: 8px">
+          <label for="f_pet">
+            <input type="checkbox" id="f_pet" onchange="togglePetField()" />
+            Hund 🐕
+          </label>
+
+          <input type="number" id="f_pet_count" min="1" value="1" style="width: 60px" disabled />
+        </div>
+
+        <br /><br />
 
         <label>Gruppe</label><br />
         <select id="f_group"></select
@@ -1247,12 +1257,18 @@
       let currentGroupId = null;
       let moving = null;
       let currentUser = null;
+      let isDraggingUpdate = false;
+      let isResizingUpdate = false;
       if (savedWeek) {
         current = new Date(savedWeek);
       }
 
       history = JSON.parse(localStorage.getItem("hotel_history") || "[]");
 
+      function trimText(str, max) {
+        if (!str) return "";
+        return str.length > max ? str.slice(0, max) + "…" : str;
+      }
       async function login() {
         const usernameInput = document.getElementById("login_email");
         const passwordInput = document.getElementById("login_password");
@@ -1294,11 +1310,6 @@
         } finally {
           if (submitButton) submitButton.disabled = false;
         }
-      }
-
-      function trimGroupName(name, max = 30) {
-        if (!name) return "";
-        return name.length > max ? name.slice(0, max) + "…" : name;
       }
 
       function applyLogFilter() {
@@ -1366,6 +1377,22 @@
         content.innerHTML = html;
       }
 
+      function togglePetField() {
+        let checkbox = document.getElementById("f_pet");
+        let input = document.getElementById("f_pet_count");
+
+        if (checkbox.checked) {
+          input.disabled = false;
+
+          // wenn leer oder 0 → auf 1 setzen
+          if (!input.value || input.value == "0") {
+            input.value = 1;
+          }
+        } else {
+          input.disabled = true;
+          input.value = "";
+        }
+      }
       function resetLogFilter() {
         document.getElementById("logNameFilter").value = "";
 
@@ -1562,7 +1589,7 @@
           let opt = document.createElement("option");
 
           opt.value = g.id;
-          opt.textContent = trimGroupName(g.name);
+          opt.textContent = trimGroupNameMobile(g.name);
           opt.dataset.color = g.color;
 
           opt.style.background = g.color;
@@ -1689,6 +1716,12 @@
 
           container.appendChild(row);
         });
+      }
+
+      function toLocalDateInput(dateStr) {
+        let d = new Date(dateStr);
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        return d.toISOString().slice(0, 10);
       }
 
       function collectGroupData() {
@@ -3311,10 +3344,20 @@ window.onload = function() {
 
             let duration = Math.round((end - start) / (1000 * 60 * 60 * 24));
 
+            let petText = "";
+
+            if (b.pet && b.pet_count) {
+              if (b.pet_count === 1) {
+                petText = " - 1 Hund";
+              } else {
+                petText = ` - ${b.pet_count} Hunde`;
+              }
+            }
+
             html += `
         <div class="row">
           ${b.name || "-"} ${b.guests} ${(rooms[b.row] || "").split(" - ")[0]}
-          (${duration} ${duration !== 1 ? "Nächte" : "Nacht"})
+          (${duration} ${duration !== 1 ? "Nächte" : "Nacht"})${petText}
         </div>
       `;
           });
@@ -3325,11 +3368,11 @@ window.onload = function() {
         let html = `<h1>${title} ${date.toLocaleDateString("de-DE")}</h1>`;
 
         Object.values(groupedByGroup).forEach((g) => {
-          html += renderList(`Gruppe: ${g.name}`, g.list);
+          html += renderList(`Gruppe: ${trimText(g.name, 15)}`, g.list);
         });
 
         Object.entries(groupedByCompany).forEach(([company, list]) => {
-          html += renderList(`Firma: ${company}`, list);
+          html += renderList(`Firma: ${trimText(company, 15)}`, list);
         });
 
         if (singles.length) {
@@ -4195,7 +4238,7 @@ ${d.toLocaleDateString("de-DE", {
           let opt = document.createElement("option");
 
           opt.value = g.id;
-          opt.textContent = trimGroupName(g.name);
+          opt.textContent = trimGroupNameMobile(g.name);
           opt.dataset.color = g.color;
 
           opt.style.background = g.color;
@@ -4232,14 +4275,13 @@ ${d.toLocaleDateString("de-DE", {
         let end = new Date(document.getElementById("f_end").value);
         let price = document.getElementById("f_price").value;
         let comment = document.getElementById("f_comment").value;
-        let breakfast = document.getElementById("f_breakfast").value === "true";
+        let breakfast = document.getElementById("f_breakfast").checked;
+
+        let pet = document.getElementById("f_pet").checked;
+        let pet_count = pet ? Number(document.getElementById("f_pet_count").value) || 1 : 0;
 
         start.setHours(CHECKIN_HOUR, 0, 0, 0);
         end.setHours(CHECKOUT_HOUR, 0, 0, 0);
-
-        if (guests !== "BLOCK" && !name) {
-          return alert("Name fehlt");
-        }
 
         if (end <= start) return alert("Abreise muss nach Anreise liegen");
 
@@ -4254,7 +4296,10 @@ ${d.toLocaleDateString("de-DE", {
               comment,
               guests,
               group_id: group || null,
-              breakfast: breakfast
+              breakfast: breakfast,
+
+              pet: pet,
+              pet_count: pet ? pet_count : 0
             };
 
             closeForm();
@@ -4275,7 +4320,10 @@ ${d.toLocaleDateString("de-DE", {
             group_id: group || null,
             paid: false,
             checkin: false,
-            breakfast: breakfast
+            breakfast: breakfast,
+
+            pet: pet,
+            pet_count: pet ? pet_count : 0
           };
 
           if (guests.includes("B")) {
@@ -4312,6 +4360,9 @@ ${d.toLocaleDateString("de-DE", {
           let oldGuests = b.guests;
           let oldBreakfast = b.breakfast;
 
+          let oldPet = b.pet;
+          let oldPetCount = b.pet_count;
+
           const user = currentUser;
 
           b.start = start.toISOString();
@@ -4322,6 +4373,9 @@ ${d.toLocaleDateString("de-DE", {
           b.comment = comment;
           b.guests = guests;
           b.breakfast = breakfast;
+
+          b.pet = pet;
+          b.pet_count = pet_count;
 
           render();
 
@@ -4337,6 +4391,9 @@ ${d.toLocaleDateString("de-DE", {
               guests,
               breakfast,
               group_id: b.group_id,
+
+              pet: b.pet,
+              pet_count: b.pet_count,
 
               user_id: user?.id
             })
@@ -4537,7 +4594,7 @@ ${d.toLocaleDateString("de-DE", {
           opt.innerText = o;
           select.appendChild(opt);
         });
-
+        select.value = b.guests;
         let groupSelect = document.getElementById("f_group");
         groupSelect.innerHTML = "";
 
@@ -4552,7 +4609,7 @@ ${d.toLocaleDateString("de-DE", {
           let opt = document.createElement("option");
 
           opt.value = g.id;
-          opt.textContent = trimGroupName(g.name);
+          opt.textContent = trimGroupNameMobile(g.name);
           opt.dataset.color = g.color;
 
           opt.style.background = g.color;
@@ -4563,7 +4620,7 @@ ${d.toLocaleDateString("de-DE", {
 
         groupSelect.value = b.group_id || "";
 
-        editIndex = bookings.findIndex((x) => x.id === b.id);
+        editIndex = bookings.findIndex((x) => String(x.id) === String(b.id));
 
         document.getElementById("bookingForm").style.display = "block";
 
@@ -4578,11 +4635,22 @@ ${d.toLocaleDateString("de-DE", {
         document.getElementById("f_price").value = b.price || "";
         document.getElementById("f_comment").value = b.comment || "";
 
-        document.getElementById("f_start").value = b.start ? new Date(b.start).toISOString().slice(0, 10) : "";
+        document.getElementById("f_start").value = b.start ? toLocalDateInput(b.start) : "";
 
-        document.getElementById("f_end").value = b.end ? new Date(b.end).toISOString().slice(0, 10) : "";
+        document.getElementById("f_end").value = b.end ? toLocalDateInput(b.end) : "";
 
-        document.getElementById("f_breakfast").value = b.breakfast === false ? "false" : "true";
+        document.getElementById("f_breakfast").checked = b.breakfast !== false;
+        document.getElementById("f_pet").checked = !!b.pet;
+
+        let petInput = document.getElementById("f_pet_count");
+
+        if (b.pet) {
+          petInput.disabled = false;
+          petInput.value = b.pet_count || 1;
+        } else {
+          petInput.disabled = true;
+          petInput.value = "";
+        }
       }
 
       function closeForm() {
@@ -4610,7 +4678,7 @@ ${d.toLocaleDateString("de-DE", {
       border-radius:6px;
       font-size:12px;
     ">
-      ${trimGroupName(group.name)}
+      ${trimGroupNameMobile(group.name)}
     </span>
   `;
       }
@@ -4736,27 +4804,33 @@ ${renderGroupBadge(groupsMap[b.group_id])}
           d.dataset.id = b.id;
           d.dataset.index = i;
 
-          d.onclick = (e) => {
-            if (f) {
-              e.stopPropagation();
-              if (selected.includes(i)) {
-                selected = selected.filter((x) => x !== i);
-              } else {
-                selected.push(i);
-              }
+d.onclick = (e) => {
+  if (f) {
+    e.stopPropagation();
 
-              render();
-              return;
-            }
+    if (selected.includes(i)) {
+      selected = selected.filter((x) => x !== i);
+    } else {
+      selected.push(i);
+    }
 
-            if (e.detail === 2) return;
+    render();
+    return;
+  }
 
-            clearTimeout(clickTimer);
+  // ✅ Mobile: sofort öffnen
+  if (isMobile) {
+    openInfo(i);
+    return;
+  }
 
-            clickTimer = setTimeout(() => {
-              openInfo(i);
-            }, 200);
-          };
+  // ✅ Desktop: Einzelklick (mit Delay für DoubleClick)
+  clearTimeout(clickTimer);
+
+  clickTimer = setTimeout(() => {
+    openInfo(i);
+  }, 200);
+};
 
           if (selected.includes(i)) {
             d.classList.add("selected");
@@ -4914,9 +4988,16 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
           flags.appendChild(paid);
           flags.appendChild(check);
-
+          let icons = "";
           let commentText = b.comment ? " - " + b.comment : "";
-          let frText = b.breakfast === false ? " <span class='no-breakfast-icon'><span>☕</span></span>" : "";
+          if (b.breakfast === false) {
+            icons += `<span class='no-breakfast-icon'><span>☕</span></span>`;
+          }
+
+          if (b.pet) {
+            icons += `<span title="Hund">${"🐕".repeat(b.pet_count || 1)}</span>`;
+          }
+
           let companyText = b.company ? ` 🏢 ${b.company}` : "";
           let txt = document.createElement("span");
 
@@ -4929,13 +5010,13 @@ ${renderGroupBadge(groupsMap[b.group_id])}
             if (b.guests === "BLOCK") {
               txt.innerHTML = "🚫";
             } else {
-              txt.innerHTML = `${paidIcon}`;
+              txt.innerHTML = `${paidIcon}${icons}`;
             }
           } else {
             if (b.guests === "BLOCK") {
               txt.innerHTML = "🚫 BLOCKIERT";
             } else {
-              txt.innerHTML = `${paidIcon}${b.guests} ${b.name || (group ? group.name : "")}${companyText}${frText}${commentText}`;
+              txt.innerHTML = `${paidIcon}${b.guests} ${b.name || (group ? group.name : "")}${companyText}${icons}${commentText}`;
             }
           }
 
@@ -5309,7 +5390,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
           return;
         }
 
-        let b = bookings.find((x) => x.id === currentDrag.id);
+        let b = bookings.find((x) => String(x.id) === String(currentDrag.id));
 
         let el = document.querySelector(`.booking[data-index='${currentDrag.i}']`);
         if (!el) return;
@@ -5390,7 +5471,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
               end: b.end,
               user_id: user?.id
             })
-            .eq("id", Number(b.id))
+            .eq("id", b.id)
             .select();
 
           if (error) {
@@ -5563,13 +5644,13 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
             newStart.setHours(CHECKIN_HOUR, 0, 0, 0);
 
-            if (!overlapDates(b.row, newStart, baseEnd, i)) {
+            if (!overlapDates(b.row, newStart, baseEnd, b.id)) {
               let oldStart = b.start;
 
               b.start = newStart.toISOString();
 
               render();
-
+              isResizingUpdate = true;
               const user = currentUser;
 
               const { error } = await supa
@@ -5579,13 +5660,13 @@ ${renderGroupBadge(groupsMap[b.group_id])}
                   user_id: user?.id
                 })
                 .eq("id", b.id);
-
+              isResizingUpdate = false;
               if (error) {
                 console.error(error);
 
                 b.start = oldStart;
                 render();
-
+                isResizingUpdate = false;
                 return;
               }
 
@@ -5607,22 +5688,32 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
             newEnd.setHours(CHECKOUT_HOUR, 0, 0, 0);
 
-            if (!overlapDates(b.row, baseStart, newEnd, i)) {
+            if (!overlapDates(b.row, baseStart, newEnd, b.id)) {
               let oldEnd = b.end;
 
               b.end = newEnd.toISOString();
 
               render();
-
+              isResizingUpdate = true;
               const user = currentUser;
 
-              await supa
+              const { error } = await supa
                 .from("bookings")
                 .update({
                   end: b.end,
                   user_id: user?.id
                 })
                 .eq("id", b.id);
+              isResizingUpdate = false;
+              if (error) {
+                console.error(error);
+                alert("Speichern fehlgeschlagen");
+
+                b.end = oldEnd;
+                render();
+                isResizingUpdate = false;
+                return;
+              }
 
               logBookingAction({
                 bookingId: b.id,
@@ -5729,11 +5820,23 @@ ${renderGroupBadge(groupsMap[b.group_id])}
             return;
           }
 
-          let name = prompt("Gruppenname");
-          if (!name) return;
+          let existingGroup = findGroupByColorInWeek(c);
 
-          let group = await createGroup(name, c);
+          let group;
 
+          if (existingGroup) {
+            // ✅ KEIN prompt → bestehende Gruppe nutzen
+            group = existingGroup;
+          } else {
+            // ✅ NUR hier Name abfragen
+            let name = prompt("Gruppenname");
+            if (!name) return;
+
+            group = await createGroup(name, c);
+            if (!group) return;
+          }
+
+          // ✅ Buchungen zuordnen
           let ids = selected.map((i) => bookings[i].id);
 
           for (const i of selected) {
@@ -5832,7 +5935,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         Object.values(legendMap).forEach((g) => {
           let div = document.createElement("div");
 
-          div.innerText = g.name;
+          div.innerText = trimGroupNameMobile(g.name);
           div.style.background = g.color;
           div.style.color = isLightColor(g.color) ? "black" : "white";
           div.style.padding = "4px 8px";
@@ -5860,6 +5963,121 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         });
 
         requestAnimationFrame(updateStickyPositions);
+      }
+
+      function findGroupByColorInWeek(color) {
+        let weekStart = normalizeDate(startOfWeek(current));
+        let weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 7);
+
+        for (let b of bookings) {
+          if (!b.group_id) continue;
+
+          let group = groupsMap[b.group_id];
+          if (!group) continue;
+
+          let s = normalizeDate(b.start);
+          let e = normalizeDate(b.end);
+
+          let overlaps = s < weekEnd && e > weekStart;
+
+          if (overlaps && group.color === color) {
+            return group;
+          }
+        }
+
+        return null;
+      }
+
+      function calculateGroupDates(groupBookings) {
+        if (!groupBookings.length) {
+          return {
+            start: null,
+            end: null,
+            startNote: "",
+            endNote: ""
+          };
+        }
+
+        let startCount = {};
+        let endCount = {};
+
+        function dateKey(d) {
+          let dt = normalizeDate(d);
+          return (
+            dt.getFullYear() +
+            "-" +
+            String(dt.getMonth() + 1).padStart(2, "0") +
+            "-" +
+            String(dt.getDate()).padStart(2, "0")
+          );
+        }
+
+        groupBookings.forEach((b) => {
+          let s = dateKey(b.start);
+          let e = dateKey(b.end);
+
+          startCount[s] = (startCount[s] || 0) + 1;
+          endCount[e] = (endCount[e] || 0) + 1;
+        });
+
+        function getMostCommon(map, mode = "start") {
+          let max = 0;
+          let candidates = [];
+
+          for (let key in map) {
+            let count = map[key];
+
+            if (count > max) {
+              max = count;
+              candidates = [key];
+            } else if (count === max) {
+              candidates.push(key);
+            }
+          }
+
+          // ✅ Gleichstand behandeln
+          if (candidates.length > 1) {
+            if (mode === "start") {
+              // frühestes Datum
+              return candidates.sort()[0];
+            } else {
+              // spätestes Datum
+              return candidates.sort()[candidates.length - 1];
+            }
+          }
+
+          return candidates[0];
+        }
+        let mainStart = getMostCommon(startCount, "start");
+        let mainEnd = getMostCommon(endCount, "end");
+
+        let startDates = Object.keys(startCount);
+        let endDates = Object.keys(endCount);
+
+        let startNote = "";
+        let endNote = "";
+
+        if (startDates.some((d) => d < mainStart)) {
+          startNote += " (teilw. früher)";
+        }
+        if (startDates.some((d) => d > mainStart)) {
+          startNote += " (teilw. später)";
+        }
+
+        if (endDates.some((d) => d < mainEnd)) {
+          endNote += " (teilw. früher)";
+        }
+        if (endDates.some((d) => d > mainEnd)) {
+          endNote += " (teilw. später)";
+        }
+
+        return {
+          start: mainStart,
+          end: mainEnd,
+          startNote,
+          endNote
+        };
       }
 
       function calculateGroupStats(data, mode = "input") {
@@ -5925,6 +6143,79 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         openGroupInfo(groupId);
       }
 
+      function trimGroupNameMobile(name) {
+        if (!name) return "";
+
+        let max = isMobile ? 14 : 30; // ✅ mobil kürzer
+
+        return name.length > max ? name.slice(0, max) + "…" : name;
+      }
+
+      async function updateGroupDatesInDB(groupId, calc) {
+        let g = groupsMap[groupId];
+        if (!g) return;
+
+        if (g.start === calc.start && g.end === calc.end) {
+          return; // nichts geändert
+        }
+
+        const { error } = await supa
+          .from("groups")
+          .update({
+            start: calc.start,
+            end: calc.end
+          })
+          .eq("id", groupId);
+
+        if (error) {
+          console.error("Fehler beim Speichern der Gruppendaten:", error);
+          return;
+        }
+
+        // ✅ lokal aktualisieren
+        groupsMap[groupId].start = calc.start;
+        groupsMap[groupId].end = calc.end;
+      }
+
+      async function updateGroupStatsInDB(groupId, stats) {
+        const g = groupsMap[groupId];
+        if (!g) return;
+
+        if (
+          g.count_ez === stats.ez &&
+          g.count_dz === stats.dz &&
+          g.count_3er === stats.er3 &&
+          g.count_4er === stats.er4 &&
+          g.guests_total === stats.guests
+        ) {
+          return; // nichts geändert
+        }
+
+        const { error } = await supa
+          .from("groups")
+          .update({
+            count_ez: stats.ez,
+            count_dz: stats.dz,
+            count_3er: stats.er3,
+            count_4er: stats.er4,
+            guests_total: stats.guests
+          })
+          .eq("id", groupId);
+
+        if (error) {
+          console.error("Fehler beim Aktualisieren der Gruppen-Stats:", error);
+        }
+
+        groupsMap[groupId] = {
+          ...groupsMap[groupId],
+          count_ez: stats.ez,
+          count_dz: stats.dz,
+          count_3er: stats.er3,
+          count_4er: stats.er4,
+          guests_total: stats.guests
+        };
+      }
+
       async function openGroupInfo(groupId) {
         currentGroupId = groupId;
         let box = document.getElementById("groupInfoBox");
@@ -5945,10 +6236,15 @@ ${renderGroupBadge(groupsMap[b.group_id])}
             })
           : "-";
 
-        title.innerText = trimGroupName(group.name);
+        title.innerText = trimGroupNameMobile(group.name);
         let stats = calculateGroupStats(groupId, "bookings");
-
+        updateGroupStatsInDB(groupId, stats);
         let groupBookings = bookings.filter((b) => b.group_id === groupId);
+
+        let dateCalc = calculateGroupDates(groupBookings);
+
+        // ✅ DB sync
+        updateGroupDatesInDB(groupId, dateCalc);
 
         let allCheckedIn = groupBookings.length > 0 && groupBookings.every((b) => b.checkin);
 
@@ -5959,8 +6255,9 @@ ${renderGroupBadge(groupsMap[b.group_id])}
     background:#f5f5f5;
     border-radius:8px;
   ">
-    <b>📅 Anreise:</b> ${group.start || "-"}<br>
-    <b>📅 Abreise:</b> ${group.end || "-"}<br><br>
+  <b>📅 Anreise:</b> ${formatDate(dateCalc.start)}${dateCalc.startNote}<br>
+<b>📅 Abreise:</b> ${formatDate(dateCalc.end)}${dateCalc.endNote}<br><br>
+
 
     <b>🛏️ Zimmer:</b><br>
     EZ: ${stats.ez}<br>
@@ -6249,7 +6546,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       supa
         .channel("live-bookings")
         .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, (payload) => {
-          if (isRestoring || isUndoing || isDeleting || isDraggingUpdate) {
+          if (isRestoring || isUndoing || isDeleting || isDraggingUpdate || isResizingUpdate) {
             return;
           }
 
