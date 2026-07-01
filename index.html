@@ -630,20 +630,17 @@
       body.moving .booking:hover .text {
         transform: none !important;
       }
-      
-      
-.blue-card {
-  display: inline-block;
-  width: 14px;
-  height: 18px;
-  background: #1976d2; /* schönes Blau */
-  border-radius: 3px;
-  border: 1px solid #0d47a1;
-  position: relative;
-  box-shadow: inset 0 0 1px rgba(255,255,255,0.6);
-}
 
-
+      .blue-card {
+        display: inline-block;
+        width: 14px;
+        height: 18px;
+        background: #1976d2; /* schönes Blau */
+        border-radius: 3px;
+        border: 1px solid #0d47a1;
+        position: relative;
+        box-shadow: inset 0 0 1px rgba(255, 255, 255, 0.6);
+      }
 
       #swipeBackground {
         position: fixed;
@@ -681,8 +678,6 @@
       }
 
       @media (max-width: 600px) {
-        
-
         /* ✅ HEADER */
         thead th {
           font-size: 26px !important;
@@ -754,8 +749,8 @@
         #groupInfoTitle {
           font-size: 75px;
         }
-        
-        #infoBox{
+
+        #infoBox {
           max-width: 150vw !important;
           width: 150vw !important;
           max-height: 750px !important;
@@ -903,13 +898,12 @@
           <label for="datePicker" class="allowed">📅</label>
         </div>
 
-        <button onclick="undo()" id="undo" class="auth-only" title="Rückgängig (Strg+Z)">↶</button>
+        <button onclick="undo()" id="undo" style="display: none" title="Rückgängig (Strg+Z)">↶</button>
         <button id="backupBtn" onclick="alert('Backup kommt später')" class="auth-only admin-only">Backup</button>
         <button
-          class="auth-only"
           id="newBookingBtn"
           onclick="event.stopPropagation(); openNewBooking()"
-          style="position: absolute; left: 50%; transform: translateX(-50%)">
+          style="display: none; position: absolute; left: 50%; transform: translateX(-50%)">
           Neue Buchung anlegen
         </button>
         <div id="topRightButtons">
@@ -923,9 +917,8 @@
           <button id="logoutBtn" class="auth-only">Logout</button>
         </div>
         <div id="lowerTopRightButtons">
-          <button id="monthlyStatsBtn">monatliche Zählung</button>
-
-          <button id="printListsBtn">Listen drucken</button>
+          <button id="monthlyStatsBtn" style="display: none">monatliche Zählung</button>
+          <button id="printListsBtn" style="display: none">Listen drucken</button>
         </div>
         <div
           id="backupList"
@@ -1052,34 +1045,46 @@
         <label>Kommentar</label><br />
         <input type="text" id="f_comment" /><br /><br />
 
+         <div style="display: flex; align-items: center; gap: 5px">
         <label>
           <input type="checkbox" id="f_breakfast" checked />
           Frühstück ☕ </label
-        ><br />
+        > <br /></div>
+            
+         
 
-         <label>
-          <input type="checkbox" id="b_card" checked />
-          blaue Karte </label
-        ><br />
         
-        <div style="display: flex; align-items: center; gap: 8px">
+        <div style="display: flex; align-items: center; gap: 5px">
+          <label>
+  <input type="checkbox" id="f_bluecard"> Blaue Karte  🟦
+</label>
+
+<input type="number" id="f_bluecard_count" min="1" value="1" style="width: 60px" disabled /> 
+         <br />  </div>
+             
+
+        <div style="display: flex; align-items: center; gap: 5px">
           <label for="f_pet">
             <input type="checkbox" id="f_pet" onchange="togglePetField()" />
             Hund 🐕
           </label>
-
+          
           <input type="number" id="f_pet_count" min="1" value="1" style="width: 60px" disabled />
-        </div><br />
-
-         <div style="display: flex; align-items: center; gap: 8px">
+            <br /> </div>
+            
+          
+          <div style="display: flex; align-items: center; gap: 5px">
           <label for="b_bed">
             <input type="checkbox" id="b_bed" onchange="toggleBBedField()" />
             Kinderbett
           </label>
 
           <input type="number" id="b_bed_count" min="1" value="1" style="width: 60px" disabled />
-        </div><br />
+          <br /> </div>
+             
         
+       
+
         <br /><br />
 
         <label>Gruppe</label><br />
@@ -1425,8 +1430,8 @@
           input.value = "";
         }
       }
-      
-       function toggleBBedField() {
+
+      function toggleBBedField() {
         let checkbox = document.getElementById("b_bed");
         let input = document.getElementById("b_bed_count");
 
@@ -2356,8 +2361,13 @@
         let { start, end } = placement;
 
         let counter = 0;
+        
+let ordered = [...placement.data].sort((a, b) => {
+  const order = ["4er", "3er", "DZ B", "DZ", "EZ B", "EZ"];
+  return order.indexOf(a.type) - order.indexOf(b.type);
+});
 
-        for (let item of placement.data) {
+for (let item of ordered) {
           if (item.count <= 0) continue;
 
           let rawGroups = placement.floorPriority ? getFloorPriorityGroups() : getBuildingPriorityGroups(item.type);
@@ -2443,6 +2453,86 @@
         return currentRole === "admin" || currentRole === "staff";
       }
 
+      function runPrintReminder(key, timeCheck, confirmText, presetFn) {
+        if (isMobile || currentRole === "read") return;
+
+        const today = new Date().toISOString().slice(0, 10);
+        if (localStorage.getItem(key) === today) return;
+
+        if (!timeCheck()) return;
+
+        localStorage.setItem(key, today);
+
+        if (confirm(confirmText)) {
+          openPrintOptions();
+          setTimeout(presetFn, 100);
+        }
+      }
+
+function runAllReminders() {
+  // ✅ Morning
+  runPrintReminder(
+    "morningReminderShown",
+    () => new Date().getHours() <= 10,
+    "Morgentliche Listen drucken?",
+    activateMorningPreset
+  );
+
+  // ✅ Afternoon 12 Uhr
+  runPrintReminder(
+    "afternoonReminder12",
+    () => new Date().getHours() >= 12,
+    "Nachmittags Listen drucken (12 Uhr)?",
+    activateAfternoonPreset
+  );
+
+  // ✅ Afternoon 14 Uhr
+  runPrintReminder(
+    "afternoonReminder14",
+    () => new Date().getHours() >= 14,
+    "Nachmittags Listen drucken (14 Uhr)?",
+    activateAfternoonPreset
+  );
+}
+
+      function activateMorningPreset() {
+        const morningCheckbox = document.getElementById("chk_morning");
+
+        if (!morningCheckbox) return;
+
+        morningCheckbox.checked = true;
+
+        const options = document.querySelectorAll(".list-option");
+
+        options.forEach((opt, i) => {
+          opt.checked = i === 0 || i === 1; // ✅ Check-In + Freie Zimmer
+        });
+
+        const allCheckbox = document.getElementById("chk_all");
+        if (allCheckbox) allCheckbox.checked = false;
+      }
+
+      function activateAfternoonPreset() {
+        const afternoonCheckbox = document.getElementById("chk_afternoon");
+
+        if (!afternoonCheckbox) return;
+
+        // ✅ Haupt-Haken setzen
+        afternoonCheckbox.checked = true;
+
+        const options = document.querySelectorAll(".list-option");
+
+        // Beispiel: andere Auswahl als morgens
+        options.forEach((opt, i) => {
+          opt.checked = i === 2 || i === 3;
+          // 👉 hier definierst DU was "Nachmittag" ist
+          // z.B. Abreisen + Reinigung
+        });
+
+        const allCheckbox = document.getElementById("chk_all");
+        if (allCheckbox) allCheckbox.checked = false;
+      }
+
       function isEditAllowed() {
         if (isAdmin()) return true;
 
@@ -2486,15 +2576,19 @@
         box.innerHTML = `
     <b>Listen Drucken</b><br><br>
 
-    <label><input type="checkbox" id="chk_all"> Alle auswählen</label><br>
+    <label><input type="checkbox" id="chk_all"><b>Alle auswählen</b></label><br>
+    
+<label><input type="checkbox" id="chk_morning"><b>Morgens drucken</b></label><br>
+<label><input type="checkbox" id="chk_afternoon"><b>Nachmittags drucken</b></label><br>
+
     <label><input type="checkbox" class="list-option"> Check-In</label><br>
-    <label><input type="checkbox" class="list-option"> Check-Out + 1</label><br>
+    
     <label><input type="checkbox" class="list-option"> Freie Zimmer</label><br>
-   
+   <label><input type="checkbox" class="list-option"> Check-Out</label><br>
 
 <label>
   <input type="checkbox" id="chk_housekeeping" class="list-option">
-  Housekeeping + 1
+  Housekeeping
 </label>
 
 <input 
@@ -2520,7 +2614,7 @@ extra Räume
 
 <br>
 
-    <label><input type="checkbox" class="list-option"> Frühstück + 1</label><br>
+    <label><input type="checkbox" class="list-option"> Frühstück für morgen</label><br>
 
     <br>
 
@@ -2624,7 +2718,7 @@ extra Räume
           }
 
           if (options[1].checked) {
-            let html = buildCheckOutHTML(date);
+            let html = buildFreeRoomsHTML(date);
 
             if (html && html.trim() !== "") {
               content += `<div class="print-section">${html}</div>`;
@@ -2632,7 +2726,7 @@ extra Räume
           }
 
           if (options[2].checked) {
-            let html = buildFreeRoomsHTML(date);
+            let html = buildCheckOutHTML(date);
 
             if (html && html.trim() !== "") {
               content += `<div class="print-section">${html}</div>`;
@@ -2704,14 +2798,14 @@ h1 {
 }
 
 h2 {
-  font-size: 22px;
+  font-size: 25px;
   margin-top: 25px;
   margin-bottom: 10px;
   font-weight: bold;
 }
 
 .row {
-  font-size: 16px;
+  font-size: 20px;
   margin-bottom: 6px;
   font-weight: normal;
 }
@@ -2759,6 +2853,10 @@ window.onload = function() {
         document.getElementById("printDate").value = new Date().toISOString().slice(0, 10);
 
         const allCheckbox = document.getElementById("chk_all");
+
+        const morningCheckbox = document.getElementById("chk_morning");
+        const afternoonCheckbox = document.getElementById("chk_afternoon");
+
         const options = box.querySelectorAll(".list-option");
 
         allCheckbox.onchange = () => {
@@ -2767,11 +2865,34 @@ window.onload = function() {
           });
         };
 
+        morningCheckbox.onchange = () => {
+          if (morningCheckbox.checked) {
+            options.forEach((opt, i) => {
+              opt.checked = i === 0 || i === 1;
+            });
+
+            afternoonCheckbox.checked = false;
+            allCheckbox.checked = false;
+          }
+        };
+
+        afternoonCheckbox.onchange = () => {
+          if (afternoonCheckbox.checked) {
+            options.forEach((opt, i) => {
+              opt.checked = i >= 2 && i <= 4;
+            });
+
+            morningCheckbox.checked = false;
+            allCheckbox.checked = false;
+          }
+        };
+
         options.forEach((opt) => {
-          opt.onchange = () => {
-            const allChecked = [...options].every((o) => o.checked);
-            allCheckbox.checked = allChecked;
-          };
+          opt.addEventListener("change", () => {
+            morningCheckbox.checked = false;
+            afternoonCheckbox.checked = false;
+            allCheckbox.checked = false;
+          });
         });
 
         document.getElementById("printCancel").onclick = () => {
@@ -2805,7 +2926,7 @@ window.onload = function() {
         base.setHours(0, 0, 0, 0);
 
         const date = new Date(base);
-        date.setDate(base.getDate() + 1);
+        date.setDate(base.getDate());
 
         const uniqueBookings = Object.values(Object.fromEntries(bookings.map((b) => [b.id, b])));
 
@@ -2884,146 +3005,138 @@ window.onload = function() {
         return html;
       }
 
-function buildHousekeepingHTML(dateStr, staffCount, extras = []) {
-  function getRoomNumberText(roomName) {
-    return (roomName || "").split(" - ")[0];
-  }
+      function buildHousekeepingHTML(dateStr, staffCount, extras = []) {
+        function getRoomNumberText(roomName) {
+          return (roomName || "").split(" - ")[0];
+        }
 
-  function getRoomBaseType(roomName) {
-    let t = roomName || "";
-    if (t.includes("EZ")) return "EZ";
-    if (t.includes("DZ")) return "DZ";
-    return "";
-  }
+        function getRoomBaseType(roomName) {
+          let t = roomName || "";
+          if (t.includes("EZ")) return "EZ";
+          if (t.includes("DZ")) return "DZ";
+          return "";
+        }
 
-  function getBookingType(b) {
-    if (!b || !b.guests) return "";
+        function getBookingType(b) {
+          if (!b || !b.guests) return "";
 
-    let t = b.guests;
+          let t = b.guests;
 
-    if (t.includes("EZ")) return "EZ";
-    if (t.includes("DZ")) return "DZ";
-    if (t.includes("3")) return "DZ";
-    if (t.includes("4")) return "DZ";
+          if (t.includes("EZ")) return "EZ";
+          if (t.includes("DZ")) return "DZ";
+          if (t.includes("3")) return "DZ";
+          if (t.includes("4")) return "DZ";
 
-    return "";
-  }
+          return "";
+        }
 
+        const base = new Date(dateStr);
+        base.setHours(0, 0, 0, 0);
 
+        const targetDate = new Date(base);
+        targetDate.setDate(base.getDate());
 
-  const base = new Date(dateStr);
-  base.setHours(0, 0, 0, 0);
+        const relevant = bookings.filter((b) => {
+          if (!isValidRoom(b.row)) return false;
+          if (b.guests === "BLOCK") return false;
 
-  const targetDate = new Date(base);
-  targetDate.setDate(base.getDate() + 1);
+          let start = new Date(b.start);
+          let end = new Date(b.end);
 
-  const relevant = bookings.filter((b) => {
-    if (!isValidRoom(b.row)) return false;
-    if (b.guests === "BLOCK") return false;
+          start.setHours(0, 0, 0, 0);
+          end.setHours(0, 0, 0, 0);
 
-    let start = new Date(b.start);
-    let end = new Date(b.end);
+          return start <= targetDate && end >= targetDate;
+        });
 
-    start.setHours(0, 0, 0, 0);
-    end.setHours(0, 0, 0, 0);
+        // ✅ Kategorien
+        let neu = [];
+        let zuleger = [];
+        let kontrolle = [];
 
-    return start <= targetDate && end >= targetDate;
-  });
+        relevant.forEach((b) => {
+          let start = new Date(b.start);
+          let end = new Date(b.end);
 
-  // ✅ Kategorien
-  let neu = [];
-  let zuleger = [];
-  let kontrolle = [];
+          start.setHours(0, 0, 0, 0);
+          end.setHours(0, 0, 0, 0);
 
-  relevant.forEach((b) => {
-    let start = new Date(b.start);
-    let end = new Date(b.end);
+          if (start.getTime() === targetDate.getTime()) {
+            kontrolle.push(b);
+            return;
+          }
 
-    start.setHours(0, 0, 0, 0);
-    end.setHours(0, 0, 0, 0);
+          if (end.getTime() === targetDate.getTime()) {
+            neu.push(b);
+            return;
+          }
 
-    if (start.getTime() === targetDate.getTime()) {
-      kontrolle.push(b);
-      return;
-    }
+          if (start < targetDate && end > targetDate) {
+            zuleger.push(b);
+          }
+        });
 
-    if (end.getTime() === targetDate.getTime()) {
-      neu.push(b);
-      return;
-    }
+        // ✅ exakt wie im Belegungsplan
+        neu.sort((a, b) => a.row - b.row);
+        zuleger.sort((a, b) => a.row - b.row);
+        kontrolle.sort((a, b) => a.row - b.row);
 
-    if (start < targetDate && end > targetDate) {
-      zuleger.push(b);
-    }
-  });
+        // ✅ Personen erstellen
+        let people = [];
 
+        for (let i = 0; i < staffCount; i++) {
+          people.push({
+            neu: [],
+            zuleger: [],
+            kontrolle: [],
+            extras: []
+          });
+        }
 
+        function assignSequential(list, key) {
+          if (!list.length) return;
 
-// ✅ exakt wie im Belegungsplan
-neu.sort((a, b) => a.row - b.row);
-zuleger.sort((a, b) => a.row - b.row);
-kontrolle.sort((a, b) => a.row - b.row);
+          let perPerson = Math.ceil(list.length / people.length);
+          let index = 0;
 
+          people.forEach((p) => {
+            for (let i = 0; i < perPerson; i++) {
+              let item = list[index];
+              if (!item) break;
 
+              if (key === "neu") {
+                p.neu.push({ room: rooms[item.row], booking: item });
+              } else if (key === "zul") {
+                p.zuleger.push({ room: rooms[item.row], booking: item });
+              } else {
+                p.kontrolle.push(item);
+              }
 
-  // ✅ Personen erstellen
-  let people = [];
+              index++;
+            }
+          });
+        }
 
-  for (let i = 0; i < staffCount; i++) {
-    people.push({
-      neu: [],
-      zuleger: [],
-      kontrolle: [],
-      extras: []
-    });
-  }
- 
-  function assignSequential(list, key) {
-  if (!list.length) return;
+        assignSequential(neu, "neu");
+        assignSequential(zuleger, "zul");
+        assignSequential(kontrolle, "kon");
 
-  let perPerson = Math.ceil(list.length / people.length);
-  let index = 0;
+        if (extras.length) {
+          let index = 0;
 
-  people.forEach((p) => {
-    for (let i = 0; i < perPerson; i++) {
-      let item = list[index];
-      if (!item) break;
+          extras.forEach((e) => {
+            people[index].extras.push(e);
 
-      if (key === "neu") {
-        p.neu.push({ room: rooms[item.row], booking: item });
-      } else if (key === "zul") {
-        p.zuleger.push({ room: rooms[item.row], booking: item });
-      } else {
-        p.kontrolle.push(item);
-      }
+            index++;
+            if (index >= people.length) index = 0;
+          });
+        }
 
-      index++;
-    }
-  });
-}
+        // ✅ HTML bauen
+        let html = "";
 
-assignSequential(neu, "neu");
-assignSequential(zuleger, "zul");
-assignSequential(kontrolle, "kon");
-  
-  if (extras.length) {
-    let index = 0;
-
-    extras.forEach((e) => {
-      people[index].extras.push(e);
-
-      index++;
-      if (index >= people.length) index = 0;
-    });
-  }
-
-
-
-  // ✅ HTML bauen
-  let html = "";
-
-  people.forEach((p, i) => {
-    html += `
+        people.forEach((p, i) => {
+          html += `
 <div style="page-break-inside: avoid; border-bottom:2px dashed #000; padding-bottom:10px; margin-bottom:15px;">
 
 <h2>Name:_______________________ – ${targetDate.toLocaleDateString("de-DE")}</h2>
@@ -3039,48 +3152,48 @@ assignSequential(kontrolle, "kon");
 <td valign="top">
 `;
 
-    p.neu.forEach((task) => {
-      let roomNumber = getRoomNumberText(task.room);
-      let type = getBookingType(task.booking) || getRoomBaseType(task.room);
+          p.neu.forEach((task) => {
+            let roomNumber = getRoomNumberText(task.room);
+            let type = getBookingType(task.booking) || getRoomBaseType(task.room);
 
-      html += `<div class="row">${roomNumber} – ${type}<br></div>`;
-    });
-    html +=`<br><br><br><br><br>`;
-    html += `</td><td valign="top">`;
+            html += `<div class="row">${roomNumber} – ${type}<br></div>`;
+          });
+          html += `<br><br><br><br><br>`;
+          html += `</td><td valign="top">`;
 
-    p.zuleger.forEach((task) => {
-      let roomNumber = getRoomNumberText(task.room);
-      let type = getBookingType(task.booking);
-      
-      html += `<div class="row">${roomNumber} – ${type}<br></div>`;
-    });
-    html +=`<br><br><br><br><br>`;
-    html += `</td><td valign="top">`;
+          p.zuleger.forEach((task) => {
+            let roomNumber = getRoomNumberText(task.room);
+            let type = getBookingType(task.booking);
 
-    p.kontrolle.forEach((task) => {
-      let roomNumber = getRoomNumberText(rooms[task.row]);
-      let type = getBookingType(task);
+            html += `<div class="row">${roomNumber} – ${type}<br></div>`;
+          });
+          html += `<br><br><br><br><br>`;
+          html += `</td><td valign="top">`;
 
-      html += `<div class="row">${roomNumber} – ${type}<br></div>`;
-    });
-    html +=`<br><br><br><br><br>`;
-    html += `</td></tr></table>`;
+          p.kontrolle.forEach((task) => {
+            let roomNumber = getRoomNumberText(rooms[task.row]);
+            let type = getBookingType(task);
 
-    if (p.extras.length) {
-      html += `<div style="margin-top:10px;">`;
+            html += `<div class="row">${roomNumber} – ${type}<br></div>`;
+          });
+          html += `<br><br><br><br><br>`;
+          html += `</td></tr></table>`;
 
-      p.extras.forEach((e) => {
-        html += `<div class="row">${e}   </div>`;
-      });
-      html +=`<br><br>`;
-      html += `</div>`;
-    }
+          if (p.extras.length) {
+            html += `<div style="margin-top:10px;">`;
 
-    html += `</div>`;
-  });
+            p.extras.forEach((e) => {
+              html += `<div class="row">${e}   </div>`;
+            });
+            html += `<br><br>`;
+            html += `</div>`;
+          }
 
-  return `${html}`;
-}
+          html += `</div>`;
+        });
+
+        return `${html}`;
+      }
 
       function buildBreakfastHTML(dateStr) {
         const base = new Date(dateStr);
@@ -3159,7 +3272,7 @@ assignSequential(kontrolle, "kon");
         Object.values(groupedByGroup).forEach((g) => {
           html += `
       <div class="row">
-        Gruppe: ${trimText(g.name,15)} – ${g.guests} Personen
+        Gruppe: ${trimText(g.name, 15)} – ${g.guests} Personen
       </div>
     `;
         });
@@ -3232,6 +3345,16 @@ assignSequential(kontrolle, "kon");
                 petText = " - 1 Hund";
               } else {
                 petText = ` - ${b.pet_count} Hunde`;
+              }
+            }
+            
+            let bluecardText = "";
+
+            if (b.bluecard && b.bluecard_count) {
+              if (b.bluecard_count === 1) {
+                petText = " - blaue Karte";
+              } else {
+                petText = ` - ${b.bluecard_count} Hunde`;
               }
             }
 
@@ -3358,18 +3481,7 @@ assignSequential(kontrolle, "kon");
         const newBookingBtn = document.getElementById("newBookingBtn");
         const printBtn = document.getElementById("printListsBtn");
         const monthlyBtn = document.getElementById("monthlyStatsBtn");
-
-        if (isMobile && newBookingBtn) {
-          newBookingBtn.style.display = "none";
-        }
-
-        if (isMobile && printBtn) {
-          printBtn.style.display = "none";
-        }
-
-        if (isMobile && monthlyBtn) {
-          monthlyBtn.style.display = "none";
-        }
+        const undo = document.getElementById("undo");
 
         const {
           data: { user }
@@ -3394,9 +3506,13 @@ assignSequential(kontrolle, "kon");
           } else {
             document.body.classList.remove("admin");
           }
-
+       
           if (newBookingBtn) {
             newBookingBtn.style.display = isEditAllowed() ? "inline-block" : "none";
+          }
+
+          if (undo) {
+            undo.style.display = isEditAllowed() ? "inline-block" : "none";
           }
 
           if (printBtn) {
@@ -3414,8 +3530,11 @@ assignSequential(kontrolle, "kon");
           }
 
           await loadData();
-          tryStartBackup();
-        } else {
+          setTimeout(() => {
+            tryStartBackup();
+          startPrintReminder();
+        },1000);
+                    } else {
           document.body.classList.remove("logged-in");
           document.getElementById("loginBox").style.display = "block";
           document.getElementById("loginBlocker").style.display = "block";
@@ -3781,8 +3900,7 @@ ${d.toLocaleDateString("de-DE", {
         const e = normalizeDate(end);
 
         return bookings.some((b) => {
-          if (String(b.id).startsWith("tmp_")) return false;
-
+         
           if (ignoreId !== null && String(b.id) === String(ignoreId)) {
             return false;
           }
@@ -3944,7 +4062,12 @@ ${d.toLocaleDateString("de-DE", {
           group_id: singlePlacement.group_id || null,
           paid: false,
           checkin: false,
-          breakfast: breakfast
+          breakfast: breakfast,
+          pet: singlePlacement.pet || false,
+          pet_count: singlePlacement.pet_count || 0,
+bluecard: singlePlacement.bluecard || false,
+bluecard_count: singlePlacement.bluecard_count || 0
+
         };
 
         await addBookingToDB(booking);
@@ -4160,6 +4283,9 @@ ${d.toLocaleDateString("de-DE", {
 
         let pet = document.getElementById("f_pet").checked;
         let pet_count = pet ? Number(document.getElementById("f_pet_count").value) || 1 : 0;
+        
+let bluecard = document.getElementById("f_bluecard").checked;
+let bluecard_count = bluecard ? Number(document.getElementById("f_bluecard_count").value) || 1 : 0;
 
         start.setHours(CHECKIN_HOUR, 0, 0, 0);
         end.setHours(CHECKOUT_HOUR, 0, 0, 0);
@@ -4180,7 +4306,11 @@ ${d.toLocaleDateString("de-DE", {
               breakfast: breakfast,
 
               pet: pet,
-              pet_count: pet ? pet_count : 0
+              pet_count: pet ? pet_count : 0,
+              
+bluecard: bluecard,
+bluecard_count: bluecard ? bluecard_count : 0
+
             };
 
             closeForm();
@@ -4204,7 +4334,11 @@ ${d.toLocaleDateString("de-DE", {
             breakfast: breakfast,
 
             pet: pet,
-            pet_count: pet ? pet_count : 0
+            pet_count: pet ? pet_count : 0,
+            
+bluecard: bluecard,
+bluecard_count: bluecard ? bluecard_count : 0
+
           };
 
           if (guests.includes("B")) {
@@ -4243,6 +4377,10 @@ ${d.toLocaleDateString("de-DE", {
 
           let oldPet = b.pet;
           let oldPetCount = b.pet_count;
+         
+let oldBlue = b.bluecard;
+let oldBlueCount = b.bluecard_count;
+
 
           const user = currentUser;
 
@@ -4257,6 +4395,10 @@ ${d.toLocaleDateString("de-DE", {
 
           b.pet = pet;
           b.pet_count = pet_count;
+          
+b.bluecard = bluecard;
+b.bluecard_count = bluecard_count;
+
 
           render();
 
@@ -4275,6 +4417,10 @@ ${d.toLocaleDateString("de-DE", {
 
               pet: b.pet,
               pet_count: b.pet_count,
+            
+bluecard: b.bluecard,
+bluecard_count: b.bluecard_count,
+
 
               user_id: user?.id
             })
@@ -4336,6 +4482,23 @@ ${d.toLocaleDateString("de-DE", {
                   new: b.breakfast
                 };
               }
+            
+            if (oldPet !== b.pet) {
+  changes.pet = { old: oldPet, new: b.pet };
+}
+
+if (oldPetCount !== b.pet_count) {
+  changes.pet_count = { old: oldPetCount, new: b.pet_count };
+}
+            
+if (oldBlue !== b.bluecard) {
+  changes.bluecard = { old: oldBlue, new: b.bluecard };
+}
+
+if (oldBlueCount !== b.bluecard_count) {
+  changes.bluecard_count = { old: oldBlueCount, new: b.bluecard_count };
+}
+
 
               if (Object.keys(changes).length > 0) {
                 logBookingAction({
@@ -4532,6 +4695,20 @@ ${d.toLocaleDateString("de-DE", {
           petInput.disabled = true;
           petInput.value = "";
         }
+        
+        
+document.getElementById("f_bluecard").checked = !!b.bluecard;
+
+let blueInput = document.getElementById("f_bluecard_count");
+
+if (b.bluecard) {
+  blueInput.disabled = false;
+  blueInput.value = b.bluecard_count || 1;
+} else {
+  blueInput.disabled = true;
+  blueInput.value = "";
+}
+
       }
 
       function closeForm() {
@@ -4599,18 +4776,24 @@ ${d.toLocaleDateString("de-DE", {
 
         let start = new Date(b.start).toLocaleDateString();
         let end = new Date(b.end).toLocaleDateString();
-        
-let extra = "";
 
-if (b.breakfast === false) {
-  extra += "<span class='no-breakfast-icon'><span>☕</span></span>";
+        let extra = "";
+
+        if (b.breakfast === false) {
+          extra += "<span class='no-breakfast-icon'><span>☕</span></span>";
+        }
+        
+        
+if (b.bluecard) {
+  extra += "🟦".repeat(b.bluecard_count || 1);
 }
-if (b.pet) {
-  extra += "🐕".repeat(b.pet_count || 1);
-}
-if (b.crib) {
-  extra += "👶";
-}
+
+        if (b.pet) {
+          extra += "🐕".repeat(b.pet_count || 1);
+        }
+        if (b.crib) {
+          extra += "👶";
+        }
 
         let html = `
     <b>👥 Zimmerkategorie:</b>${b.guests || "-"}<br><br>
@@ -4620,7 +4803,7 @@ if (b.crib) {
     <b>📅 Abreise:</b>${end}<br><br>
     <b>💲 Preis:</b>${b.price || "-"}<br><br>
     <b>💬 Kommentar:</b>${b.comment || "-"}<br><br>
-    <b>☕ Extrainfo:</b>${extra || "-"}<br><br>
+    <b>Extrainfo:</b>${extra || "-"}<br><br>
 
 
 <b>🎨 Gruppe:</b>
@@ -4697,40 +4880,39 @@ ${renderGroupBadge(groupsMap[b.group_id])}
           d.dataset.id = b.id;
           d.dataset.index = i;
 
-         d.onclick = (e) => {
-  // ✅ Mehrfachauswahl
-  if (f) {
-    e.stopPropagation();
+          d.onclick = (e) => {
+            // ✅ Mehrfachauswahl
+            if (f) {
+              e.stopPropagation();
 
-    if (selected.includes(i)) {
-      selected = selected.filter((x) => x !== i);
-    } else {
-      selected.push(i);
-    }
+              if (selected.includes(i)) {
+                selected = selected.filter((x) => x !== i);
+              } else {
+                selected.push(i);
+              }
 
-    render();
-    return;
-  }
+              render();
+              return;
+            }
 
-  // ✅ Mobile ohne Admin → blockieren
-  if (isMobile) {
-    if (!isAdmin()) {
-      return;
-    } else {
-      // ✅ Admin auf Mobile → DIREKT öffnen (kein Timer)
-      openInfo(i);
-      return;
-    }
-  }
+            // ✅ Mobile ohne Admin → blockieren
+            if (isMobile) {
+              if (!isAdmin()) {
+                return;
+              } else {
+                // ✅ Admin auf Mobile → DIREKT öffnen (kein Timer)
+                openInfo(i);
+                return;
+              }
+            }
 
-  // ✅ Desktop → Timer nutzen
-  clearTimeout(clickTimer);
+            // ✅ Desktop → Timer nutzen
+            clearTimeout(clickTimer);
 
-  clickTimer = setTimeout(() => {
-    openInfo(i);
-  }, 200);
-};
-
+            clickTimer = setTimeout(() => {
+              openInfo(i);
+            }, 200);
+          };
 
           if (selected.includes(i)) {
             d.classList.add("selected");
@@ -4893,12 +5075,16 @@ ${renderGroupBadge(groupsMap[b.group_id])}
           if (b.breakfast === false) {
             icons += `<span class="icons"><span class='no-breakfast-icon'><span>☕</span></span></span>`;
           }
+          
+          
+if (b.bluecard) {
+  icons += `<span class="icons"><span title="Blaue Karte">${"🟦".repeat(b.bluecard_count || 1)}</span></span>`;
+}
 
+          
           if (b.pet) {
             icons += `<span class="icons"><span title="Hund">${"🐕".repeat(b.pet_count || 1)}</span></span>`;
           }
-          
-          
 
           let companyText = b.company ? ` 🏢 ${b.company}` : "";
           let txt = document.createElement("span");
@@ -4911,14 +5097,14 @@ ${renderGroupBadge(groupsMap[b.group_id])}
           if (isMobile) {
             if (b.guests === "BLOCK") {
               txt.innerHTML = "🚫";
-            } else{
-              if(!isAdmin()){
-                   txt.innerHTML = ``;
-              }else{
-              txt.innerHTML = `${paidIcon}${b.guests} ${b.name || (group ? group.name : "")}${companyText}${icons}`;
+            } else {
+              if (!isAdmin()) {
+                txt.innerHTML = ``;
+              } else {
+                txt.innerHTML = `${paidIcon}${b.guests} ${b.name || (group ? group.name : "")}${companyText}${icons}`;
+              }
             }
-            }
-          }else{
+          } else {
             if (b.guests === "BLOCK") {
               txt.innerHTML = "🚫 BLOCKIERT";
             } else {
@@ -6571,7 +6757,15 @@ ${renderGroupBadge(groupsMap[b.group_id])}
           checkin: b.checkin ?? "",
           created_at: b.created_at ?? "",
           breakfast: b.breakfast ?? "",
-          group_id: b.group_id ?? ""
+          group_id: b.group_id ?? "",
+          
+pet: b.pet ?? "",
+  pet_count: b.pet_count ?? "",
+
+  bluecard: b.bluecard ?? "",
+  bluecard_count: b.bluecard_count ?? ""
+
+          
         }));
 
         const bookingSheet = XLSX.utils.json_to_sheet(bookingRows);
@@ -6901,6 +7095,21 @@ ${renderGroupBadge(groupsMap[b.group_id])}
           }
         }
       });
+      
+
+ let reminderStarted = false;
+
+function startPrintReminder() {
+  if (reminderStarted) return; // ✅ verhindert doppelte Intervalle
+  reminderStarted = true;
+
+  // ✅ sofort ausführen (falls Uhrzeit schon passt)
+  runAllReminders();
+
+  // ✅ dann regelmäßig prüfen
+setInterval(runAllReminders, 5 * 60 * 1000); // alle 5 Minuten
+}
+
 
       function getUsedColorsInRange(start, end) {
         let usedColors = new Set();
@@ -7088,7 +7297,9 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         }
       });
 
-      window.addEventListener("DOMContentLoaded", () => {
+
+
+      window.addEventListener("DOMContentLoaded", async () => {
         const printBtn = document.getElementById("printListsBtn");
 
         if (printBtn) {
@@ -7337,7 +7548,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
 
-        Swiping = false;
+        isSwiping = false;
 
         let isAtEdge = startX < SWIPE_EDGE_WIDTH || startX > window.innerWidth - SWIPE_EDGE_WIDTH;
         if (!isAtEdge) {
