@@ -1106,6 +1106,11 @@
           EG zuerst
         </label>
         <br />
+        
+<label>
+  <input type="checkbox" id="g_bluecard"> Blaue Karten 🟦
+</label>
+<br /><br />
 
         <label>Anreise</label><br />
         <input type="date" id="g_start" required /><br /><br />
@@ -1967,7 +1972,8 @@
           end,
           groupId: group.id,
           placed: [],
-          floorPriority: floorPriority
+          floorPriority: floorPriority,
+          bluecard: document.getElementById("g_bluecard").checked
         };
 
         render();
@@ -3986,7 +3992,11 @@ ${d.toLocaleDateString("de-DE", {
           color: group.color,
           user_id: user.id,
           paid: false,
-          checkin: false
+          checkin: false,
+          
+bluecard: groupPlacement.bluecard || false,
+bluecard_count: groupPlacement.bluecard ? 1 : 0
+
         };
 
         let temp = {
@@ -6861,6 +6871,9 @@ pet: b.pet ?? "",
         document.querySelectorAll(".g_count").forEach((el) => (el.value = ""));
         document.querySelectorAll(".g_price").forEach((el) => (el.value = ""));
         document.getElementById("g_floorPriority").checked = false;
+        
+document.getElementById("g_bluecard").checked = false;
+
       }
 
       let backupStarted = false;
