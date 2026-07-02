@@ -3523,14 +3523,6 @@ window.onload = function() {
             }
           }
 
-          if (logOverviewBtn) {
-            if (isMobile) logOverviewBtn.textContent = "🗑️";
-          }
-
-          if (logoutBtn) {
-            if (isMobile) logoutBtn.textContent = "🚪";
-          }
-
           if (undo) {
             undo.style.display = isEditAllowed() && !isMobile ? "inline-block" : "none";
           }
@@ -3649,7 +3641,7 @@ window.onload = function() {
 
         box.innerHTML = html;
       }
-      
+
       async function toggleBookingLogs(bookingId) {
         const box = document.getElementById("logContent");
 
@@ -7359,6 +7351,19 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
           logout();
         });
+
+        if (isMobile) {
+          const logOverviewBtn = document.getElementById("logOverviewBtn");
+          const logoutBtn = document.getElementById("logoutBtn");
+
+          if (logOverviewBtn) {
+            logOverviewBtn.innerHTML = "🗑️";
+          }
+
+          if (logoutBtn) {
+            logoutBtn.innerHTML = "🚪";
+          }
+        }
       });
 
       window.onload = () => {
