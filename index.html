@@ -697,7 +697,7 @@
         }
 
         .icons {
-          font-size: 35px; /* 👈 hier kannst du spielen */
+          font-size: 32px; /* 👈 hier kannst du spielen */
         }
 
         .room::after {
@@ -775,13 +775,11 @@
         }
 
         .no-breakfast-icon span {
-        position: absolute;
-        top: 0;
-        left: 0;
-        font-size: 35px;
-        line-height: 37px;
-      }
-        
+          position: relative;
+          font-size: 32px;
+          line-height: 16px;
+        }
+
         body.admin #backupBtn,
         body.admin #logOverviewBtn {
           display: inline-block !important;
@@ -2531,9 +2529,11 @@
       }
 
       function isEditAllowed() {
-        if (isAdmin()) return true;
-
+        if (isAdmin()){
+          return true;
+        }else{
         return !isMobile && canEdit();
+        }
       }
 
       function isAdmin() {
@@ -5082,17 +5082,17 @@ ${renderGroupBadge(groupsMap[b.group_id])}
           let paidIcon = b.paid ? `<span class="icons"><span class="paid-icon">💰</span></span> ` : "";
 
           let mobileGuests = "0";
-          
-          if (b.guests === "4er"){
+
+          if (b.guests === "4er") {
             mobileGuests = "4";
-          }else if (b.guests === "3er"){
+          } else if (b.guests === "3er") {
             mobileGuests = "3";
-          }else if (b.guests === "DZ" || b.guests === "DZ B"){
+          } else if (b.guests === "DZ" || b.guests === "DZ B") {
             mobileGuests = "2";
-          }else{
+          } else {
             mobileGuests = "1";
           }
-          
+
           if (isMobile) {
             if (b.guests === "BLOCK") {
               txt.innerHTML = "🚫";
@@ -5100,7 +5100,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
               if (!isAdmin()) {
                 txt.innerHTML = ``;
               } else {
-                txt.innerHTML = `${paidIcon}${mobileGuests}${b.name}${companyText}${icons}`;
+                txt.innerHTML = `${paidIcon}${mobileGuests}:${b.name}${companyText}${icons}`;
               }
             }
           } else {
