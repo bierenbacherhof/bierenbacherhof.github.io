@@ -780,6 +780,9 @@
           line-height: 16px;
         }
 
+        #newBookingBtn {
+        }
+
         body.admin #backupBtn,
         body.admin #logOverviewBtn {
           display: inline-block !important;
@@ -2529,10 +2532,10 @@
       }
 
       function isEditAllowed() {
-        if (isAdmin()){
+        if (isAdmin()) {
           return true;
-        }else{
-        return !isMobile && canEdit();
+        } else {
+          return !isMobile && canEdit();
         }
       }
 
@@ -3509,7 +3512,7 @@ window.onload = function() {
           }
 
           if (undo) {
-            undo.style.display = isEditAllowed() ? "inline-block" : "none";
+            undo.style.display = isEditAllowed() && !isMobile ? "inline-block" : "none";
           }
 
           if (printBtn) {
