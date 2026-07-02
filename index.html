@@ -916,10 +916,10 @@
             id="logOverviewBtn"
             onclick="event.stopPropagation(); openLogOverview();"
             class="auth-only admin-only">
-            🗑️ Gelöscht
+            🗑️
           </button>
 
-          <button id="logoutBtn" class="auth-only">Logout</button>
+          <button id="logoutBtn" class="auth-only">🚪Logout</button>
         </div>
         <div id="lowerTopRightButtons">
           <button id="monthlyStatsBtn" style="display: none">monatliche Zählung</button>
@@ -3488,9 +3488,7 @@ window.onload = function() {
         const printBtn = document.getElementById("printListsBtn");
         const monthlyBtn = document.getElementById("monthlyStatsBtn");
         const undo = document.getElementById("undo");
-        const logOverviewBtn = document.getElementById("logOverviewBtn");
-        const logoutBtn = document.getElementById("logoutBtn");
-
+       
         const {
           data: { user }
         } = await supa.auth.getUser();
@@ -7351,19 +7349,6 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
           logout();
         });
-
-        if (isMobile) {
-          const logOverviewBtn = document.getElementById("logOverviewBtn");
-          const logoutBtn = document.getElementById("logoutBtn");
-
-          if (logOverviewBtn) {
-            logOverviewBtn.innerHTML = "🗑️";
-          }
-
-          if (logoutBtn) {
-            logoutBtn.innerHTML = "🚪";
-          }
-        }
       });
 
       window.onload = () => {
