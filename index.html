@@ -773,6 +773,12 @@
         body.logged-in #logoutBtn {
           display: inline-block !important;
         }
+        
+        
+body.admin #newBookingBtn {
+  display: inline-block !important;
+}
+
 
         .no-breakfast-icon span {
           position: relative;
@@ -3482,6 +3488,7 @@ window.onload = function() {
         const printBtn = document.getElementById("printListsBtn");
         const monthlyBtn = document.getElementById("monthlyStatsBtn");
         const undo = document.getElementById("undo");
+        const logOverviewBtn = document.getElementById("LogOverviewBtn");
 
         const {
           data: { user }
@@ -3509,6 +3516,14 @@ window.onload = function() {
 
           if (newBookingBtn) {
             newBookingBtn.style.display = isEditAllowed() ? "inline-block" : "none";
+
+            if (isMobile) {
+              newBookingBtn.textContent = "➕";
+            }
+          }
+
+          if (logOverviewBtn) {
+            if (isMobile) logOverviewBtn.textContent = "🗑️";
           }
 
           if (undo) {
@@ -4892,7 +4907,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
               if (!isAdmin()) {
                 return;
               } else {
-                // ✅ Admin auf Mobile → DIREKT öffnen (kein Timer)
+                alert ("Mobil");// ✅ Admin auf Mobile → DIREKT öffnen (kein Timer)
                 openInfo(i);
                 return;
               }
