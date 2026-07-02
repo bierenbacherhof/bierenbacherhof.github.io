@@ -668,7 +668,7 @@
 
       @media (max-width: 600px) {
         /* ✅ HEADER */
-      
+
         thead th {
           font-size: 26px !important;
           line-height: 1.2;
@@ -774,6 +774,14 @@
           display: inline-block !important;
         }
 
+        .no-breakfast-icon span {
+        position: absolute;
+        top: 0;
+        left: 0;
+        font-size: 35px;
+        line-height: 37px;
+      }
+        
         body.admin #backupBtn,
         body.admin #logOverviewBtn {
           display: inline-block !important;
@@ -1035,45 +1043,40 @@
         <label>Kommentar</label><br />
         <input type="text" id="f_comment" /><br /><br />
 
-         <div style="display: flex; align-items: center; gap: 5px">
-        <label>
-          <input type="checkbox" id="f_breakfast" checked />
-          Frühstück ☕ </label
-        > <br /></div>
-            
-         
-
-        
         <div style="display: flex; align-items: center; gap: 5px">
           <label>
-  <input type="checkbox" id="f_bluecard"> Blaue Karte  🟦
-</label>
+            <input type="checkbox" id="f_breakfast" checked />
+            Frühstück ☕
+          </label>
+          <br />
+        </div>
 
-<input type="number" id="f_bluecard_count" min="1" value="1" style="width: 60px" disabled /> 
-         <br />  </div>
-             
+        <div style="display: flex; align-items: center; gap: 5px">
+          <label> <input type="checkbox" id="f_bluecard" /> Blaue Karte 🟦 </label>
+
+          <input type="number" id="f_bluecard_count" min="1" value="1" style="width: 60px" disabled />
+          <br />
+        </div>
 
         <div style="display: flex; align-items: center; gap: 5px">
           <label for="f_pet">
             <input type="checkbox" id="f_pet" onchange="togglePetField()" />
             Hund 🐕
           </label>
-          
+
           <input type="number" id="f_pet_count" min="1" value="1" style="width: 60px" disabled />
-            <br /> </div>
-            
-          
-          <div style="display: flex; align-items: center; gap: 5px">
+          <br />
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 5px">
           <label for="b_bed">
             <input type="checkbox" id="b_bed" onchange="toggleBBedField()" />
             Kinderbett
           </label>
 
           <input type="number" id="b_bed_count" min="1" value="1" style="width: 60px" disabled />
-          <br /> </div>
-             
-        
-       
+          <br />
+        </div>
 
         <br /><br />
 
@@ -1096,11 +1099,9 @@
           EG zuerst
         </label>
         <br />
-        
-<label>
-  <input type="checkbox" id="g_bluecard"> Blaue Karten 🟦
-</label>
-<br /><br />
+
+        <label> <input type="checkbox" id="g_bluecard" /> Blaue Karten 🟦 </label>
+        <br /><br />
 
         <label>Anreise</label><br />
         <input type="date" id="g_start" required /><br /><br />
@@ -2357,13 +2358,13 @@
         let { start, end } = placement;
 
         let counter = 0;
-        
-let ordered = [...placement.data].sort((a, b) => {
-  const order = ["4er", "3er", "DZ B", "DZ", "EZ B", "EZ"];
-  return order.indexOf(a.type) - order.indexOf(b.type);
-});
 
-for (let item of ordered) {
+        let ordered = [...placement.data].sort((a, b) => {
+          const order = ["4er", "3er", "DZ B", "DZ", "EZ B", "EZ"];
+          return order.indexOf(a.type) - order.indexOf(b.type);
+        });
+
+        for (let item of ordered) {
           if (item.count <= 0) continue;
 
           let rawGroups = placement.floorPriority ? getFloorPriorityGroups() : getBuildingPriorityGroups(item.type);
@@ -2465,31 +2466,31 @@ for (let item of ordered) {
         }
       }
 
-function runAllReminders() {
-  // ✅ Morning
-  runPrintReminder(
-    "morningReminderShown",
-    () => new Date().getHours() <= 10,
-    "Morgentliche Listen drucken?",
-    activateMorningPreset
-  );
+      function runAllReminders() {
+        // ✅ Morning
+        runPrintReminder(
+          "morningReminderShown",
+          () => new Date().getHours() <= 10,
+          "Morgentliche Listen drucken?",
+          activateMorningPreset
+        );
 
-  // ✅ Afternoon 12 Uhr
-  runPrintReminder(
-    "afternoonReminder12",
-    () => new Date().getHours() >= 12,
-    "Nachmittags Listen drucken (12 Uhr)?",
-    activateAfternoonPreset
-  );
+        // ✅ Afternoon 12 Uhr
+        runPrintReminder(
+          "afternoonReminder12",
+          () => new Date().getHours() >= 12,
+          "Nachmittags Listen drucken (12 Uhr)?",
+          activateAfternoonPreset
+        );
 
-  // ✅ Afternoon 14 Uhr
-  runPrintReminder(
-    "afternoonReminder14",
-    () => new Date().getHours() >= 14,
-    "Nachmittags Listen drucken (14 Uhr)?",
-    activateAfternoonPreset
-  );
-}
+        // ✅ Afternoon 14 Uhr
+        runPrintReminder(
+          "afternoonReminder14",
+          () => new Date().getHours() >= 14,
+          "Nachmittags Listen drucken (14 Uhr)?",
+          activateAfternoonPreset
+        );
+      }
 
       function activateMorningPreset() {
         const morningCheckbox = document.getElementById("chk_morning");
@@ -3343,7 +3344,7 @@ window.onload = function() {
                 petText = ` - ${b.pet_count} Hunde`;
               }
             }
-            
+
             let bluecardText = "";
 
             if (b.bluecard && b.bluecard_count) {
@@ -3502,7 +3503,7 @@ window.onload = function() {
           } else {
             document.body.classList.remove("admin");
           }
-       
+
           if (newBookingBtn) {
             newBookingBtn.style.display = isEditAllowed() ? "inline-block" : "none";
           }
@@ -3528,9 +3529,9 @@ window.onload = function() {
           await loadData();
           setTimeout(() => {
             tryStartBackup();
-          startPrintReminder();
-        },1000);
-                    } else {
+            startPrintReminder();
+          }, 1000);
+        } else {
           document.body.classList.remove("logged-in");
           document.getElementById("loginBox").style.display = "block";
           document.getElementById("loginBlocker").style.display = "block";
@@ -3896,7 +3897,6 @@ ${d.toLocaleDateString("de-DE", {
         const e = normalizeDate(end);
 
         return bookings.some((b) => {
-         
           if (ignoreId !== null && String(b.id) === String(ignoreId)) {
             return false;
           }
@@ -3983,10 +3983,9 @@ ${d.toLocaleDateString("de-DE", {
           user_id: user.id,
           paid: false,
           checkin: false,
-          
-bluecard: groupPlacement.bluecard || false,
-bluecard_count: groupPlacement.bluecard ? 1 : 0
 
+          bluecard: groupPlacement.bluecard || false,
+          bluecard_count: groupPlacement.bluecard ? 1 : 0
         };
 
         let temp = {
@@ -4065,9 +4064,8 @@ bluecard_count: groupPlacement.bluecard ? 1 : 0
           breakfast: breakfast,
           pet: singlePlacement.pet || false,
           pet_count: singlePlacement.pet_count || 0,
-bluecard: singlePlacement.bluecard || false,
-bluecard_count: singlePlacement.bluecard_count || 0
-
+          bluecard: singlePlacement.bluecard || false,
+          bluecard_count: singlePlacement.bluecard_count || 0
         };
 
         await addBookingToDB(booking);
@@ -4283,9 +4281,9 @@ bluecard_count: singlePlacement.bluecard_count || 0
 
         let pet = document.getElementById("f_pet").checked;
         let pet_count = pet ? Number(document.getElementById("f_pet_count").value) || 1 : 0;
-        
-let bluecard = document.getElementById("f_bluecard").checked;
-let bluecard_count = bluecard ? Number(document.getElementById("f_bluecard_count").value) || 1 : 0;
+
+        let bluecard = document.getElementById("f_bluecard").checked;
+        let bluecard_count = bluecard ? Number(document.getElementById("f_bluecard_count").value) || 1 : 0;
 
         start.setHours(CHECKIN_HOUR, 0, 0, 0);
         end.setHours(CHECKOUT_HOUR, 0, 0, 0);
@@ -4307,10 +4305,9 @@ let bluecard_count = bluecard ? Number(document.getElementById("f_bluecard_count
 
               pet: pet,
               pet_count: pet ? pet_count : 0,
-              
-bluecard: bluecard,
-bluecard_count: bluecard ? bluecard_count : 0
 
+              bluecard: bluecard,
+              bluecard_count: bluecard ? bluecard_count : 0
             };
 
             closeForm();
@@ -4335,10 +4332,9 @@ bluecard_count: bluecard ? bluecard_count : 0
 
             pet: pet,
             pet_count: pet ? pet_count : 0,
-            
-bluecard: bluecard,
-bluecard_count: bluecard ? bluecard_count : 0
 
+            bluecard: bluecard,
+            bluecard_count: bluecard ? bluecard_count : 0
           };
 
           if (guests.includes("B")) {
@@ -4377,10 +4373,9 @@ bluecard_count: bluecard ? bluecard_count : 0
 
           let oldPet = b.pet;
           let oldPetCount = b.pet_count;
-         
-let oldBlue = b.bluecard;
-let oldBlueCount = b.bluecard_count;
 
+          let oldBlue = b.bluecard;
+          let oldBlueCount = b.bluecard_count;
 
           const user = currentUser;
 
@@ -4395,10 +4390,9 @@ let oldBlueCount = b.bluecard_count;
 
           b.pet = pet;
           b.pet_count = pet_count;
-          
-b.bluecard = bluecard;
-b.bluecard_count = bluecard_count;
 
+          b.bluecard = bluecard;
+          b.bluecard_count = bluecard_count;
 
           render();
 
@@ -4417,10 +4411,9 @@ b.bluecard_count = bluecard_count;
 
               pet: b.pet,
               pet_count: b.pet_count,
-            
-bluecard: b.bluecard,
-bluecard_count: b.bluecard_count,
 
+              bluecard: b.bluecard,
+              bluecard_count: b.bluecard_count,
 
               user_id: user?.id
             })
@@ -4482,23 +4475,22 @@ bluecard_count: b.bluecard_count,
                   new: b.breakfast
                 };
               }
-            
-            if (oldPet !== b.pet) {
-  changes.pet = { old: oldPet, new: b.pet };
-}
 
-if (oldPetCount !== b.pet_count) {
-  changes.pet_count = { old: oldPetCount, new: b.pet_count };
-}
-            
-if (oldBlue !== b.bluecard) {
-  changes.bluecard = { old: oldBlue, new: b.bluecard };
-}
+              if (oldPet !== b.pet) {
+                changes.pet = { old: oldPet, new: b.pet };
+              }
 
-if (oldBlueCount !== b.bluecard_count) {
-  changes.bluecard_count = { old: oldBlueCount, new: b.bluecard_count };
-}
+              if (oldPetCount !== b.pet_count) {
+                changes.pet_count = { old: oldPetCount, new: b.pet_count };
+              }
 
+              if (oldBlue !== b.bluecard) {
+                changes.bluecard = { old: oldBlue, new: b.bluecard };
+              }
+
+              if (oldBlueCount !== b.bluecard_count) {
+                changes.bluecard_count = { old: oldBlueCount, new: b.bluecard_count };
+              }
 
               if (Object.keys(changes).length > 0) {
                 logBookingAction({
@@ -4695,20 +4687,18 @@ if (oldBlueCount !== b.bluecard_count) {
           petInput.disabled = true;
           petInput.value = "";
         }
-        
-        
-document.getElementById("f_bluecard").checked = !!b.bluecard;
 
-let blueInput = document.getElementById("f_bluecard_count");
+        document.getElementById("f_bluecard").checked = !!b.bluecard;
 
-if (b.bluecard) {
-  blueInput.disabled = false;
-  blueInput.value = b.bluecard_count || 1;
-} else {
-  blueInput.disabled = true;
-  blueInput.value = "";
-}
+        let blueInput = document.getElementById("f_bluecard_count");
 
+        if (b.bluecard) {
+          blueInput.disabled = false;
+          blueInput.value = b.bluecard_count || 1;
+        } else {
+          blueInput.disabled = true;
+          blueInput.value = "";
+        }
       }
 
       function closeForm() {
@@ -4782,11 +4772,10 @@ if (b.bluecard) {
         if (b.breakfast === false) {
           extra += "<span class='no-breakfast-icon'><span>☕</span></span>";
         }
-        
-        
-if (b.bluecard) {
-  extra += "🟦".repeat(b.bluecard_count || 1);
-}
+
+        if (b.bluecard) {
+          extra += "🟦".repeat(b.bluecard_count || 1);
+        }
 
         if (b.pet) {
           extra += "🐕".repeat(b.pet_count || 1);
@@ -5073,15 +5062,13 @@ ${renderGroupBadge(groupsMap[b.group_id])}
           let icons = "";
           let commentText = b.comment ? " - " + b.comment : "";
           if (b.breakfast === false) {
-            icons += `<span class="icons"><span class='no-breakfast-icon'><span>☕</span></span></span>`;
+            icons += `<span class='no-breakfast-icon'><span>☕</span></span>`;
           }
-          
-          
-if (b.bluecard) {
-  icons += `<span class="icons"><span title="Blaue Karte">${"🟦".repeat(b.bluecard_count || 1)}</span></span>`;
-}
 
-          
+          if (b.bluecard) {
+            icons += `<span class="icons"><span title="Blaue Karte">${"🟦".repeat(b.bluecard_count || 1)}</span></span>`;
+          }
+
           if (b.pet) {
             icons += `<span class="icons"><span title="Hund">${"🐕".repeat(b.pet_count || 1)}</span></span>`;
           }
@@ -5094,6 +5081,18 @@ if (b.bluecard) {
 
           let paidIcon = b.paid ? `<span class="icons"><span class="paid-icon">💰</span></span> ` : "";
 
+          let mobileGuests = "0";
+          
+          if (b.guests === "4er"){
+            mobileGuests = "4";
+          }else if (b.guests === "3er"){
+            mobileGuests = "3";
+          }else if (b.guests === "DZ" || b.guests === "DZ B"){
+            mobileGuests = "2";
+          }else{
+            mobileGuests = "1";
+          }
+          
           if (isMobile) {
             if (b.guests === "BLOCK") {
               txt.innerHTML = "🚫";
@@ -5101,7 +5100,7 @@ if (b.bluecard) {
               if (!isAdmin()) {
                 txt.innerHTML = ``;
               } else {
-                txt.innerHTML = `${paidIcon}${b.guests} ${b.name || (group ? group.name : "")}${companyText}${icons}`;
+                txt.innerHTML = `${paidIcon}${mobileGuests}${b.name}${companyText}${icons}`;
               }
             }
           } else {
@@ -6758,14 +6757,12 @@ if (b.bluecard) {
           created_at: b.created_at ?? "",
           breakfast: b.breakfast ?? "",
           group_id: b.group_id ?? "",
-          
-pet: b.pet ?? "",
-  pet_count: b.pet_count ?? "",
 
-  bluecard: b.bluecard ?? "",
-  bluecard_count: b.bluecard_count ?? ""
+          pet: b.pet ?? "",
+          pet_count: b.pet_count ?? "",
 
-          
+          bluecard: b.bluecard ?? "",
+          bluecard_count: b.bluecard_count ?? ""
         }));
 
         const bookingSheet = XLSX.utils.json_to_sheet(bookingRows);
@@ -6861,9 +6858,8 @@ pet: b.pet ?? "",
         document.querySelectorAll(".g_count").forEach((el) => (el.value = ""));
         document.querySelectorAll(".g_price").forEach((el) => (el.value = ""));
         document.getElementById("g_floorPriority").checked = false;
-        
-document.getElementById("g_bluecard").checked = false;
 
+        document.getElementById("g_bluecard").checked = false;
       }
 
       let backupStarted = false;
@@ -7098,21 +7094,19 @@ document.getElementById("g_bluecard").checked = false;
           }
         }
       });
-      
 
- let reminderStarted = false;
+      let reminderStarted = false;
 
-function startPrintReminder() {
-  if (reminderStarted) return; // ✅ verhindert doppelte Intervalle
-  reminderStarted = true;
+      function startPrintReminder() {
+        if (reminderStarted) return; // ✅ verhindert doppelte Intervalle
+        reminderStarted = true;
 
-  // ✅ sofort ausführen (falls Uhrzeit schon passt)
-  runAllReminders();
+        // ✅ sofort ausführen (falls Uhrzeit schon passt)
+        runAllReminders();
 
-  // ✅ dann regelmäßig prüfen
-setInterval(runAllReminders, 5 * 60 * 1000); // alle 5 Minuten
-}
-
+        // ✅ dann regelmäßig prüfen
+        setInterval(runAllReminders, 5 * 60 * 1000); // alle 5 Minuten
+      }
 
       function getUsedColorsInRange(start, end) {
         let usedColors = new Set();
@@ -7299,8 +7293,6 @@ setInterval(runAllReminders, 5 * 60 * 1000); // alle 5 Minuten
           }
         }
       });
-
-
 
       window.addEventListener("DOMContentLoaded", async () => {
         const printBtn = document.getElementById("printListsBtn");
