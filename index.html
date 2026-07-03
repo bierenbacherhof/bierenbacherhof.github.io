@@ -5793,11 +5793,18 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         });
 
         if (closestRow !== b.row) {
-          if (canPlaceInRoom(closestRow, b.guests, new Date(b.start), new Date(b.end))) {
-            b.row = closestRow;
 
+          if (canPlaceInRoom(
+            closestRow,
+            b.guests,
+            new Date(b.start),
+            new Date(b.end),
+            b.id
+          )) {
+            b.row = closestRow;
             draw();
           }
+
         }
 
         return;
