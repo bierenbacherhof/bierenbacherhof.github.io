@@ -802,8 +802,10 @@
 
 
 
-      #bookingForm {
-        max-height: 85vh;
+      #bookingForm,
+      #bookingInfo {
+        max-height: 120vh;
+        max-width: 150vw;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
       }
@@ -825,7 +827,8 @@
       #groupInfoBox,
       #logOverview,
       #groupForm,
-      #singleForm {
+      #singleForm,
+      .switch-wrapper {
         max-width: 150vw !important;
         width: 150vw !important;
         max-height: 750px !important;
@@ -7717,9 +7720,6 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       if (!overlayOpen) return;
 
       if (e.target.closest(".overlay-box")) return;
-
-      if (e.target.closest("button") || e.target.closest("#logOverviewBtn") || e.target.closest("#topRightButtons"))
-        return;
 
       const info = document.getElementById("bookingInfo");
       const form = document.getElementById("bookingForm");
