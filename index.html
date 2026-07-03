@@ -5268,7 +5268,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         let pr = document.createElement("span");
         pr.className = "price";
 
-        if (!b.price) {
+        if (!b.price || isMobile) {
           pr.innerHTML = "";
         } else if (isNaN(b.price)) {
           pr.innerHTML = b.price;
