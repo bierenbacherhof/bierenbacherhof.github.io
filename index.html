@@ -687,12 +687,6 @@
     @media (max-width: 600px) {
       /* ✅ HEADER */
 
-      #bookinginfo {
-        max-width: 150vw !important;
-        width: 150vw !important;
-        max-height: 750px !important;
-        font-size: 35px;
-      }
 
       thead th {
         font-size: 26px !important;
@@ -709,7 +703,7 @@
       .room {
         position: sticky;
         left: 0;
-        height: 50px;
+        height: 40px !important;
         width: 65px;
         min-width: 65px;
         max-width: 65px;
@@ -777,18 +771,36 @@
         color: black;
       }
 
-      #groupInfoTitle {
+
+
+      #bookingTitle {
         font-size: 75px;
       }
 
-      #infoBox {
+      #bookinginfo {
         max-width: 150vw !important;
         width: 150vw !important;
         max-height: 750px !important;
         font-size: 35px;
       }
 
+
+      #groupInfoTitle {
+        font-size: 75px;
+      }
+
       #groupInfoBox {
+        max-width: 150vw !important;
+        width: 150vw !important;
+        max-height: 750px !important;
+        font-size: 35px;
+      }
+
+      #logOverviewTitle {
+        font-size: 75px;
+      }
+
+      #logOverview {
         max-width: 150vw !important;
         width: 150vw !important;
         max-height: 750px !important;
@@ -991,7 +1003,7 @@
             z-index: 20000;
             border-radius: 10px;
           ">
-        <b>Gelöschte Buchungen</b><br /><br />
+        <h3 id="logOverviewTitle">Gelöschte Buchungen</h3><br /><br />
 
         <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px">
           <input id="logNameFilter" placeholder="Name" />
@@ -1148,7 +1160,7 @@
         display: none;
         width: 320px;
       ">
-    <h3>Buchungsdetails</h3>
+    <h3 id="bookingTitle">Buchungsdetails</h3>
 
     <div id="infoContent"></div>
 
