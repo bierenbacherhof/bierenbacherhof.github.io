@@ -120,6 +120,15 @@
       cursor: crosshair !important;
     }
 
+    #controls button {
+      font-size: 18px;
+      padding: 2px 4px;
+      border-radius: 10px;
+      background: #e6e5e5;
+      border-color: rgba(0, 0, 0, 0.445);
+      color: #000000;
+    }
+
     .half::after {
       content: "";
       position: absolute;
@@ -632,7 +641,7 @@
 
     #lowerTopRightButtons {
       position: absolute;
-      top: 40px;
+      top: 50px;
       right: 20px;
       display: flex;
       gap: 12px;
@@ -773,39 +782,24 @@
 
 
 
-      #bookingTitle {
-        font-size: 75px;
+      #bookingTitle,
+      #groupInfoTitle,
+      #logOverviewTitle,
+      #formTitle {
+        font-size: 60px;
       }
 
-      #bookinginfo {
+      #infoContent,
+      #groupInfoBox,
+      #logOverview,
+      #groupForm,
+      #singleForm {
         max-width: 150vw !important;
         width: 150vw !important;
         max-height: 750px !important;
         font-size: 35px;
       }
 
-
-      #groupInfoTitle {
-        font-size: 75px;
-      }
-
-      #groupInfoBox {
-        max-width: 150vw !important;
-        width: 150vw !important;
-        max-height: 750px !important;
-        font-size: 35px;
-      }
-
-      #logOverviewTitle {
-        font-size: 75px;
-      }
-
-      #logOverview {
-        max-width: 150vw !important;
-        width: 150vw !important;
-        max-height: 750px !important;
-        font-size: 35px;
-      }
 
       #controls label {
         font-size: 35px;
@@ -1042,7 +1036,7 @@
         border: 1px solid #ccc;
         z-index: 999999;
         display: none;
-        width: 300px;
+        width: 500px;
       ">
     <h3 id="formTitle">Neue Buchung</h3>
 
@@ -4803,7 +4797,7 @@ ${d.toLocaleDateString("de-DE", {
 
       let start = new Date(b.start).toLocaleDateString();
       let end = new Date(b.end).toLocaleDateString();
-
+      let roomNumber = (rooms[b.row] || "-").split(" - ")[0];
       let extra = "";
 
       if (b.breakfast === false) {
@@ -4822,6 +4816,7 @@ ${d.toLocaleDateString("de-DE", {
       }
 
       let html = `
+      <b>🚪 Zimmer:</b>${roomNumber}<br>
     <b>👥 Zimmerkategorie:</b>${b.guests || "-"}<br><br>
     <b>✏️ Name:</b>${b.name || "-"}<br><br>
     <b>🏢 Firma:</b>${b.company || "-"}<br><br>
@@ -4926,7 +4921,6 @@ ${renderGroupBadge(groupsMap[b.group_id])}
             if (!isAdmin()) {
               return;
             } else {
-              alert("Mobil"); // ✅ Admin auf Mobile → DIREKT öffnen (kein Timer)
               openInfo(i);
               return;
             }
