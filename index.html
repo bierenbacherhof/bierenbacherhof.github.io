@@ -804,8 +804,8 @@
 
       #bookingForm,
       #bookingInfo {
-        max-height: 120vh;
-        max-width: 350vw;
+        max-height: 120vh !important;
+        max-width: 150vw !important;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
       }
@@ -4141,7 +4141,9 @@ ${d.toLocaleDateString("de-DE", {
         pet: singlePlacement.pet || false,
         pet_count: singlePlacement.pet_count || 0,
         bluecard: singlePlacement.bluecard || false,
-        bluecard_count: singlePlacement.bluecard_count || 0
+        bluecard_count: singlePlacement.bluecard_count || 0,
+        crib: singlePlacement.crib || false,
+        crib_count: singlePlacement.crib_count || 0
       };
 
       await addBookingToDB(booking);
@@ -4997,7 +4999,9 @@ ${renderGroupBadge(groupsMap[b.group_id])}
             if (!isAdmin()) {
               return;
             } else {
-              openInfo(i);
+              clickTimer = setTimeout(() => {
+                openInfo(i);
+              }, 200);
               return;
             }
           }
@@ -5388,7 +5392,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         };
 
         d.ondblclick = (e) => {
-          if (isMobile) return;
+          if (isMobile && !isAdmin()) return;
 
           let b = bookings[i];
 
