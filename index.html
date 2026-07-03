@@ -795,6 +795,12 @@
         border-radius: 6px;
         pointer-events: auto !important;
         touch-action: manipulation;
+        padding-left: 29x !important;
+      }
+
+      .booking.text {
+        margin-left: 0 !important;
+        max-width: 100% !important;
       }
 
       /* ✅ CONTROLS CONTAINER */
@@ -1002,6 +1008,11 @@
         Neue Buchung anlegen
       </button>
       <div id="topRightButtons">
+
+        <button id="checkInAllBtn" style="display:none">
+          Alle einchecken
+        </button>
+
         <button id="logOverviewBtn" onclick="event.stopPropagation(); openLogOverview();" class="auth-only admin-only">
           🗑️
         </button>
@@ -1291,17 +1302,6 @@
       "68 - kl EZ",
       "69 - DZ",
       "70 - DZ/3",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
       "",
       "",
       "",
@@ -3095,15 +3095,89 @@ window.onload = function() {
         return "";
       }
 
+      function getHousekeepingType(roomRow, targetDate) {
+
+        let todayArrival = uniqueBookings.find(b => {
+          let start = new Date(b.start);
+          start.setHours(0, 0, 0, 0);
+
+          return (
+            b.row === roomRow &&
+            start.getTime() === targetDate.getTime()
+          );
+        });
+
+        if (todayArrival) {
+          return todayArrival.guests;
+        }
+
+        let tomorrow = new Date(targetDate);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        let tomorrowArrival = uniqueBookings.find(b => {
+          let start = new Date(b.start);
+          start.setHours(0, 0, 0, 0);
+
+          return (
+            b.row === roomRow &&
+            start.getTime() === tomorrow.getTime()
+          );
+        });
+
+        if (tomorrowArrival) {
+          return tomorrowArrival.guests;
+        }
+
+        let roomName = rooms[roomRow] || "";
+
+        if (
+          roomName.includes("EZ") ||
+          roomName.includes("kl. DZ")
+        ) {
+          return "EZ";
+        }
+
+        return "DZ";
+      }
+
+      function getArrivalBooking(roomRow, targetDate) {
+
+        let todayArrival = uniqueBookings.find(b => {
+          let start = new Date(b.start);
+          start.setHours(0, 0, 0, 0);
+
+          return (
+            b.row === roomRow &&
+            start.getTime() === targetDate.getTime()
+          );
+        });
+
+        if (todayArrival) return todayArrival;
+
+        let tomorrow = new Date(targetDate);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        return uniqueBookings.find(b => {
+          let start = new Date(b.start);
+          start.setHours(0, 0, 0, 0);
+
+          return (
+            b.row === roomRow &&
+            start.getTime() === tomorrow.getTime()
+          );
+        });
+      }
+
       function getBookingType(b) {
         if (!b || !b.guests) return "";
 
         let t = b.guests;
 
+        if (t === "3er") return "3er";
+        if (t === "4er") return "4er";
+
         if (t.includes("EZ")) return "EZ";
         if (t.includes("DZ")) return "DZ";
-        if (t.includes("3")) return "DZ";
-        if (t.includes("4")) return "DZ";
 
         return "";
       }
@@ -3114,7 +3188,14 @@ window.onload = function() {
       const targetDate = new Date(base);
       targetDate.setDate(base.getDate());
 
-      const relevant = bookings.filter((b) => {
+
+      const uniqueBookings = Object.values(
+        Object.fromEntries(
+          bookings.map((b) => [b.id, b])
+        )
+      );
+
+      const relevant = uniqueBookings.filter((b) => {
         if (!isValidRoom(b.row)) return false;
         if (b.guests === "BLOCK") return false;
 
@@ -3153,6 +3234,14 @@ window.onload = function() {
           zuleger.push(b);
         }
       });
+
+      const neuRows = new Set(
+        neu.map(b => b.row)
+      );
+
+      kontrolle = kontrolle.filter(
+        b => !neuRows.has(b.row)
+      );
 
       // ✅ exakt wie im Belegungsplan
       neu.sort((a, b) => a.row - b.row);
@@ -3232,9 +3321,23 @@ window.onload = function() {
 
         p.neu.forEach((task) => {
           let roomNumber = getRoomNumberText(task.room);
-          let type = getBookingType(task.booking) || getRoomBaseType(task.room);
+          let type = getHousekeepingType(
+            task.booking.row,
+            targetDate
+          );
 
-          html += `<div class="row">${roomNumber} – ${type}<br></div>`;
+          let arrivalBooking = getArrivalBooking(
+            task.booking.row,
+            targetDate
+          );
+
+          let cribText = "";
+
+          if (arrivalBooking && arrivalBooking.crib) {
+            cribText = ` 👶 ${arrivalBooking.crib_count || 1}`;
+          }
+
+          html += `<div class="row">${roomNumber} – ${type}${cribText}<br></div>`;
         });
         html += `<br><br><br><br><br>`;
         html += `</td><td valign="top">`;
@@ -3243,7 +3346,13 @@ window.onload = function() {
           let roomNumber = getRoomNumberText(task.room);
           let type = getBookingType(task.booking);
 
-          html += `<div class="row">${roomNumber} – ${type}<br></div>`;
+          let cribText = "";
+
+          if (task.booking.crib) {
+            cribText = ` 👶 ${task.booking.crib_count || 1}`;
+          }
+
+          html += `<div class="row">${roomNumber} – ${type}${cribText}<br></div>`;
         });
         html += `<br><br><br><br><br>`;
         html += `</td><td valign="top">`;
@@ -3252,7 +3361,13 @@ window.onload = function() {
           let roomNumber = getRoomNumberText(rooms[task.row]);
           let type = getBookingType(task);
 
-          html += `<div class="row">${roomNumber} – ${type}<br></div>`;
+          let cribText = "";
+
+          if (task.crib) {
+            cribText = ` 👶 ${task.crib_count || 1}`;
+          }
+
+          html += `<div class="row">${roomNumber} – ${type}${cribText}<br></div>`;
         });
         html += `<br><br><br><br><br>`;
         html += `</td></tr></table>`;
@@ -3565,11 +3680,131 @@ window.onload = function() {
       document.body.appendChild(overlay);
     }
 
+    function openCheckInAllDialog() {
+      let options = [];
+
+      for (let i = 1; i < 4; i++) {
+        let d = new Date();
+        d.setDate(d.getDate() - i);
+
+        options.push(d);
+      }
+
+      let overlay = document.createElement("div");
+
+      overlay.style = `
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.4);
+    z-index:50000;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  `;
+
+      let box = document.createElement("div");
+
+      box.style = `
+    background:white;
+    padding:20px;
+    border-radius:10px;
+    min-width:250px;
+    text-align:center;
+  `;
+
+      box.innerHTML = "<b>Anreisedatum auswählen</b><br><br>";
+
+      options.forEach(date => {
+        let btn = document.createElement("button");
+
+        btn.style.display = "block";
+        btn.style.width = "100%";
+        btn.style.marginBottom = "10px";
+
+        btn.textContent = date.toLocaleDateString("de-DE", {
+          weekday: "short",
+          day: "numeric",
+          month: "numeric",
+          year: "2-digit"
+        });
+
+        btn.onclick = () => {
+          overlay.remove();
+          confirmCheckInAll(date);
+        };
+
+        box.appendChild(btn);
+      });
+
+      let cancel = document.createElement("button");
+      cancel.textContent = "Abbrechen";
+      cancel.onclick = () => overlay.remove();
+
+      box.appendChild(cancel);
+
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+    }
+
+    async function confirmCheckInAll(date) {
+      const dateStr = date.toISOString().slice(0, 10);
+
+      const label = date.toLocaleDateString("de-DE", {
+        weekday: "short",
+        day: "numeric",
+        month: "numeric",
+        year: "2-digit"
+      });
+
+      if (
+        !confirm(
+          `Alle Gäste vom ${label} als eingecheckt markieren?`
+        )
+      ) {
+        return;
+      }
+
+      const affected = bookings.filter(b => {
+        if (b.guests === "BLOCK") return false;
+
+        return (
+          b.start &&
+          b.start.slice(0, 10) === dateStr &&
+          !b.checkin
+        );
+      });
+
+      for (const booking of affected) {
+        booking.checkin = true;
+
+        await supa
+          .from("bookings")
+          .update({
+            checkin: true
+          })
+          .eq("id", booking.id);
+
+        await logBookingAction({
+          bookingId: booking.id,
+          action: "update",
+          field: "checkin",
+          oldValue: false,
+          newValue: true,
+          room: rooms[booking.row]
+        });
+      }
+
+      draw();
+
+      alert(`${affected.length} Buchung(en) eingecheckt.`);
+    }
+
     async function checkAuth() {
       const newBookingBtn = document.getElementById("newBookingBtn");
       const printBtn = document.getElementById("printListsBtn");
       const monthlyBtn = document.getElementById("monthlyStatsBtn");
       const undo = document.getElementById("undo");
+      const checkInAllBtn = document.getElementById("checkInAllBtn");
 
       const {
         data: { user }
@@ -3594,6 +3829,12 @@ window.onload = function() {
         } else {
           document.body.classList.remove("admin");
         }
+
+
+        if (checkInAllBtn) {
+          checkInAllBtn.style.display = isEditAllowed() ? "inline-block" : "none";
+        }
+
 
         if (newBookingBtn) {
           newBookingBtn.style.display = isEditAllowed() ? "inline-block" : "none";
@@ -7895,6 +8136,8 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       },
       true
     );
+
+    document.getElementById("checkInAllBtn")?.addEventListener("click", openCheckInAllDialog);
 
     window.addEventListener("load", () => {
       const el = document.getElementById("datePickerWrapper");
