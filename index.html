@@ -721,7 +721,8 @@
 
 
       #singleForm button,
-      #groupForm button {
+      #groupForm button,
+      #bookingInfo button {
         font-size: 35px !important;
         padding: 12px 20px !important;
       }
@@ -5183,8 +5184,27 @@ ${renderGroupBadge(groupsMap[b.group_id])}
   `;
 
       if (isAdmin()) {
+
+        let mobileButtons = "";
+
+        if (isMobile) {
+          mobileButtons = `
+      <button onclick="toggleCheckin(${b.id})">
+        ${b.checkin ? "↩️ Check-out" : "🏨 Check-in"}
+      </button>
+
+      <button onclick="togglePaid(${b.id})">
+        ${b.paid ? "↩️ Unbezahlt" : "💰 Bezahlt"}
+      </button>
+
+      <br><br>
+    `;
+        }
+
         html += `
     <br><br>
+
+    ${mobileButtons}
     <button onclick="toggleBookingLogs(${b.id})">Verlauf</button>
     <button onclick="printBooking(${index})">🖨️ Drucken</button>
   `;
