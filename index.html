@@ -1359,6 +1359,7 @@
     let currentUser = null;
     let isDraggingUpdate = false;
     let isResizingUpdate = false;
+    let lastTap = null;
     if (savedWeek) {
       current = new Date(savedWeek);
     }
@@ -3602,7 +3603,7 @@ window.onload = function() {
           monthlyBtn.style.display = !isMobile && currentRole !== "read" ? "inline-block" : "none";
         }
 
-        if (currentRole === "read" || isMobile) {
+        if (currentRole === "read" || isMobile && !isAdmin()) {
           document.body.classList.add("readonly");
         } else {
           document.body.classList.remove("readonly");
