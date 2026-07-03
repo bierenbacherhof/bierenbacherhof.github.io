@@ -67,6 +67,7 @@
     thead th {
       position: sticky;
       top: 120px;
+      font-size: 20px;
       z-index: 2000 !important;
       background: #eee;
     }
@@ -174,6 +175,25 @@
     td.blocked {
       background: #eee !important;
       opacity: 0.6;
+    }
+
+    #bookingTitle,
+    #groupInfoTitle,
+    #logOverviewTitle,
+    #formTitle {
+      font-size: 25px;
+    }
+
+
+    #bookingForm input,
+    #bookingForm select,
+    #bookingForm textarea,
+    #infoContent,
+    #groupInfoBox,
+    #logOverview,
+    #groupForm,
+    #singleForm {
+      font-size: 18px;
     }
 
     .booking-layer {
@@ -443,7 +463,7 @@
 
     #legend {
       padding: 10px;
-      font-size: 14px;
+      font-size: 20px;
       background: #fff;
     }
 
@@ -463,7 +483,7 @@
       justify-content: center;
       gap: 10px;
       margin-bottom: 10px;
-      font-size: 14px;
+      font-size: 18px;
     }
 
     /* Switch */
@@ -782,6 +802,14 @@
 
 
 
+      #bookingForm {
+        max-height: 85vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+
+
       #bookingTitle,
       #groupInfoTitle,
       #logOverviewTitle,
@@ -789,6 +817,10 @@
         font-size: 60px;
       }
 
+
+      #bookingForm input,
+      #bookingForm select,
+      #bookingForm textarea,
       #infoContent,
       #groupInfoBox,
       #logOverview,
@@ -1036,7 +1068,7 @@
         border: 1px solid #ccc;
         z-index: 999999;
         display: none;
-        width: 500px;
+        width: 350px;
       ">
     <h3 id="formTitle">Neue Buchung</h3>
 
@@ -1154,7 +1186,7 @@
         display: none;
         width: 320px;
       ">
-    <h3 id="bookingTitle">Buchungsdetails</h3>
+    <h3 id="bookingTitle">Info</h3>
 
     <div id="infoContent"></div>
 
