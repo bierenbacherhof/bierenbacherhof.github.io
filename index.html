@@ -1134,12 +1134,12 @@
       </div>
 
       <div style="display: flex; align-items: center; gap: 5px">
-        <label for="b_bed">
-          <input type="checkbox" id="b_bed" onchange="toggleBBedField()" />
+        <label for="f_crib">
+          <input type="checkbox" id="f_crib" onchange="toggleCribField()" />
           Kinderbett
         </label>
 
-        <input type="number" id="b_bed_count" min="1" value="1" style="width: 60px" disabled />
+        <input type="number" id="f_crib_count" min="1" value="1" style="width: 60px" disabled />
         <br />
       </div>
 
@@ -1487,9 +1487,9 @@
       }
     }
 
-    function toggleBBedField() {
-      let checkbox = document.getElementById("b_bed");
-      let input = document.getElementById("b_bed_count");
+    function toggleCribField() {
+      let checkbox = document.getElementById("f_crib");
+      let input = document.getElementById("f_crib_count");
 
       if (checkbox.checked) {
         input.disabled = false;
@@ -3410,9 +3410,19 @@ window.onload = function() {
 
           if (b.bluecard && b.bluecard_count) {
             if (b.bluecard_count === 1) {
-              petText = " - blaue Karte";
+              bluecardText = " - blaue Karte";
             } else {
-              petText = ` - ${b.bluecard_count} Hunde`;
+              bluecardText = ` - ${b.bluecard_count} blaue Karten`;
+            }
+          }
+
+          let cribText = "";
+
+          if (b.crib && b.crib_count) {
+            if (b.crib_count === 1) {
+              cribText = "- Kinderbett";
+            } else {
+              cribText = ` - ${b.crib_count} Kinderbetten`;
             }
           }
 
@@ -4350,7 +4360,8 @@ ${d.toLocaleDateString("de-DE", {
 
       let bluecard = document.getElementById("f_bluecard").checked;
       let bluecard_count = bluecard ? Number(document.getElementById("f_bluecard_count").value) || 1 : 0;
-
+      let crib = document.getElementById("f_crib").checked;
+      let crib_count = crib ? Number(document.getElementById("f_crib_count").value) || 1 : 0;
       start.setHours(CHECKIN_HOUR, 0, 0, 0);
       end.setHours(CHECKOUT_HOUR, 0, 0, 0);
 
@@ -4373,7 +4384,9 @@ ${d.toLocaleDateString("de-DE", {
             pet_count: pet ? pet_count : 0,
 
             bluecard: bluecard,
-            bluecard_count: bluecard ? bluecard_count : 0
+            bluecard_count: bluecard ? bluecard_count : 0,
+            crib: crib,
+            crib_count: crib ? crib_count : 0
           };
 
           closeForm();
@@ -4400,7 +4413,9 @@ ${d.toLocaleDateString("de-DE", {
           pet_count: pet ? pet_count : 0,
 
           bluecard: bluecard,
-          bluecard_count: bluecard ? bluecard_count : 0
+          bluecard_count: bluecard ? bluecard_count : 0,
+          crib: crib,
+          crib_count: crib ? crib_count : 0
         };
 
         if (guests.includes("B")) {
@@ -4442,6 +4457,8 @@ ${d.toLocaleDateString("de-DE", {
 
         let oldBlue = b.bluecard;
         let oldBlueCount = b.bluecard_count;
+        let oldCrib = b.crib;
+        let oldCribCount = b.crib_count;
 
         const user = currentUser;
 
@@ -4459,6 +4476,8 @@ ${d.toLocaleDateString("de-DE", {
 
         b.bluecard = bluecard;
         b.bluecard_count = bluecard_count;
+        b.crib = crib;
+        b.crib_count = crib_count;
 
         render();
 
@@ -4480,6 +4499,8 @@ ${d.toLocaleDateString("de-DE", {
 
             bluecard: b.bluecard,
             bluecard_count: b.bluecard_count,
+            crib: b.crib,
+            crib_count: b.crib_count,
 
             user_id: user?.id
           })
@@ -4556,6 +4577,14 @@ ${d.toLocaleDateString("de-DE", {
 
             if (oldBlueCount !== b.bluecard_count) {
               changes.bluecard_count = { old: oldBlueCount, new: b.bluecard_count };
+            }
+
+            if (oldCrib !== b.crib) {
+              changes.crib = { old: oldCrib, new: b.crib };
+            }
+
+            if (oldCribCount !== b.crib_count) {
+              changes.crib_count = { old: oldCribCount, new: b.crib_count };
             }
 
             if (Object.keys(changes).length > 0) {
@@ -4765,6 +4794,18 @@ ${d.toLocaleDateString("de-DE", {
         blueInput.disabled = true;
         blueInput.value = "";
       }
+
+      document.getElementById("f_crib").checked = !!b.crib;
+
+      let cribInput = document.getElementById("f_crib_count");
+
+      if (b.crib) {
+        cribInput.disabled = false;
+        cribInput.value = b.crib_count || 1;
+      } else {
+        cribInput.disabled = true;
+        cribInput.value = "";
+      }
     }
 
     function closeForm() {
@@ -4847,7 +4888,7 @@ ${d.toLocaleDateString("de-DE", {
         extra += "🐕".repeat(b.pet_count || 1);
       }
       if (b.crib) {
-        extra += "👶";
+        extra += "👶".repeat(b.crib_count || 1);
       }
 
       let html = `
@@ -5137,6 +5178,10 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
         if (b.pet) {
           icons += `<span class="icons"><span title="Hund">${"🐕".repeat(b.pet_count || 1)}</span></span>`;
+        }
+
+        if (b.crib) {
+          icons += `<span class="icons"><span title="Kinderbett">${"👶".repeat(b.crib_count || 1)}</span></span>`;
         }
 
         let companyText = b.company ? ` 🏢 ${b.company}` : "";
