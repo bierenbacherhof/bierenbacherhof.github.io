@@ -805,7 +805,8 @@
       #bookingForm,
       #bookingInfo {
         max-height: 120vh !important;
-        max-width: 300vw !important;
+        width: 150vw !important;
+        max-width: 150vw !important;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
       }
@@ -877,6 +878,7 @@
       .no-breakfast-icon::after {
         top: 8px;
         width: 35px;
+        height: 0;
         background: rgb(255, 0, 0);
         transform: rotate(-45deg);
         transform-origin: center;
@@ -5004,10 +5006,29 @@ ${renderGroupBadge(groupsMap[b.group_id])}
             if (!isAdmin()) {
               return;
             } else {
+              const now = Date.now();
+
+              if (now - lastTap < 300) {
+                clearTimeout(clickTimer);
+
+                let b = bookings[i];
+
+                if (b.guests !== "BLOCK") {
+                  openEditBooking(b);
+                }
+
+                lastTap = 0;
+                return;
+              }
+
+              lastTap = now;
+
               clickTimer = setTimeout(() => {
                 openInfo(i);
-              }, 200);
+              }, 300);
+
               return;
+
             }
           }
 
@@ -5397,7 +5418,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         };
 
         d.ondblclick = (e) => {
-          if (isMobile && !isAdmin()) return;
+          if (isMobile) return;
 
           let b = bookings[i];
 
