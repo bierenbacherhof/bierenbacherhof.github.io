@@ -5244,7 +5244,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         if (isMobile) {
           mobileButtons = `
       <button onclick="toggleCheckin(${b.id})">
-        ${b.checkin ? "↩️ Check-out" : "🏨 Check-in"}
+        ${b.checkin ? "↩️ Check-In\nentfernen" : "🏨 Check-In"}
       </button>
 
       <button onclick="togglePaid(${b.id})">
@@ -5266,6 +5266,97 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
       document.getElementById("infoContent").innerHTML = html;
       document.getElementById("bookingInfo").style.display = "block";
+    }
+
+    async function toggleCheckin(id) {
+
+      const b = bookings.find(x => String(x.id) === String(id));
+      if (!b) return;
+
+      const oldVal = b.checkin;
+      const newVal = !oldVal;
+
+      b.checkin = newVal;
+
+      render();
+
+      const user = currentUser;
+
+      const { error } = await supa
+        .from("bookings")
+        .update({
+          checkin: newVal,
+          user_id: user?.id
+        })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+
+        b.checkin = oldVal;
+        render();
+
+        alert("Fehler beim Speichern");
+        return;
+      }
+
+      logBookingAction({
+        bookingId: id,
+        action: "update",
+        field: "checkin",
+        oldValue: oldVal,
+        newValue: newVal,
+        room: rooms[b.row],
+        bookingAt: b.end
+      });
+
+      openInfo(bookings.indexOf(b));
+    }
+
+
+    async function togglePaid(id) {
+
+      const b = bookings.find(x => String(x.id) === String(id));
+      if (!b) return;
+
+      const oldVal = b.paid;
+      const newVal = !oldVal;
+
+      b.paid = newVal;
+
+      render();
+
+      const user = currentUser;
+
+      const { error } = await supa
+        .from("bookings")
+        .update({
+          paid: newVal,
+          user_id: user?.id
+        })
+        .eq("id", id);
+
+      if (error) {
+        console.error(error);
+
+        b.paid = oldVal;
+        render();
+
+        alert("Fehler beim Speichern");
+        return;
+      }
+
+      logBookingAction({
+        bookingId: id,
+        action: "update",
+        field: "paid",
+        oldValue: oldVal,
+        newValue: newVal,
+        room: rooms[b.row],
+        bookingAt: b.end
+      });
+
+      openInfo(bookings.indexOf(b));
     }
 
     function closeInfo() {
