@@ -164,6 +164,20 @@
       pointer-events: auto;
     }
 
+    #restoreUploadArea {
+      border: 2px dashed #999;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      background: white;
+      margin-bottom: 10px;
+    }
+
+    #restoreUploadArea:hover {
+      background: #f5f5f5;
+    }
+
     body:not(.logged-in) #stickyHeader {
       display: none !important;
     }
@@ -1011,9 +1025,15 @@
       <div id="backupList" class="overlay-box" style="display:none">
         <h3 id="backupTitle">Backup wiederherstellen</h3>
 
-        <input type="file" id="restoreBackupFile" accept=".json">
+
+        <div id="restoreUploadArea">
+          Backup hier ablegen oder anklicken
+        </div>
+
+        <input type="file" id="restoreBackupFile" accept=".json" style="display:none">
 
         <div id="restorePreview"></div>
+
 
         <button onclick="restoreBackup()">
           Backup einspielen
@@ -1389,6 +1409,7 @@
     let isResizingUpdate = false;
     let lastTap = 0;
     let loadedBackup = null;
+    let swipeAllowed = false;
     if (savedWeek) {
       current = new Date(savedWeek);
     }
@@ -3849,7 +3870,7 @@ window.onload = function() {
         }
 
         if (backupBtn) {
-          backupBtn.style.display = isAdmin() ? "inline-block" : "none";
+          backupBtn.style.display = isAdmin() && !isMobile ? "inline-block" : "none";
         }
 
 
@@ -3933,15 +3954,12 @@ window.onload = function() {
 
     function openBackupList() {
       const box = document.getElementById("backupList");
-      const overlay = document.getElementById("overlay");
 
       if (!box) return;
 
       box.style.display = "block";
 
-      if (overlay) {
-        overlay.style.display = "block";
-      }
+
 
       box.scrollTop = 0;
     }
@@ -4513,6 +4531,7 @@ ${d.toLocaleDateString("de-DE", {
         }
         return;
       }
+
       if (e?.target?.classList.contains("blocked")) return;
       let now = Date.now();
 
@@ -6985,6 +7004,63 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         .replace(/[^a-zA-Z0-9.\-_]/g, "_");
     }
 
+    async function loadBackupFile(file) {
+      const text = await file.text();
+
+      try {
+        loadedBackup = JSON.parse(text);
+
+        document.getElementById("restorePreview").innerHTML = `
+      <b>Buchungen:</b> ${loadedBackup.bookings?.length || 0}
+      <br>
+      <b>Gruppen:</b> ${loadedBackup.groups?.length || 0}
+    `;
+      } catch (err) {
+        alert("Ungültige Backup-Datei");
+        loadedBackup = null;
+      }
+    }
+
+    function setupBackupUpload() {
+      const area = document.getElementById("restoreUploadArea");
+      const input = document.getElementById("restoreBackupFile");
+
+      if (!area || !input) return;
+
+      area.onclick = () => {
+        input.click();
+      };
+
+      area.ondragover = (e) => {
+        e.preventDefault();
+        area.style.background = "#f0f0f0";
+      };
+
+      area.ondragleave = () => {
+        area.style.background = "#fff";
+      };
+
+      area.ondrop = (e) => {
+        e.preventDefault();
+
+        area.style.background = "#fff";
+
+        const file = e.dataTransfer.files[0];
+
+        if (file) {
+          loadBackupFile(file);
+        }
+      };
+
+      input.onchange = () => {
+        const file = input.files[0];
+
+        if (file) {
+          loadBackupFile(file);
+        }
+      };
+    }
+
     async function handleFiles(files, groupId) {
       for (let file of files) {
         let cleanName = sanitizeFileName(file.name);
@@ -7768,35 +7844,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
     window.addEventListener("DOMContentLoaded", async () => {
 
 
-      const restoreInput = document.getElementById("restoreBackupFile");
-
-      if (restoreInput) {
-        restoreInput.addEventListener("change", async (e) => {
-
-          const file = e.target.files[0];
-          if (!file) return;
-
-          const text = await file.text();
-
-          try {
-            loadedBackup = JSON.parse(text);
-
-            document.getElementById("restorePreview").innerHTML = `
-          <b>Buchungen:</b>
-          ${loadedBackup.bookings?.length || 0}
-          <br>
-
-          <b>Gruppen:</b>
-          ${loadedBackup.groups?.length || 0}
-        `;
-
-          } catch (err) {
-            alert("Ungültige Backup-Datei");
-            loadedBackup = null;
-          }
-
-        });
-      }
+      setupBackupUpload();
 
       const printBtn = document.getElementById("printListsBtn");
 
@@ -8048,15 +8096,22 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
       isSwiping = false;
 
-      let isAtEdge = startX < SWIPE_EDGE_WIDTH || startX > window.innerWidth - SWIPE_EDGE_WIDTH;
-      if (!isAtEdge) {
+
+      swipeAllowed =
+        startX < SWIPE_EDGE_WIDTH ||
+        startX > window.innerWidth - SWIPE_EDGE_WIDTH;
+
+      if (!swipeAllowed) {
         return;
       }
+
 
       calendar.style.transition = "none";
     });
 
     calendar.addEventListener("touchmove", (e) => {
+      if (!swipeAllowed) return;
+
       let currentX = e.touches[0].clientX;
       let currentY = e.touches[0].clientY;
 
@@ -8098,6 +8153,8 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
     calendar.addEventListener("touchend", () => {
       if (!isSwiping) return;
+      if (!swipeAllowed) return;
+      swipeAllowed = true;
       isSwiping = false;
 
       let transform = calendar.style.transform;
@@ -8140,44 +8197,160 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         return;
       }
 
-      if (
-        !confirm(
-          "ACHTUNG!\n\nAlle aktuellen Daten werden ersetzt.\n\nFortfahren?"
-        )
-      ) {
+      if (!confirm(
+        "ACHTUNG!\n\nAlle aktuellen Daten werden ersetzt.\n\nFortfahren?"
+      )) {
         return;
       }
 
-      await supa
-        .from("bookings")
-        .delete()
-        .neq("id", 0);
+      const box = document.getElementById("backupList");
 
-      await supa
-        .from("groups")
-        .delete()
-        .neq("id", 0);
+      showRestoreOverlay();
+      isRestoring = true;
+      try {
 
-      if (loadedBackup.groups?.length) {
-        await supa
-          .from("groups")
-          .insert(loadedBackup.groups);
-      }
+        updateRestoreOverlay("Alte Buchungen löschen...");
 
-      if (loadedBackup.bookings?.length) {
-        await supa
+        const { error: bookingDeleteError } = await supa
           .from("bookings")
-          .insert(loadedBackup.bookings);
+          .delete()
+          .not("id", "is", null);
+
+        if (bookingDeleteError) {
+          console.error(bookingDeleteError);
+          alert("Fehler beim Löschen der Buchungen");
+          return;
+        }
+
+        updateRestoreOverlay("Alte Gruppen löschen...");
+
+        const { error: groupDeleteError } = await supa
+          .from("groups")
+          .delete()
+          .not("id", "is", null);
+
+        if (groupDeleteError) {
+          console.error(groupDeleteError);
+          alert("Fehler beim Löschen der Gruppen");
+          return;
+        }
+
+        updateRestoreOverlay("Gruppen importieren...");
+
+        const groups = loadedBackup.groups.map(g => {
+          const copy = { ...g };
+          delete copy.created_at;
+          return copy;
+        });
+
+        const { error: groupInsertError } = await supa
+          .from("groups")
+          .insert(groups);
+
+        if (groupInsertError) {
+          console.error(groupInsertError);
+          alert("Fehler beim Import der Gruppen");
+          return;
+        }
+
+        updateRestoreOverlay("Buchungen importieren...");
+
+        const bookings = loadedBackup.bookings.map(b => {
+          const copy = { ...b };
+          delete copy.created_at;
+          delete copy.updated_at;
+          return copy;
+        });
+
+        const { error: bookingInsertError } = await supa
+          .from("bookings")
+          .insert(bookings);
+
+        if (bookingInsertError) {
+          console.error(bookingInsertError);
+          alert("Fehler beim Import der Buchungen");
+          return;
+        }
+
+        updateRestoreOverlay("Kalender neu laden...");
+
+        await loadGroups();
+        await loadData();
+
+        success = true;
+
+      } finally {
+
+        setTimeout(() => {
+
+          hideRestoreOverlay();
+          isRestoring = false;
+
+          if (box) {
+            box.style.display = "none";
+            updateStickyPositions();
+          }
+
+          if (success) {
+            alert("Backup erfolgreich wiederhergestellt");
+          }
+
+        }, 2000);
+
       }
 
-      alert("Backup erfolgreich wiederhergestellt");
+    }
 
-      await loadGroups();
-      await loadData();
+    function updateRestoreOverlay(text) {
+      const overlay = document.getElementById("restoreRunningOverlay");
+
+      if (!overlay) return;
+
+      overlay.innerHTML = `
+    <div>
+      ⏳<br><br>
+      ${text}
+    </div>
+  `;
+    }
+
+    function showRestoreOverlay() {
+      let overlay = document.createElement("div");
+
+      overlay.id = "restoreRunningOverlay";
+
+      overlay.style = `
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.6);
+    z-index:999999;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    color:white;
+    font-size:28px;
+    font-weight:bold;
+    text-align:center;
+    pointer-events:all;
+  `;
+
+      overlay.innerHTML = `
+    <div>
+      ⏳<br><br>
+      Backup wird wiederhergestellt<br>
+      Bitte warten...
+    </div>
+  `;
+
+      document.body.appendChild(overlay);
+    }
+
+    function hideRestoreOverlay() {
+      document.getElementById("restoreRunningOverlay")?.remove();
     }
 
     function handleGlobalClose(e) {
-      console.log("clicked:", e.target);
       if (e.target.closest("#loginBox")) return;
       if (
         e.target.closest("#bookingForm") ||
