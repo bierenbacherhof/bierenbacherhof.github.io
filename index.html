@@ -4506,13 +4506,13 @@ ${d.toLocaleDateString("de-DE", {
 
       if (!rooms[row] || rooms[row].trim() === "") return;
 
-      /* if (isMobile) {
-         if (e) {
-           e.preventDefault();
-           e.stopPropagation();
-         }
-         return;
-       }*/
+      if (isMobile && !isAdmin()) {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        return;
+      }
       if (e?.target?.classList.contains("blocked")) return;
       let now = Date.now();
 
