@@ -920,7 +920,6 @@
         transform-origin: center;
       }
 
-      body.admin #backupBtn,
       body.admin #logOverviewBtn {
         display: inline-block !important;
       }
@@ -1011,7 +1010,7 @@
   </div>
   <div id="stickyHeader">
     <div id="controls">
-      <button onclick="changeWeek(-1)" id="weekDown" class="auth-only">◀ Woche</button>
+      <button onclick="changeWeek(-1)" id="weekDown" style="display: none" class="auth-only">◀ Woche</button>
       <button onclick="changeWeek(1)" id="weekUp" class="auth-only">Woche ▶</button>
 
       <div id="datePickerWrapper" class="allowed">
@@ -3845,6 +3844,8 @@ window.onload = function() {
       const undo = document.getElementById("undo");
       const checkInAllBtn = document.getElementById("checkInAllBtn");
       const backupBtn = document.getElementById("backupBtn");
+      const weekUp = document.getElementById("weekUp");
+      const weekDown = document.getElementById("weekDown");
       const {
         data: { user }
       } = await supa.auth.getUser();
@@ -3873,9 +3874,16 @@ window.onload = function() {
           backupBtn.style.display = isAdmin() && !isMobile ? "inline-block" : "none";
         }
 
+        if (weekUp) {
+          weekUp.style.display = !isMobile ? "inline-block" : "none";
+        }
+
+        if (weekDown) {
+          weekDown.style.display = !isMobile ? "inline-block" : "none";
+        }
 
         if (checkInAllBtn) {
-          checkInAllBtn.style.display = isEditAllowed() ? "inline-block" : "none";
+          checkInAllBtn.style.display = isEditAllowed() && !isMobile ? "inline-block" : "none";
         }
 
 
