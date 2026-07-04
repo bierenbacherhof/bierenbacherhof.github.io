@@ -837,7 +837,8 @@
       #bookingTitle,
       #groupInfoTitle,
       #logOverviewTitle,
-      #formTitle {
+      #formTitle,
+      #backupTitle {
         font-size: 60px;
       }
 
@@ -1005,7 +1006,19 @@
       </div>
 
       <button onclick="undo()" id="undo" style="display: none" title="Rückgängig (Strg+Z)">↶</button>
-      <button id="backupBtn" onclick="alert('Backup kommt später')" class="auth-only admin-only">Backup</button>
+      <button onclick="openBackupList()" id="backupBtn" style="display: none">Backups</button>
+
+      <div id="backupList" class="overlay-box" style="display:none">
+        <h3 id="backupTitle">Backup wiederherstellen</h3>
+
+        <input type="file" id="restoreBackupFile" accept=".json">
+
+        <div id="restorePreview"></div>
+
+        <button onclick="restoreBackup()">
+          Backup einspielen
+        </button>
+      </div>
       <button id="newBookingBtn" onclick="event.stopPropagation(); openNewBooking()"
         style="display: none; position: absolute; left: 50%; transform: translateX(-50%)">
         Neue Buchung anlegen
@@ -1375,6 +1388,7 @@
     let isDraggingUpdate = false;
     let isResizingUpdate = false;
     let lastTap = 0;
+    let loadedBackup = null;
     if (savedWeek) {
       current = new Date(savedWeek);
     }
@@ -2734,6 +2748,7 @@ extra Räume
         "Semi 5"
       ];
 
+
       function getDefaultAreas(date) {
         let d = new Date(date);
         let day = d.getDay();
@@ -3808,7 +3823,7 @@ window.onload = function() {
       const monthlyBtn = document.getElementById("monthlyStatsBtn");
       const undo = document.getElementById("undo");
       const checkInAllBtn = document.getElementById("checkInAllBtn");
-
+      const backupBtn = document.getElementById("backupBtn");
       const {
         data: { user }
       } = await supa.auth.getUser();
@@ -3831,6 +3846,10 @@ window.onload = function() {
           document.body.classList.add("admin");
         } else {
           document.body.classList.remove("admin");
+        }
+
+        if (backupBtn) {
+          backupBtn.style.display = isAdmin() ? "inline-block" : "none";
         }
 
 
@@ -3911,6 +3930,22 @@ window.onload = function() {
       document.body.classList.remove("logged-in");
       location.reload();
     }
+
+    function openBackupList() {
+      const box = document.getElementById("backupList");
+      const overlay = document.getElementById("overlay");
+
+      if (!box) return;
+
+      box.style.display = "block";
+
+      if (overlay) {
+        overlay.style.display = "block";
+      }
+
+      box.scrollTop = 0;
+    }
+
 
     async function loadBookingLogs(bookingId) {
       const box = document.getElementById("logContent");
@@ -4471,13 +4506,13 @@ ${d.toLocaleDateString("de-DE", {
 
       if (!rooms[row] || rooms[row].trim() === "") return;
 
-      if (isMobile) {
-        if (e) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-        return;
-      }
+      /* if (isMobile) {
+         if (e) {
+           e.preventDefault();
+           e.stopPropagation();
+         }
+         return;
+       }*/
       if (e?.target?.classList.contains("blocked")) return;
       let now = Date.now();
 
@@ -7231,7 +7266,16 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         return;
       }
 
-      const jsonBlob = new Blob([JSON.stringify(bookingsData, null, 2)], { type: "application/json" });
+      const backupData = {
+        created_at: new Date().toISOString(),
+        bookings: bookingsData,
+        groups: groupsData
+      };
+
+      const jsonBlob = new Blob(
+        [JSON.stringify(backupData, null, 2)],
+        { type: "application/json" }
+      );
 
       const jsonUrl = URL.createObjectURL(jsonBlob);
 
@@ -7720,7 +7764,40 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       }
     });
 
+
     window.addEventListener("DOMContentLoaded", async () => {
+
+
+      const restoreInput = document.getElementById("restoreBackupFile");
+
+      if (restoreInput) {
+        restoreInput.addEventListener("change", async (e) => {
+
+          const file = e.target.files[0];
+          if (!file) return;
+
+          const text = await file.text();
+
+          try {
+            loadedBackup = JSON.parse(text);
+
+            document.getElementById("restorePreview").innerHTML = `
+          <b>Buchungen:</b>
+          ${loadedBackup.bookings?.length || 0}
+          <br>
+
+          <b>Gruppen:</b>
+          ${loadedBackup.groups?.length || 0}
+        `;
+
+          } catch (err) {
+            alert("Ungültige Backup-Datei");
+            loadedBackup = null;
+          }
+
+        });
+      }
+
       const printBtn = document.getElementById("printListsBtn");
 
       if (printBtn) {
@@ -8056,14 +8133,59 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       }
     });
 
+    async function restoreBackup() {
+
+      if (!loadedBackup) {
+        alert("Kein Backup geladen");
+        return;
+      }
+
+      if (
+        !confirm(
+          "ACHTUNG!\n\nAlle aktuellen Daten werden ersetzt.\n\nFortfahren?"
+        )
+      ) {
+        return;
+      }
+
+      await supa
+        .from("bookings")
+        .delete()
+        .neq("id", 0);
+
+      await supa
+        .from("groups")
+        .delete()
+        .neq("id", 0);
+
+      if (loadedBackup.groups?.length) {
+        await supa
+          .from("groups")
+          .insert(loadedBackup.groups);
+      }
+
+      if (loadedBackup.bookings?.length) {
+        await supa
+          .from("bookings")
+          .insert(loadedBackup.bookings);
+      }
+
+      alert("Backup erfolgreich wiederhergestellt");
+
+      await loadGroups();
+      await loadData();
+    }
+
     function handleGlobalClose(e) {
+      console.log("clicked:", e.target);
       if (e.target.closest("#loginBox")) return;
       if (
         e.target.closest("#bookingForm") ||
         e.target.closest("#groupForm") ||
         e.target.closest("input") ||
         e.target.closest("select") ||
-        e.target.closest("textarea")
+        e.target.closest("textarea") ||
+        e.target.closest("backupList")
       ) {
         return;
       }
