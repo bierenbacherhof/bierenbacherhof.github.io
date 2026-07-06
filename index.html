@@ -1226,8 +1226,15 @@
       <label style="display: flex; align-items: center; gap: 6px">
         <input type="checkbox" id="g_floorPriority" />
         EG zuerst
+        <br>
       </label>
-      <br />
+
+
+      <label style="display:block;margin-top:8px;">
+        <input type="checkbox" id="g_option">
+        Option
+        <br>
+      </label>
 
       <label> <input type="checkbox" id="g_bluecard" /> Blaue Karten 🟦 </label>
       <br /><br />
@@ -1392,7 +1399,6 @@
     let userMap = {};
     let allLogs = [];
     let groupsMap = {};
-    let isLocalInsert = false;
     let lastChangeTime = 0;
     let isSwiping = false;
     let swipeStartX = 0;
@@ -1409,6 +1415,8 @@
     let lastTap = 0;
     let loadedBackup = null;
     let swipeAllowed = false;
+    let reminderStarted = false;
+    let backupStarted = false;
     if (savedWeek) {
       current = new Date(savedWeek);
     }
@@ -1937,6 +1945,7 @@
 
       let data = collectGroupData();
       let floorPriority = document.getElementById("g_floorPriority").checked;
+      let isOption = document.getElementById("g_option").checked;
 
       if (data.length === 0) {
         return alert("Bitte mindestens eine Zimmerkategorie auswählen");
@@ -1957,10 +1966,37 @@
 
       document.getElementById("bookingForm").style.display = "none";
 
-      openColorPicker(data, start, end, floorPriority);
+      if (isOption) {
+        startPlacementMode(
+          data,
+          start,
+          end,
+          "turquoise",
+          floorPriority,
+          "Option: " + name
+        );
+      } else {
+        openColorPicker(
+          data,
+          start,
+          end,
+          floorPriority,
+          name
+        );
+      }
     }
 
-    function openColorPicker(data, start, end, floorPriority) {
+    async function waitForUI() {
+      await new Promise(resolve =>
+        requestAnimationFrame(resolve)
+      );
+
+      await new Promise(resolve =>
+        requestAnimationFrame(resolve)
+      );
+    }
+
+    function openColorPicker(data, start, end, floorPriority, groupName) {
       colorPickerOpen = true;
 
       let overlay = document.createElement("div");
@@ -2041,7 +2077,14 @@
           document.getElementById("colorPicker").remove();
           document.getElementById("pickerOverlay")?.remove();
 
-          startPlacementMode(data, start, end, color, floorPriority);
+          startPlacementMode(
+            data,
+            start,
+            end,
+            color,
+            floorPriority,
+            groupName
+          );
         };
       });
 
@@ -2056,13 +2099,15 @@
 
     let groupPlacement = null;
 
-    async function startPlacementMode(data, start, end, color, floorPriority) {
+    async function startPlacementMode(data, start, end, color, floorPriority, customName = null) {
       window.balconyWarningShown = false;
       saveHistory();
 
       isGroupCreating = true;
 
-      let groupName = document.getElementById("g_name").value.trim();
+      let groupName =
+        customName ||
+        document.getElementById("g_name").value.trim();
 
       let stats = calculateGroupStats(data, "input");
 
@@ -2607,6 +2652,41 @@
         "Nachmittags Listen drucken (14 Uhr)?",
         activateAfternoonPreset
       );
+
+      runPrintReminder(
+        "weekendReminder1230",
+        () => {
+          const now = new Date();
+
+          return (
+            now.getDay() === 5 &&
+            (
+              now.getHours() > 12 ||
+              (now.getHours() === 12 && now.getMinutes() >= 30)
+            )
+          );
+        },
+        "Listen fürs Wochenende drucken ?",
+        printWeekendLists
+      );
+
+      runPrintReminder(
+        "weekendReminder1430",
+        () => {
+          const now = new Date();
+
+          return (
+            now.getDay() === 5 &&
+            (
+              now.getHours() > 14 ||
+              (now.getHours() === 14 && now.getMinutes() >= 30)
+            )
+          );
+        },
+        "Listen fürs Wochenende drucken ?",
+        printWeekendLists
+      );
+
     }
 
     function activateMorningPreset() {
@@ -2619,7 +2699,7 @@
       const options = document.querySelectorAll(".list-option");
 
       options.forEach((opt, i) => {
-        opt.checked = i === 0 || i === 1; // ✅ Check-In + Freie Zimmer
+        opt.checked = i === 2 || i === 3 || i === 4; // ✅ Check-In + Freie Zimmer
       });
 
       const allCheckbox = document.getElementById("chk_all");
@@ -2638,7 +2718,7 @@
 
       // Beispiel: andere Auswahl als morgens
       options.forEach((opt, i) => {
-        opt.checked = i === 2 || i === 3;
+        opt.checked = i === 0 || i === 1;
         // 👉 hier definierst DU was "Nachmittag" ist
         // z.B. Abreisen + Reinigung
       });
@@ -2742,6 +2822,7 @@ extra Räume
     <div style="display:flex; gap:10px;">
       <button id="printConfirm">OK</button>
       <button id="printCancel">Abbrechen</button>
+      <button id="weekendPrint" onclick="printWeekendLists();">Wochenendlisten</button>
     </div>
   `;
 
@@ -2820,6 +2901,7 @@ extra Räume
       };
 
       document.getElementById("printConfirm").onclick = () => {
+
         const hkValue = document.getElementById("hkRooms").value;
         const date = document.getElementById("printDate").value;
         const options = [...box.querySelectorAll(".list-option")];
@@ -2878,7 +2960,7 @@ extra Räume
         }
 
         if (!content) {
-          alert("Bitte mindestens eine Liste auswählen");
+          alert("Bitte mindestens eine Liste mit Inhalt auswählen");
           return;
         }
 
@@ -2940,27 +3022,41 @@ width: 100%;
 .print-section:last-child {
   page-break-after: auto;
 }
-
 </style>
+
+
 
 </head>
 <body>
-
-${content}
-
 <script>
-window.onload = function() {
+  
+
+window.onload = () => {
   window.print();
-}
+};
 <\/script>
 
+  ${content}
+
 </body>
+
+
 </html>
 `;
 
-        let win = window.open("", "_blank");
+
+        let win = window.open(
+          "",
+          "printWindow",
+          "width=1200,height=900,resizable=yes,scrollbars=yes"
+        );
+
+
+        overlay.remove();
+
         win.document.write(html);
         win.document.close();
+
       };
 
       document.getElementById("printCancel").onclick = () => {
@@ -2997,13 +3093,9 @@ window.onload = function() {
         if (afternoonCheckbox.checked) {
           options.forEach((opt, i) => {
             opt.checked = i >= 2 && i <= 4;
-          });
-
-          morningCheckbox.checked = false;
-          allCheckbox.checked = false;
+          }); morningCheckbox.checked = false; allCheckbox.checked = false;
         }
       };
-
       options.forEach((opt) => {
         opt.addEventListener("change", () => {
           morningCheckbox.checked = false;
@@ -3012,9 +3104,7 @@ window.onload = function() {
         });
       });
 
-      document.getElementById("printCancel").onclick = () => {
-        overlay.remove();
-      };
+
     }
 
     function buildCheckInHTML(dateStr) {
@@ -3034,6 +3124,11 @@ window.onload = function() {
 
         return start.getTime() === date.getTime();
       });
+
+
+      if (!arrivals.length) {
+        return "";
+      }
 
       return buildListHTML("Check-In Liste", date, arrivals);
     }
@@ -3058,6 +3153,10 @@ window.onload = function() {
         return end.getTime() === date.getTime();
       });
 
+      if (!departures.length) {
+        return "";
+      }
+
       return buildListHTML("Check-Out Liste", date, departures);
     }
 
@@ -3074,21 +3173,16 @@ window.onload = function() {
         let consecutiveFreeNights = 0;
 
         for (let i = 0; i < nightsLimit; i++) {
-          let nightStart = new Date(base);
-          nightStart.setDate(base.getDate() + i);
+          let nightStart = new Date(base); nightStart.setDate(base.getDate() + i); let
+            nightEnd = new Date(base); nightEnd.setDate(base.getDate() + i + 1); let occupied = bookings.some((b) => {
+              if (b.row !== rowIndex) return false;
+              if (b.guests === "BLOCK") return true;
 
-          let nightEnd = new Date(base);
-          nightEnd.setDate(base.getDate() + i + 1);
+              let start = new Date(b.start);
+              let end = new Date(b.end);
 
-          let occupied = bookings.some((b) => {
-            if (b.row !== rowIndex) return false;
-            if (b.guests === "BLOCK") return true;
-
-            let start = new Date(b.start);
-            let end = new Date(b.end);
-
-            return start < nightEnd && end > nightStart;
-          });
+              return start < nightEnd && end > nightStart;
+            });
 
           if (occupied) break;
 
@@ -3115,7 +3209,7 @@ window.onload = function() {
       <div class="row">
         ${roomLabel}, ${text}
       </div>
-    `;
+      `;
       });
 
       return html;
@@ -3281,6 +3375,16 @@ window.onload = function() {
         b => !neuRows.has(b.row)
       );
 
+
+      if (
+        neu.length === 0 &&
+        zuleger.length === 0 &&
+        kontrolle.length === 0
+      ) {
+        return "";
+      }
+
+
       // ✅ exakt wie im Belegungsplan
       neu.sort((a, b) => a.row - b.row);
       zuleger.sort((a, b) => a.row - b.row);
@@ -3289,47 +3393,25 @@ window.onload = function() {
       // ✅ Personen erstellen
       let people = [];
 
-      for (let i = 0; i < staffCount; i++) {
-        people.push({
-          neu: [],
-          zuleger: [],
-          kontrolle: [],
-          extras: []
-        });
-      }
-
+      for (let i = 0; i < staffCount; i++) { people.push({ neu: [], zuleger: [], kontrolle: [], extras: [] }); }
       function assignSequential(list, key) {
-        if (!list.length) return;
-
-        let perPerson = Math.ceil(list.length / people.length);
-        let index = 0;
-
-        people.forEach((p) => {
-          for (let i = 0; i < perPerson; i++) {
-            let item = list[index];
-            if (!item) break;
-
-            if (key === "neu") {
-              p.neu.push({ room: rooms[item.row], booking: item });
-            } else if (key === "zul") {
-              p.zuleger.push({ room: rooms[item.row], booking: item });
-            } else {
-              p.kontrolle.push(item);
+        if (!list.length) return; let perPerson = Math.ceil(list.length /
+          people.length); let index = 0; people.forEach((p) => {
+            for (let i = 0; i < perPerson; i++) {
+              let item = list[index]; if (!item) break; if (key === "neu") {
+                p.neu.push({ room: rooms[item.row], booking: item });
+              } else if (key === "zul") {
+                p.zuleger.push({
+                  room:
+                    rooms[item.row], booking: item
+                });
+              } else { p.kontrolle.push(item); } index++;
             }
-
-            index++;
-          }
-        });
+          });
       }
-
-      assignSequential(neu, "neu");
-      assignSequential(zuleger, "zul");
-      assignSequential(kontrolle, "kon");
-
-      if (extras.length) {
-        let index = 0;
-
-        extras.forEach((e) => {
+      assignSequential(neu, "neu"); assignSequential(zuleger, "zul"); assignSequential(kontrolle, "kon"); if
+        (extras.length) {
+        let index = 0; extras.forEach((e) => {
           people[index].extras.push(e);
 
           index++;
@@ -3342,20 +3424,27 @@ window.onload = function() {
 
       people.forEach((p, i) => {
         html += `
-<div style="page-break-inside: avoid; border-bottom:2px dashed #000; padding-bottom:10px; margin-bottom:15px;">
+              <div
+                style="page-break-inside: avoid; border-bottom:2px dashed #000; padding-bottom:10px; margin-bottom:15px;">
 
-<h2>Name:_______________________ – ${targetDate.toLocaleDateString("de-DE")}</h2>
+                <h2>Name:_______________________ – ${targetDate.toLocaleDateString("de-DE")}</h2>
 
-<table style="width:100%; table-layout:fixed;">
-<tr>
-  <th align="left" style="width:33%"><h2>Neu</h2></th>
-  <th align="left" style="width:33%"><h2>Zuleger</h2></th>
-  <th align="left" style="width:33%"><h2>Kontrolle</h2></th>
-</tr>
-<tr>
+                <table style="width:100%; table-layout:fixed;">
+                  <tr>
+                    <th align="left" style="width:33%">
+                      <h2>Neu</h2>
+                    </th>
+                    <th align="left" style="width:33%">
+                      <h2>Zuleger</h2>
+                    </th>
+                    <th align="left" style="width:33%">
+                      <h2>Kontrolle</h2>
+                    </th>
+                  </tr>
+                  <tr>
 
-<td valign="top">
-`;
+                    <td valign="top">
+                      `;
 
         p.neu.forEach((task) => {
           let roomNumber = getRoomNumberText(task.room);
@@ -3378,7 +3467,8 @@ window.onload = function() {
           html += `<div class="row">${roomNumber} – ${type}${cribText}<br></div>`;
         });
         html += `<br><br><br><br><br>`;
-        html += `</td><td valign="top">`;
+        html += `</td>
+                    <td valign="top">`;
 
         p.zuleger.forEach((task) => {
           let roomNumber = getRoomNumberText(task.room);
@@ -3393,7 +3483,8 @@ window.onload = function() {
           html += `<div class="row">${roomNumber} – ${type}${cribText}<br></div>`;
         });
         html += `<br><br><br><br><br>`;
-        html += `</td><td valign="top">`;
+        html += `</td>
+                    <td valign="top">`;
 
         p.kontrolle.forEach((task) => {
           let roomNumber = getRoomNumberText(rooms[task.row]);
@@ -3408,19 +3499,22 @@ window.onload = function() {
           html += `<div class="row">${roomNumber} – ${type}${cribText}<br></div>`;
         });
         html += `<br><br><br><br><br>`;
-        html += `</td></tr></table>`;
+        html += `</td>
+                  </tr>
+                </table>`;
 
         if (p.extras.length) {
           html += `<div style="margin-top:10px;">`;
 
           p.extras.forEach((e) => {
-            html += `<div class="row">${e}   </div>`;
+            html += `<div class="row">${e} </div>`;
           });
           html += `<br><br>`;
           html += `</div>`;
         }
 
-        html += `</div>`;
+        html += `
+              </div>`;
       });
 
       return `${html}`;
@@ -3449,6 +3543,9 @@ window.onload = function() {
         return start < breakfastDate && end >= breakfastDate;
       });
 
+      if (!relevant.length) {
+        return "";
+      }
       function getGuestCount(type) {
         if (type === "EZ" || type === "EZ B") return 1;
         if (type === "DZ" || type === "DZ B") return 2;
@@ -3493,27 +3590,27 @@ window.onload = function() {
       });
 
       let html = `
-    <h1>
-      Frühstücksliste ${breakfastDate.toLocaleDateString("de-DE")}
-      <br>
-      Gesamt: ${totalGuests} Personen
-    </h1>
-  `;
+                <h1>
+                  Frühstücksliste ${breakfastDate.toLocaleDateString("de-DE")}
+                  <br>
+                  Gesamt: ${totalGuests} Personen
+                </h1>
+                `;
 
       Object.values(groupedByGroup).forEach((g) => {
         html += `
-      <div class="row">
-        Gruppe: ${trimText(g.name, 15)} – ${g.guests} Personen
-      </div>
-    `;
+                <div class="row">
+                  Gruppe: ${trimText(g.name, 15)} – ${g.guests} Personen
+                </div>
+                `;
       });
 
       Object.entries(groupedByCompany).forEach(([company, guests]) => {
         html += `
-      <div class="row">
-        Firma: ${company} – ${guests} Personen
-      </div>
-    `;
+                <div class="row">
+                  Firma: ${company} – ${guests} Personen
+                </div>
+                `;
       });
 
       if (singles.length) {
@@ -3521,10 +3618,10 @@ window.onload = function() {
 
         singles.forEach((s) => {
           html += `
-        <div class="row">
-          ${s.name} – ${s.guests} Person${s.guests > 1 ? "en" : ""}
-        </div>
-      `;
+                <div class="row">
+                  ${s.name} – ${s.guests} Person${s.guests > 1 ? "en" : ""}
+                </div>
+                `;
         });
       }
 
@@ -3600,11 +3697,11 @@ window.onload = function() {
           }
 
           html += `
-        <div class="row">
-          ${b.name || "-"} ${b.guests} ${(rooms[b.row] || "").split(" - ")[0]}
-          (${duration} ${duration !== 1 ? "Nächte" : "Nacht"})${petText}
-        </div>
-      `;
+                <div class="row">
+                  ${b.name || "-"} ${b.guests} ${(rooms[b.row] || "").split(" - ")[0]}
+                  (${duration} ${duration !== 1 ? "Nächte" : "Nacht"})${petText}
+                </div>
+                `;
         });
 
         return html;
@@ -3625,6 +3722,133 @@ window.onload = function() {
       }
 
       return html;
+    }
+
+    function printWeekendLists() {
+
+
+      const hkStaff = parseInt(
+        prompt("Wie viele Housekeeping-Mitarbeiter sind eingeplant?")
+      );
+
+      if (!hkStaff || hkStaff < 1) {
+        alert("Ungültige Mitarbeiteranzahl.");
+        return;
+      }
+      const today = new Date();
+      today.setHours(12, 0, 0, 0); // nächsten Samstag bestimmen const saturday=new Date(today);
+      while (saturday.getDay() !== 6) {
+        saturday.setDate(saturday.getDate() + 1);
+      }
+
+      const friday = new Date(saturday);
+      friday.setDate(saturday.getDate() - 1);
+
+      const fridayStr = friday.toISOString().slice(0, 10);
+      const saturdayStr = saturday.toISOString().slice(0, 10);
+
+      let content = "";
+
+      function addSection(html) {
+        if (!html) return; content += `<div class="print-section">${html}</div>`;
+      }
+
+      addSection(buildCheckInHTML(fridayStr));
+      addSection(buildFreeRoomsHTML(fridayStr));
+
+      addSection(buildCheckInHTML(saturdayStr));
+      addSection(buildFreeRoomsHTML(saturdayStr));
+      addSection(buildCheckOutHTML(saturdayStr));
+
+      addSection(buildBreakfastHTML(saturdayStr));
+
+      addSection(
+        buildHousekeepingHTML(
+          saturdayStr,
+          hkStaff,
+          []
+        )
+      );
+
+      const html = `
+                  <!DOCTYPE html>
+                  <html>
+
+                  <head>
+                    <meta charset="UTF-8">
+                    <title>Wochenendlisten</title>
+
+                    <style>
+                      html,
+                      body {
+                        zoom: 1;
+                      }
+
+                      page {
+                        size: A4;
+                        margin: 15mm;
+                      }
+
+                      body {
+                        font-family: Arial;
+                        padding: 20px;
+                        width: 210mm;
+                        margin: 0 auto;
+                      }
+
+                      h1 {
+                        font-size: 30px;
+                        margin-bottom: 20px;
+                        font-weight: bold;
+                      }
+
+                      h2 {
+                        font-size: 25px;
+                        margin-top: 25px;
+                        margin-bottom: 10px;
+                        font-weight: bold;
+                      }
+
+                      .row {
+                        font-size: 20px;
+                        margin-bottom: 6px;
+                        font-weight: normal;
+                      }
+
+
+                      .print-section {
+                        page-break-after: always;
+
+                        width: 100%;
+                        min-height: 260mm;
+
+                      }
+
+
+                      .print-section:last-child {
+                        page-break-after: auto;
+                      }
+                    </style>
+
+                  </head>
+
+                  <body>
+
+                    ${content}
+
+                    <script>
+window.onload = function() {
+  window.print();
+}
+<\/script>
+
+</body>
+</html>
+`;
+
+      let win = window.open("", "_blank");
+      win.document.write(html);
+      win.document.close();
     }
 
     function runMonthlyStats() {
@@ -4113,18 +4337,6 @@ ${d.toLocaleDateString("de-DE", {
       requestAnimationFrame(updateStickyPositions);
     }
 
-    function is3erRoom(room) {
-      let type = getRoomType(room);
-      if (!type) return false;
-      return type.includes("3");
-    }
-
-    function isFourRoom(room) {
-      let type = getRoomType(room);
-      if (!type) return false;
-      return type.includes("4");
-    }
-
     function saveHistory() {
       try {
         if (isGroupCreating) return;
@@ -4259,16 +4471,6 @@ ${d.toLocaleDateString("de-DE", {
       await loadData();
     }
 
-    function hasAnyFree3DigitDZ(start, end) {
-      return rooms.some((room, row) => {
-        if (!isThreeDigitRoom(room)) return false;
-
-        if (overlapDates(row, start, end, -1)) return false;
-
-        return isAnyDZ(room);
-      });
-    }
-
     async function changeWeek(n) {
       current.setDate(current.getDate() + 7 * n);
       localStorage.setItem("calendar_current_week", current.toISOString());
@@ -4309,15 +4511,6 @@ ${d.toLocaleDateString("de-DE", {
 
         return s < be && e > bs;
       });
-    }
-
-    function isPreferredEZRoom(roomName) {
-      return roomName.includes("EZ") || roomName.includes("kl. DZ");
-    }
-
-    function getRoomType(roomName) {
-      if (!roomName) return "";
-      return roomName.split(" - ")[1];
     }
 
     function assignRoom(row, forcedType = null, dry = false, batch = false, options = {}) {
@@ -4407,9 +4600,7 @@ ${d.toLocaleDateString("de-DE", {
       return temp;
     }
 
-    function isAnyDZ(room) {
-      return isNormalDZ(room) || isDeluxeDZ(room) || isMultiDZ(room) || isSmallDZ(room);
-    }
+
 
     function finishPlacement() {
       isGroupCreating = false;
@@ -4952,58 +5143,6 @@ ${d.toLocaleDateString("de-DE", {
       render();
     }
 
-    function isThreeDigitRoom(room) {
-      let number = room.split(" - ")[0];
-      return number.length === 3;
-    }
-
-    function isNormalEZ(room) {
-      let type = getRoomType(room);
-      if (!type) return false;
-      return type.includes("EZ") && !type.includes("B") && !type.includes("kl");
-    }
-
-    function isDeluxeEZ(room) {
-      let type = getRoomType(room);
-      if (!type) return false;
-      return type.includes("EZ B");
-    }
-
-    function isSmallEZ(room) {
-      let type = getRoomType(room);
-      if (!type) return false;
-      return type.includes("kl. EZ");
-    }
-
-    function isNormalDZ(room) {
-      let type = getRoomType(room);
-      if (!type) return false;
-      return (
-        type.includes("DZ") &&
-        !type.includes("B") &&
-        !type.includes("3") &&
-        !type.includes("4") &&
-        !type.includes("kl")
-      );
-    }
-
-    function isDeluxeDZ(room) {
-      let type = getRoomType(room);
-      if (!type) return false;
-      return type.includes("DZ") && type.includes("B") && !type.includes("3") && !type.includes("4");
-    }
-
-    function isMultiDZ(room) {
-      let type = getRoomType(room);
-      if (!type) return false;
-      return type.includes("3") || type.includes("4");
-    }
-
-    function isSmallDZ(room) {
-      let type = getRoomType(room);
-      if (!type) return false;
-      return type.includes("kl. DZ");
-    }
 
     function updateSinglePlacementBox() {
       let box = document.getElementById("placementBox");
@@ -5179,6 +5318,59 @@ ${d.toLocaleDateString("de-DE", {
       document.querySelectorAll("thead th").forEach((th) => {
         th.style.top = height - 1 + "px";
       });
+    }
+
+    function showLoading(text = "Bitte warten...") {
+      let overlay = document.getElementById("globalLoadingOverlay");
+
+      if (!overlay) {
+        overlay = document.createElement("div");
+
+        overlay.id = "globalLoadingOverlay";
+
+        overlay.style = `
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.6);
+      z-index:999999;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:white;
+      font-size:28px;
+      font-weight:bold;
+      text-align:center;
+      pointer-events:all;
+    `;
+
+        document.body.appendChild(overlay);
+      }
+
+      overlay.innerHTML = `
+    <div>
+      ⏳<br><br>
+      ${text}
+    </div>
+  `;
+
+      overlay.style.display = "flex";
+    }
+
+    function hideLoading() {
+      document.getElementById("globalLoadingOverlay")?.remove();
+    }
+
+    function updateLoading(text) {
+      const overlay = document.getElementById("globalLoadingOverlay");
+
+      if (!overlay) return;
+
+      overlay.innerHTML = `
+    <div>
+      ⏳<br><br>
+      ${text}
+    </div>
+  `;
     }
 
     async function openInfo(index) {
@@ -5472,8 +5664,6 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         if (selected.includes(i)) {
           d.classList.add("selected");
         }
-
-        let widthDays = visEnd - visStart;
 
         let rowEl = document.querySelectorAll("tr")[b.row + 1];
 
@@ -6199,8 +6389,6 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         }
       }
 
-      let visibleStart = baseStart < weekStart ? new Date(weekStart) : new Date(baseStart);
-
       let rowEl = document.querySelectorAll("tr")[b.row + 1];
       let cell = rowEl.querySelector("td:not(.room)");
 
@@ -6446,7 +6634,28 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
     colors.forEach((c) => {
       let d = document.createElement("div");
+
       d.style.backgroundColor = c;
+
+      if (c === "orange" || c === "pink" || c === "turquoise") {
+        d.innerHTML = `
+      <span style="
+        position:absolute;
+        left:50%;
+        top:50%;
+        transform:translate(-50%,-50%);
+        font-weight:bold;
+        pointer-events:none;
+      ">
+        ${c === "orange" ? "A" :
+            c === "pink" ? "D" :
+              "O"
+          }
+      </span>
+    `;
+
+        d.style.position = "relative";
+      }
 
       d.onclick = async (e) => {
         e.stopPropagation();
@@ -6554,8 +6763,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
       const fixedLegend = [
         { color: "pink", text: "Deluxe" },
-        { color: "orange", text: "Arrangement" },
-        { color: "turquoise", text: "Option" }
+        { color: "orange", text: "Arrangement" }
       ];
 
       fixedLegend.forEach((item) => {
@@ -6584,6 +6792,31 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         l.appendChild(div);
       });
 
+      let hasUngroupedOptions = bookings.some((b) => {
+        let s = normalizeDate(b.start);
+        let e = normalizeDate(b.end);
+
+        let overlaps = s < weekEnd && e > weekStart;
+
+        return overlaps &&
+          b.color === "turquoise" &&
+          !b.group_id;
+      });
+
+      if (hasUngroupedOptions) {
+        let div = document.createElement("div");
+
+        div.innerText = "Option";
+        div.style.background = "turquoise";
+        div.style.color = "black";
+        div.style.padding = "4px 8px";
+        div.style.borderRadius = "6px";
+        div.style.display = "inline-block";
+        div.style.margin = "4px";
+
+        l.appendChild(div);
+      }
+
       bookings.forEach((b) => {
         let group = groupsMap[b.group_id];
         if (!group) return;
@@ -6592,13 +6825,14 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         let e = normalizeDate(b.end);
 
         if (s < weekEnd && e > weekStart) {
-          if (!legendMap[group.color]) {
-            legendMap[group.color] = {
+          if (!legendMap[group.id]) {
+            legendMap[group.id] = {
               name: group.name,
               id: group.id,
               color: group.color
             };
           }
+
         }
       });
 
@@ -7030,6 +7264,12 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         return;
       }
 
+      const oldStates = groupBookings.map((b) => ({
+        id: b.id,
+        checkin: b.checkin
+      }));
+
+
       groupBookings.forEach((b) => {
         b.checkin = true;
       });
@@ -7040,31 +7280,56 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
       let ids = groupBookings.map((b) => b.id);
 
-      const { error } = await supa
-        .from("bookings")
-        .update({
-          checkin: true,
-          user_id: user?.id
-        })
-        .in("id", ids);
+      const loadingTimer = setTimeout(() => {
+        showLoading("Gruppe wird eingecheckt...");
+      }, 200);
 
-      if (error) {
-        alert("Fehler beim Einchecken");
-        console.error(error);
-        return;
+      try {
+
+        const { error } = await supa
+          .from("bookings")
+          .update({
+            checkin: true,
+            user_id: user?.id
+          })
+          .in("id", ids);
+
+        if (error) {
+          console.error(error);
+
+          groupBookings.forEach((b) => {
+            const old = oldStates.find((x) => x.id === b.id);
+
+            if (old) {
+              b.checkin = old.checkin;
+            }
+          });
+
+          render();
+
+          alert("Fehler beim Einchecken");
+          return;
+        }
+
+        groupBookings.forEach((b) => {
+          logBookingAction({
+            bookingId: b.id,
+            action: "update",
+            field: "checkin",
+            oldValue: false,
+            newValue: true,
+            room: rooms[b.row],
+            bookingAt: b.end
+          });
+        });
+
+      } finally {
+        await waitForUI();
+        clearTimeout(loadingTimer);
+        hideLoading();
+
       }
 
-      groupBookings.forEach((b) => {
-        logBookingAction({
-          bookingId: b.id,
-          action: "update",
-          field: "checkin",
-          oldValue: false,
-          newValue: true,
-          room: rooms[b.row],
-          bookingAt: b.end
-        });
-      });
       openGroupInfo(groupId);
     }
 
@@ -7355,7 +7620,9 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       )
       .subscribe();
 
+
     function handleRealtimeUpdate(payload) {
+
       const { eventType, new: newRow, old: oldRow } = payload;
 
       if (eventType === "INSERT") {
@@ -7363,18 +7630,38 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       }
 
       if (eventType === "UPDATE") {
-        bookings = bookings.map((b) => (b.id == newRow.id ? { ...newRow, row: Number(newRow.row) } : b));
+        bookings = bookings.map((b) =>
+          b.id == newRow.id
+            ? { ...newRow, row: Number(newRow.row) }
+            : b
+        );
       }
 
       if (eventType === "DELETE") {
         bookings = bookings.filter((b) => b.id !== oldRow.id);
       }
 
-      render();
-
-      drawLegend();
+      scheduleRender();
     }
 
+
+    let renderScheduled = false;
+
+    function scheduleRender() {
+
+      if (renderScheduled) return;
+
+      renderScheduled = true;
+
+      requestAnimationFrame(() => {
+
+        renderScheduled = false;
+
+        render();
+        drawLegend();
+
+      });
+    }
     function exportToExcel(bookingsData, groupsData) {
       const workbook = XLSX.utils.book_new();
 
@@ -7426,37 +7713,54 @@ ${renderGroupBadge(groupsMap[b.group_id])}
     }
 
     async function createBackup() {
-      const { data: bookingsData, error: bookingsError } = await supa.from("bookings").select("*");
-      const { data: groupsData, error: groupsError } = await supa.from("groups").select("*");
+      const loadingTimer = setTimeout(() => {
+        showLoading("Backup wird erstellt...");
+      }, 200);
 
-      if (bookingsError) {
-        console.error(bookingsError);
-        alert("Fehler beim Buchungen-Backup");
-        return;
+      try {
+
+        const { data: bookingsData, error: bookingsError } =
+          await supa.from("bookings").select("*");
+
+        const { data: groupsData, error: groupsError } =
+          await supa.from("groups").select("*");
+
+        if (bookingsError) {
+          console.error(bookingsError);
+          alert("Fehler beim Buchungen-Backup");
+          return;
+        }
+
+        if (groupsError) {
+          console.error(groupsError);
+          alert("Fehler beim Gruppen-Backup");
+          return;
+        }
+
+        const backupData = {
+          created_at: new Date().toISOString(),
+          bookings: bookingsData,
+          groups: groupsData
+        };
+
+        const jsonBlob = new Blob(
+          [JSON.stringify(backupData, null, 2)],
+          { type: "application/json" }
+        );
+
+        const jsonUrl = URL.createObjectURL(jsonBlob);
+
+        downloadFile(jsonUrl, `backup_${getTimestamp()}.json`);
+
+        exportToExcel(bookingsData, groupsData);
+
+      } finally {
+
+        clearTimeout(loadingTimer);
+        hideLoading();
+
       }
 
-      if (groupsError) {
-        console.error(groupsError);
-        alert("Fehler beim Gruppen-Backup");
-        return;
-      }
-
-      const backupData = {
-        created_at: new Date().toISOString(),
-        bookings: bookingsData,
-        groups: groupsData
-      };
-
-      const jsonBlob = new Blob(
-        [JSON.stringify(backupData, null, 2)],
-        { type: "application/json" }
-      );
-
-      const jsonUrl = URL.createObjectURL(jsonBlob);
-
-      downloadFile(jsonUrl, `backup_${getTimestamp()}.json`);
-
-      exportToExcel(bookingsData, groupsData);
     }
 
     function downloadFile(url, filename) {
@@ -7503,11 +7807,11 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       document.querySelectorAll(".g_count").forEach((el) => (el.value = ""));
       document.querySelectorAll(".g_price").forEach((el) => (el.value = ""));
       document.getElementById("g_floorPriority").checked = false;
-
+      document.getElementById("g_option").checked = false;
       document.getElementById("g_bluecard").checked = false;
     }
 
-    let backupStarted = false;
+
 
     async function tryStartBackup() {
       if (backupStarted) return;
@@ -7554,11 +7858,9 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       bookings.push(tempBooking);
       render();
 
-      isLocalInsert = true;
       lastChangeTime = Date.now();
       const { data, error } = await supa.from("bookings").insert([b]).select();
 
-      isLocalInsert = false;
 
       if (error) {
         console.error(error);
@@ -7642,15 +7944,38 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
       let ids = toDelete.map((b) => b.id);
 
-      bookings = bookings.filter((b) => !ids.includes(b.id));
+      const loadingTimer = setTimeout(() => {
+        showLoading("Gruppe wird gelöscht...");
+      }, 200);
 
-      render();
+      try {
 
-      await supa.from("bookings").delete().in("id", ids);
+        const { error } = await supa
+          .from("bookings")
+          .delete()
+          .in("id", ids);
+
+        if (error) {
+          console.error(error);
+          alert("Fehler beim Löschen der Gruppe");
+          return;
+        }
+
+        bookings = bookings.filter((b) => !ids.includes(b.id));
+
+        render();
+      } finally {
+        await waitForUI();
+        clearTimeout(loadingTimer);
+        hideLoading();
+
+      }
+
     }
 
     document.addEventListener("keydown", async (e) => {
       const active = document.activeElement;
+
 
       if (
         e.key !== "Escape" &&
@@ -7740,7 +8065,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       }
     });
 
-    let reminderStarted = false;
+
 
     function startPrintReminder() {
       if (reminderStarted) return; // ✅ verhindert doppelte Intervalle
@@ -8022,47 +8347,59 @@ ${renderGroupBadge(groupsMap[b.group_id])}
     }
 
     async function syncGroupToDB() {
-      let tempBookings = bookings
-        .filter((b) => String(b.id).startsWith("tmp_"))
-        .map((b) => {
-          let copy = { ...b };
-          delete copy.id;
-          return copy;
-        });
+      const loadingTimer = setTimeout(() => {
+        showLoading("Gruppe wird gespeichert...");
+      }, 200);
 
-      if (!tempBookings.length) return;
-      isLocalInsert = true;
+      try {
 
-      let clean = await enrichWithUser(tempBookings);
+        let tempBookings = bookings
+          .filter((b) => String(b.id).startsWith("tmp_"))
+          .map((b) => {
+            let copy = { ...b };
+            delete copy.id;
+            return copy;
+          });
 
-      const { data, error } = await supa.from("bookings").insert(clean).select();
+        if (!tempBookings.length) return;
 
-      isLocalInsert = false;
+        let clean = await enrichWithUser(tempBookings);
 
-      if (error) {
-        console.error(error);
-        alert("Fehler beim Speichern der Gruppe");
-        return;
-      }
+        const { data, error } = await supa
+          .from("bookings")
+          .insert(clean)
+          .select();
 
-      let realIndex = 0;
+        if (error) {
+          console.error(error);
+          alert("Fehler beim Speichern der Gruppe");
+          return;
+        }
 
-      for (let i = 0; i < bookings.length; i++) {
-        if (String(bookings[i].id).startsWith("tmp_")) {
-          if (data[realIndex]) {
-            bookings[i] = data[realIndex];
-            realIndex++;
+        let realIndex = 0;
+
+        for (let i = 0; i < bookings.length; i++) {
+          if (String(bookings[i].id).startsWith("tmp_")) {
+            if (data[realIndex]) {
+              bookings[i] = data[realIndex];
+              realIndex++;
+            }
           }
         }
-      }
 
-      render();
+        render();
+
+      } finally {
+        await waitForUI();
+        clearTimeout(loadingTimer);
+        hideLoading();
+
+      }
     }
 
     async function saveBatchBookings(list) {
       if (!list.length) return;
 
-      isLocalInsert = true;
       lastChangeTime = Date.now();
 
       const { data: userData } = await supa.auth.getUser();
@@ -8088,7 +8425,6 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       if (error) {
         console.error(error);
         alert("Fehler beim Speichern");
-        isLocalInsert = false;
         return;
       }
 
@@ -8107,7 +8443,6 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         render();
       }
 
-      isLocalInsert = false;
     }
     function printBooking(index) {
       let b = bookings[index];
@@ -8291,6 +8626,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
     async function restoreBackup() {
 
+      let success = false;
       if (!loadedBackup) {
         alert("Kein Backup geladen");
         return;
