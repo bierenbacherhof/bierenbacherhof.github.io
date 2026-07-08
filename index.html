@@ -94,6 +94,39 @@
             font-size: 16px;
             font-weight: bold;
         }
+
+        @media (max-width: 600px) {
+
+            #loginBox {
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+
+                width: min(90vw, 300px);
+            }
+
+
+            .app-button {
+                min-height: 140px;
+            }
+
+            .icon {
+                font-size: 70px;
+            }
+
+
+            #loginBox input,
+            #loginBox button {
+                font-size: 16px;
+            }
+
+
+            .app-button:active {
+                transform: scale(0.97);
+            }
+
+
+        }
     </style>
 </head>
 
@@ -120,7 +153,7 @@
         <h3>Login</h3>
 
         <input type="text" id="login_email" placeholder="Benutzername">
-        <input type="password" id="login_password" placeholder="Passwort">
+        <input type="password" id="login_password" placeholder="Passwort" enterkeyhint="go">
 
         <button onclick="login()">Login</button>
     </div>
