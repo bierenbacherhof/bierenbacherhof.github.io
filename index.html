@@ -2,9 +2,11 @@
 <html lang="de">
 
 <head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+    <title>Bierenbacher Hof
+    </title>
 
     <style>
         body {
@@ -23,6 +25,47 @@
             gap: 20px;
             max-width: 1000px;
         }
+
+
+        #loginBlocker {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+        }
+
+        #loginBox {
+            position: fixed;
+            width: 260px;
+            padding: 20px;
+
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+
+            z-index: 1001;
+
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #loginBox input,
+        #loginBox button {
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        #logoutBtn {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            display: flex;
+            gap: 12px;
+        }
+
+
 
         .app-button {
             display: flex;
@@ -58,17 +101,191 @@
 
     <div class="container">
 
-        <a href="Belegungsplan.html" class="app-button">
+        <a href="Belegungsplan.html" class="app-button role-read" style="display:none">
             <span class="icon">📅</span>
             <span class="label">Belegungsplan</span>
         </a>
 
-        <a href="Avis.html" class="app-button">
+        <a href="Avis.html" class="app-button role-staff" style="display:none">
             <span class="icon">📄</span>
             <span class="label">Avis schreiben</span>
         </a>
 
     </div>
+
+
+    <div id="loginBlocker"></div>
+
+    <div id="loginBox">
+        <h3>Login</h3>
+
+        <input type="text" id="login_email" placeholder="Benutzername">
+        <input type="password" id="login_password" placeholder="Passwort">
+
+        <button onclick="login()">Login</button>
+    </div>
+    <button id="logoutBtn" onclick="logout()">🚪Logout</button>
+    <script>
+        const SUPABASE_URL = "https://ansbdavzifbfjqbzdafn.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_pkEDopMJHBRRlQvc-j3F7Q_80FvJ2hC";
+
+
+        const supa = supabase.createClient(
+            SUPABASE_URL,
+            SUPABASE_KEY,
+            {
+                auth: {
+                    persistSession: true,
+                    autoRefreshToken: true
+                }
+            }
+        );
+
+        let currentRole = "read";
+
+        async function loadUserRole() {
+            const {
+                data: { user }
+            } = await supa.auth.getUser();
+
+            if (!user) {
+                currentRole = "read";
+                return;
+            }
+            console.log("User:", user.id);
+            const { data, error } = await supa.from("user_roles").select("role").eq("id", user.id).single();
+
+            console.log("Role Daten:", data);
+            console.log("Role Error:", error);
+
+            if (error || !data) {
+                console.warn("Keine Rolle gefunden → fallback read");
+                currentRole = "read";
+            } else {
+                currentRole = data.role;
+            }
+        }
+
+        async function login() {
+
+            console.log("Login gestartet");
+
+            const username = document.getElementById("login_email").value.trim();
+            const password = document.getElementById("login_password").value;
+
+            const { data, error } = await supa
+                .from("user_roles")
+                .select("email")
+                .ilike("username", username)
+                .single();
+
+            console.log("User-Suche:", data, error);
+
+            if (error || !data) {
+                alert("Benutzer nicht gefunden");
+                return;
+            }
+
+            const { error: loginError } =
+                await supa.auth.signInWithPassword({
+                    email: data.email,
+                    password: password
+                });
+
+            console.log("Login Ergebnis:", loginError);
+
+            if (loginError) {
+                alert("Falsches Passwort");
+                return;
+            }
+
+            await loadUserRole();
+
+            console.log("Role:", currentRole);
+
+            document.getElementById("loginBox").style.display = "none";
+            document.getElementById("loginBlocker").style.display = "none";
+
+            applyPermissions();
+        }
+        async function checkAuth() {
+
+            const {
+                data: { session }
+            } = await supa.auth.getSession();
+
+            console.log("Session:", session);
+
+            if (session) {
+
+                document.getElementById("loginBox").style.display = "none";
+                document.getElementById("loginBlocker").style.display = "none";
+
+                await loadUserRole();
+
+                console.log("Geladene Rolle:", currentRole);
+
+                applyPermissions();
+            }
+        }
+
+        function applyPermissions() {
+
+            document.querySelectorAll(
+                ".role-read,.role-staff,.role-admin"
+            ).forEach(el => {
+                el.style.display = "none";
+            });
+
+            if (currentRole === "admin") {
+
+                document.querySelectorAll(
+                    ".role-read,.role-staff,.role-admin"
+                ).forEach(el => {
+                    el.style.display = "flex";
+                });
+
+            } else if (currentRole === "staff") {
+
+                document.querySelectorAll(
+                    ".role-read,.role-staff"
+                ).forEach(el => {
+                    el.style.display = "flex";
+                });
+
+            } else {
+
+                document.querySelectorAll(
+                    ".role-read"
+                ).forEach(el => {
+                    el.style.display = "flex";
+                });
+
+            }
+        }
+        checkAuth();
+
+        async function logout() {
+            await supa.auth.signOut();
+            document.body.classList.remove("logged-in");
+            location.reload();
+        }
+
+
+        ["login_email", "login_password"].forEach(id => {
+
+            document.getElementById(id).addEventListener("keydown", function (e) {
+
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    login();
+                }
+
+            });
+
+        });
+
+    </script>
 
 </body>
 
