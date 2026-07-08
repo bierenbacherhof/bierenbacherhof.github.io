@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            max-width: 1000px;
+        }
+
+        .app-button {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 25px;
+            background: white;
+            text-decoration: none;
+            color: #333;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+            transition: 0.3s;
+        }
+
+        .app-button:hover {
+            transform: scale(1.05);
+        }
+
+        .icon {
+            font-size: 60px;
+            margin-bottom: 10px;
+        }
+
+        .label {
+            font-size: 16px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <a href="Belegungsplan.html" class="app-button">
+            <span class="icon">📅</span>
+            <span class="label">Belegungsplan</span>
+        </a>
+
+        <a href="Avis.html" class="app-button">
+            <span class="icon">📄</span>
+            <span class="label">Avis schreiben</span>
+        </a>
+
+    </div>
+
+</body>
+
+</html>
