@@ -3736,7 +3736,8 @@ window.onload = () => {
         return;
       }
       const today = new Date();
-      today.setHours(12, 0, 0, 0); // nächsten Samstag bestimmen const saturday=new Date(today);
+      today.setHours(12, 0, 0, 0);
+      const saturday=new Date(today); // nächsten Samstag bestimmen const saturday=new Date(today);
       while (saturday.getDay() !== 6) {
         saturday.setDate(saturday.getDate() + 1);
       }
