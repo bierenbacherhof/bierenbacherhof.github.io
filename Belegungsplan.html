@@ -2660,7 +2660,7 @@
       // ✅ Morning
       runPrintReminder(
         "morningReminderShown",
-        () => new Date().getHours() <= 10,
+        () => new Date().getHours() < 10,
         "Morgentliche Listen drucken?",
         activateMorningPreset
       );
@@ -2668,7 +2668,7 @@
       // ✅ Afternoon 12 Uhr
       runPrintReminder(
         "afternoonReminder12",
-        () => new Date().getHours() >= 12,
+        () => new Date().getHours() > 11,
         "Nachmittags Listen drucken (12 Uhr)?",
         activateAfternoonPreset
       );
@@ -2676,7 +2676,7 @@
       // ✅ Afternoon 14 Uhr
       runPrintReminder(
         "afternoonReminder14",
-        () => new Date().getHours() >= 14,
+        () => new Date().getHours() > 13,
         "Nachmittags Listen drucken (14 Uhr)?",
         activateAfternoonPreset
       );
