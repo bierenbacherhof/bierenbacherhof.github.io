@@ -178,16 +178,16 @@
       background: #f5f5f5;
     }
 
-    #currentUserDisplay{
-  position:absolute;
-  top:2px;
-  left:4px;
-  font-size:10px;
-  color:#666;
-  z-index:13000;
-  pointer-events:none;
-  font-family:Arial,sans-serif;
-}
+    #currentUserDisplay {
+      position: absolute;
+      top: 2px;
+      left: 4px;
+      font-size: 10px;
+      color: #666;
+      z-index: 13000;
+      pointer-events: none;
+      font-family: Arial, sans-serif;
+    }
 
     body:not(.logged-in) #stickyHeader {
       display: none !important;
@@ -209,6 +209,7 @@
     #logOverviewTitle,
     #formTitle {
       font-size: 25px;
+      text-align: center;
     }
 
 
@@ -1165,25 +1166,25 @@
 
     <div id="singleForm">
       <label>Zimmerkategorie</label><br />
-      <select id="f_guests"></select><br /><br />
+      <select id="f_guests"></select><br />
 
       <label>Name</label><br />
-      <input type="text" id="f_name" /><br /><br />
+      <input type="text" id="f_name" /><br />
 
       <label>Firma</label><br />
-      <input type="text" id="f_company" /><br /><br />
+      <input type="text" id="f_company" /><br />
 
       <label>Anreise</label><br />
-      <input type="date" id="f_start" /><br /><br />
+      <input type="date" id="f_start" /><br />
 
       <label>Abreise</label><br />
-      <input type="date" id="f_end" /><br /><br />
+      <input type="date" id="f_end" /><br />
 
       <label>Preis (€)</label><br />
-      <input type="text" id="f_price" /><br /><br />
+      <input type="text" id="f_price" /><br />
 
       <label>Kommentar</label><br />
-      <input type="text" id="f_comment" /><br /><br />
+      <input type="text" id="f_comment" /><br />
 
       <div style="display: flex; align-items: center; gap: 5px">
         <label>
@@ -1194,7 +1195,7 @@
       </div>
 
       <div style="display: flex; align-items: center; gap: 5px">
-        <label> <input type="checkbox" id="f_bluecard" /> Blaue Karte 🟦 </label>
+        <label> <input type="checkbox" id="f_bluecard" onchange="toggleBluecardField()" /> Blaue Karte 🟦 </label>
 
         <input type="number" id="f_bluecard_count" min="1" value="1" style="width: 60px" disabled />
         <br />
@@ -1220,19 +1221,17 @@
         <br />
       </div>
 
-      <br /><br />
-
       <label>Gruppe</label><br />
-      <select id="f_group"></select><br /><br />
+      <select id="f_group"></select><br />
 
       <button onclick="saveBooking()">Speichern</button>
       <button onclick="closeForm()">Abbrechen</button>
     </div>
     <div id="groupForm" style="display: none">
       <label>Gruppenname</label><br />
-      <input type="text" id="g_name" required /><br /><br />
+      <input type="text" id="g_name" required /><br />
 
-      <div id="groupCategories"></div>
+      <div id="groupCategories" ; style="margin-top:4px"></div>
       <br />
 
       <label style="display: flex; align-items: center; gap: 6px">
@@ -1242,17 +1241,17 @@
       </label>
 
 
-      <label style="display:block;margin-top:8px;">
+      <label style="display:block;">
         <input type="checkbox" id="g_option">
         Option
         <br>
       </label>
 
       <label> <input type="checkbox" id="g_bluecard" /> Blaue Karten 🟦 </label>
-      <br /><br />
+      <br />
 
       <label>Anreise</label><br />
-      <input type="date" id="g_start" required /><br /><br />
+      <input type="date" id="g_start" required /><br />
 
       <label>Abreise</label><br />
       <input type="date" id="g_end" required /><br /><br />
@@ -1547,6 +1546,23 @@
       content.innerHTML = html;
     }
 
+    function toggleBluecardField() {
+      let checkbox = document.getElementById("f_bluecard");
+      let input = document.getElementById("f_bluecard_count");
+
+      if (checkbox.checked) {
+        input.disabled = false;
+
+        // wenn leer oder 0 → auf 1 setzen
+        if (!input.value || input.value == "0") {
+          input.value = 1;
+        }
+      } else {
+        input.disabled = true;
+        input.value = 1;
+      }
+    }
+
     function togglePetField() {
       let checkbox = document.getElementById("f_pet");
       let input = document.getElementById("f_pet_count");
@@ -1560,7 +1576,7 @@
         }
       } else {
         input.disabled = true;
-        input.value = "";
+        input.value = 1;
       }
     }
 
@@ -1577,7 +1593,7 @@
         }
       } else {
         input.disabled = true;
-        input.value = "";
+        input.value = 1;
       }
     }
     function resetLogFilter() {
@@ -3093,19 +3109,34 @@ window.onload = () => {
       morningCheckbox.onchange = () => {
         if (morningCheckbox.checked) {
           options.forEach((opt, i) => {
-            opt.checked = i === 0 || i === 1;
+            opt.checked = i >= 2 && i <= 4;
           });
 
           afternoonCheckbox.checked = false;
           allCheckbox.checked = false;
+        }
+        if (!morningCheckbox.checked) {
+          [2, 3, 4].forEach(i => {
+            options[i].checked = false;
+
+          });
         }
       };
 
       afternoonCheckbox.onchange = () => {
         if (afternoonCheckbox.checked) {
           options.forEach((opt, i) => {
-            opt.checked = i >= 2 && i <= 4;
-          }); morningCheckbox.checked = false; allCheckbox.checked = false;
+            opt.checked = i === 0 || i === 1;
+          });
+
+          morningCheckbox.checked = false;
+          allCheckbox.checked = false;
+        }
+        if (!afternoonCheckbox.checked) {
+          [0, 1].forEach(i => {
+            options[i].checked = false;
+
+          });
         }
       };
       options.forEach((opt) => {
@@ -3749,7 +3780,7 @@ window.onload = () => {
       }
       const today = new Date();
       today.setHours(12, 0, 0, 0);
-      const saturday=new Date(today); // nächsten Samstag bestimmen const saturday=new Date(today);
+      const saturday = new Date(today); // nächsten Samstag bestimmen const saturday=new Date(today);
       while (saturday.getDay() !== 6) {
         saturday.setDate(saturday.getDate() + 1);
       }
@@ -4102,10 +4133,10 @@ window.onload = function() {
         await loadUserRole();
         await loadUserMap();
         const userDisplay = document.getElementById("currentUserDisplay");
-        if(userDisplay){
+        if (userDisplay) {
           userDisplay.textContent = userMap[user.id] || "";
         }
-      
+
         if (isAdmin()) {
           document.body.classList.add("admin");
         } else {
@@ -4196,19 +4227,19 @@ window.onload = function() {
 
     checkAuth();
 
-  async function logout() {
-  await supa.auth.signOut();
+    async function logout() {
+      await supa.auth.signOut();
 
-  const userDisplay =
-    document.getElementById("currentUserDisplay");
+      const userDisplay =
+        document.getElementById("currentUserDisplay");
 
-  if (userDisplay) {
-    userDisplay.textContent = "";
-  }
+      if (userDisplay) {
+        userDisplay.textContent = "";
+      }
 
-  document.body.classList.remove("logged-in");
-  location.reload();
-}
+      document.body.classList.remove("logged-in");
+      location.reload();
+    }
 
     function openBackupList() {
       const box = document.getElementById("backupList");
@@ -5311,6 +5342,19 @@ ${d.toLocaleDateString("de-DE", {
       document.getElementById("f_price").value = "";
       document.getElementById("f_comment").value = "";
       document.getElementById("f_group").value = "";
+      document.getElementById("f_breakfast").checked = true;
+
+      document.getElementById("f_bluecard").checked = false;
+      document.getElementById("f_bluecard_count").value = 1;
+      document.getElementById("f_bluecard_count").disabled = true;
+
+      document.getElementById("f_pet").checked = false;
+      document.getElementById("f_pet_count").value = 1;
+      document.getElementById("f_pet_count").disabled = true;
+
+      document.getElementById("f_crib").checked = false;
+      document.getElementById("f_crib_count").value = 1;
+      document.getElementById("f_crib_count").disabled = true;
     }
 
     function renderGroupBadge(group) {
@@ -5439,19 +5483,19 @@ ${d.toLocaleDateString("de-DE", {
 
       let html = `
       <b>🚪 Zimmer:</b>${roomNumber}<br>
-    <b>👥 Zimmerkategorie:</b>${b.guests || "-"}<br><br>
-    <b>✏️ Name:</b>${b.name || "-"}<br><br>
-    <b>🏢 Firma:</b>${b.company || "-"}<br><br>
+    <b>👥 Zimmerkategorie:</b>${b.guests || "-"}<br>
+    <b>✏️ Name:</b>${b.name || "-"}<br>
+    <b>🏢 Firma:</b>${b.company || "-"}<br>
     <b>📅 Anreise:</b>${start}<br>
-    <b>📅 Abreise:</b>${end}<br><br>
-    <b>💲 Preis:</b>${b.price || "-"}<br><br>
-    <b>💬 Kommentar:</b>${b.comment || "-"}<br><br>
-    <b>Extrainfo:</b>${extra || "-"}<br><br>
+    <b>📅 Abreise:</b>${end}<br>
+    <b>💲 Preis:</b>${b.price || "-"}<br>
+    <b>💬 Kommentar:</b>${b.comment || "-"}<br>
+    <b>✨ Extrainfo:</b>${extra || "-"}<br>
 
 
 <b>🎨 Gruppe:</b>
 ${renderGroupBadge(groupsMap[b.group_id])}
-<br><br>
+<br>
     <b>💰 Bezahlt:</b>${b.paid ? "🟢" : "🔴"}<br>
     <b>🏨 Check-in:</b>${b.checkin ? "🟢" : "🔴"}
   `;
@@ -7029,11 +7073,17 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       }
 
       if (mode === "bookings") {
-        bookings.forEach((b) => {
+
+        const uniqueBookings = Object.values(
+          Object.fromEntries(
+            bookings.map(b => [b.id, b])
+          )
+        );
+
+        uniqueBookings.forEach((b) => {
           if (b.group_id !== data) return;
 
           let type = b.guests;
-
           applyStats(stats, type, 1);
         });
       }
@@ -7153,8 +7203,8 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       let fileContainer = document.getElementById("groupInfoFiles");
 
       let group = groupsMap[groupId];
-
       let creator = userMap[group.user_id] || "Unbekannt";
+
 
       let createdAt = group.created_at
         ? new Date(group.created_at).toLocaleString("de-DE", {
@@ -7204,28 +7254,57 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
       let showCheckinBtn = !isMobile && currentRole !== "read";
 
-      let checkinButton = showCheckinBtn
-        ? `
-    <br>
-    <button 
-      onclick="checkinGroup('${groupId}')"
-      ${allCheckedIn ? "disabled" : ""}
-      style="
-        margin-top:10px;
-        width:100%;
-        padding:8px;
-        border-radius:6px;
-        cursor:${allCheckedIn ? "default" : "pointer"};
-        background:${allCheckedIn ? "#ccc" : "#4caf50"};
-        color:${allCheckedIn ? "#666" : "white"};
-        border:none;
-        font-weight:bold;
-      "
-    >
-      ${allCheckedIn ? "Gruppe eingecheckt" : "gesamte Gruppe einchecken"}
-    </button>
-  `
-        : "";
+      let isOption = group.name.startsWith("Option:");
+
+      let checkinButton = "";
+
+      if (showCheckinBtn) {
+
+        if (isOption) {
+
+          checkinButton = `
+      <br>
+      <button
+      onclick="convertOptionToBooking('${groupId}')"
+        style="
+          margin-top:10px;
+          width:100%;
+          padding:8px;
+          border-radius:6px;
+          background:turquoise;
+          border:none;
+          font-weight:bold;
+        "
+      >
+        Gruppe fest eintragen
+      </button>
+    `;
+
+        } else {
+
+          checkinButton = `
+      <br>
+      <button
+        onclick="checkinGroup('${groupId}')"
+        ${allCheckedIn ? "disabled" : ""}
+        style="
+          margin-top:10px;
+          width:100%;
+          padding:8px;
+          border-radius:6px;
+          cursor:${allCheckedIn ? "default" : "pointer"};
+          background:${allCheckedIn ? "#ccc" : "#4caf50"};
+          color:${allCheckedIn ? "#666" : "white"};
+          border:none;
+          font-weight:bold;
+        "
+      >
+        ${allCheckedIn ? "Gruppe eingecheckt" : "gesamte Gruppe einchecken"}
+      </button>
+    `;
+
+        }
+      }
 
       fileContainer.innerHTML = info + "Lade...";
       box.style.display = "block";
@@ -7282,6 +7361,61 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       }
     }
 
+    function getFreeGroupColor(groupId) {
+
+      const blocked = ["yellow", "pink", "orange", "turquoise"];
+
+      let used = new Set();
+
+      bookings.forEach(b => {
+
+        if (b.group_id === groupId) return;
+
+        let g = groupsMap[b.group_id];
+        if (!g) return;
+
+        used.add(g.color);
+      });
+
+      return colors.find(
+        c => !used.has(c) && !blocked.includes(c)
+      );
+    }
+
+    async function convertOptionToBooking(groupId) {
+
+      let group = groupsMap[groupId];
+      if (!group) return;
+
+      let newColor = getFreeGroupColor(groupId);
+      if (!newColor) {
+        alert("Keine freie Gruppenfarbe verfügbar");
+        return;
+      }
+
+      let newName = group.name.replace(/^Option:\s*/, "");
+
+      const { error } = await supa
+        .from("groups")
+        .update({
+          color: newColor,
+          name: newName
+        })
+        .eq("id", groupId);
+
+      if (error) {
+        console.error(error);
+        alert("Gruppe konnte nicht umgewandelt werden");
+        return;
+      }
+
+      groupsMap[groupId].color = newColor;
+      groupsMap[groupId].name = newName;
+
+      render();
+      drawLegend();
+      openGroupInfo(groupId);
+    }
     async function checkinGroup(groupId) {
       let groupBookings = bookings.filter((b) => b.group_id === groupId);
 
@@ -7652,7 +7786,17 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       const { eventType, new: newRow, old: oldRow } = payload;
 
       if (eventType === "INSERT") {
-        bookings.push({ ...newRow, row: Number(newRow.row) });
+
+        const exists = bookings.some(
+          b => String(b.id) === String(newRow.id)
+        );
+
+        if (!exists) {
+          bookings.push({
+            ...newRow,
+            row: Number(newRow.row)
+          });
+        }
       }
 
       if (eventType === "UPDATE") {
