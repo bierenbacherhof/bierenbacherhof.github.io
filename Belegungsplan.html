@@ -207,6 +207,7 @@
     #bookingTitle,
     #groupInfoTitle,
     #logOverviewTitle,
+    #searchResultsTitle,
     #formTitle {
       font-size: 25px;
       text-align: center;
@@ -219,6 +220,7 @@
     #infoContent,
     #groupInfoBox,
     #logOverview,
+    #bookingSearchResults,
     #groupForm,
     #singleForm {
       font-size: 18px;
@@ -863,6 +865,7 @@
       #bookingTitle,
       #groupInfoTitle,
       #logOverviewTitle,
+      #searchResultsTitle,
       #formTitle,
       #backupTitle {
         font-size: 60px;
@@ -881,7 +884,8 @@
 
 
       #groupInfoBox,
-      #logOverview {
+      #logOverview,
+      #bookingSearchResults {
         max-width: 150vw !important;
         width: 150vw !important;
         max-height: 750px !important;
@@ -1051,6 +1055,12 @@
           Backup einspielen
         </button>
       </div>
+      <input id="bookingSearch" placeholder="Name, Firma oder Gruppe"
+        onkeydown="if(event.key==='Enter') searchBookings();" />
+
+      <button onclick="searchBookings()">
+        🔍
+      </button>
       <button id="newBookingBtn" onclick="event.stopPropagation(); openNewBooking()"
         style="display: none; position: absolute; left: 50%; transform: translateX(-50%)">
         Neue Buchung anlegen
@@ -1123,6 +1133,32 @@
 
         <br />
         <button onclick="closeLogOverview()">Schließen</button>
+      </div>
+
+      <div id="bookingSearchResults" style="
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  background:white;
+  padding:20px;
+  border:1px solid #ccc;
+  border-radius:10px;
+  z-index:30000;
+  width:600px;
+  max-height:600px;
+  overflow:auto;
+  display:none;
+">
+        <h3 id="searchResultsTitle">Suchergebnisse</h3>
+
+        <div id="bookingSearchContent"></div>
+
+        <br>
+
+        <button onclick="closeBookingSearch()">
+          Schließen
+        </button>
       </div>
 
       <div id="overlay" style="
@@ -1481,14 +1517,26 @@
       }
     }
 
-    function applyLogFilter() {
-      let search = document.getElementById("logNameFilter").value.toLowerCase();
+    async function applyLogFilter() {
+      let search = document
+        .getElementById("logNameFilter")
+        .value
+        .trim()
+        .toLowerCase();
 
-      let filtered = allLogs.filter((log) => {
-        if (!(log.field === "booking" && log.new_value === "deleted")) {
-          return false;
-        }
+      const { data: logs, error } = await supa
+        .from("booking_logs")
+        .select("*")
+        .eq("field", "booking")
+        .eq("new_value", "deleted")
+        .order("created_at", { ascending: false });
 
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      let filtered = (logs || []).filter((log) => {
         let oldVal = {};
 
         try {
@@ -1498,11 +1546,11 @@
         let name = (oldVal.name || "").toLowerCase();
         let company = (oldVal.company || "").toLowerCase();
 
-        if (search && !name.includes(search) && !company.includes(search)) {
-          return false;
-        }
-
-        return true;
+        return (
+          !search ||
+          name.includes(search) ||
+          company.includes(search)
+        );
       });
 
       renderLogList(filtered);
@@ -1614,6 +1662,7 @@
         .select("*")
         .order("created_at", { ascending: false })
         .limit(50);
+
 
       if (error) {
         content.innerHTML = "Fehler beim Laden";
@@ -2753,6 +2802,143 @@
 
       const allCheckbox = document.getElementById("chk_all");
       if (allCheckbox) allCheckbox.checked = false;
+    }
+
+    async function searchBookings() {
+
+      const search = document
+        .getElementById("bookingSearch")
+        .value
+        .trim();
+
+      if (!search) return;
+
+      // Gruppen suchen
+      const { data: groups } = await supa
+        .from("groups")
+        .select("id,name")
+        .ilike("name", `%${search}%`);
+
+      const groupIds = (groups || []).map(g => g.id);
+
+      // Name/Firma suchen
+      let query = supa
+        .from("bookings")
+        .select("*")
+        .or(`name.ilike.%${search}%,company.ilike.%${search}%`);
+
+      // Gruppen-Treffer ergänzen
+      if (groupIds.length) {
+        query = supa
+          .from("bookings")
+          .select("*")
+          .or(
+            `name.ilike.%${search}%,company.ilike.%${search}%,group_id.in.(${groupIds.join(",")})`
+          );
+      }
+
+      const { data: results, error } = await query
+        .order("start", { ascending: true })
+        .limit(500);
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      renderBookingSearchResults(results || []);
+    }
+
+    function renderBookingSearchResults(results) {
+
+      const box =
+        document.getElementById("bookingSearchResults");
+
+      const content =
+        document.getElementById("bookingSearchContent");
+
+      if (!results.length) {
+
+        content.innerHTML =
+          "<i>Keine Treffer gefunden</i>";
+
+        box.style.display = "block";
+        return;
+      }
+
+      let html = "";
+
+      results.forEach(b => {
+
+        let groupName = "-";
+
+        if (
+          b.group_id &&
+          groupsMap[b.group_id]
+        ) {
+          groupName = groupsMap[b.group_id].name;
+        }
+
+        html += `
+<div style="
+  padding:10px;
+  border-bottom:1px solid #ddd;
+">
+  <b>Name: ${b.name || "-"}</b>    
+  ${b.company ? `Firma: ${b.company}` : ""}
+  ${groupName !== "-" ? `Gruppe: ${groupName}` : ""}<br>
+  Anreise: ${formatDate(b.start)}
+
+  <button style="right 5px"; onclick="jumpToBooking('${b.id}','${b.start}')">
+  ➜
+</button>
+</div>
+`;
+      });
+
+      content.innerHTML = html;
+      box.style.display = "block";
+    }
+
+    function jumpToBooking(id, start) {
+
+      current = new Date(start);
+
+      localStorage.setItem(
+        "calendar_current_week",
+        current.toISOString()
+      );
+
+      render();
+
+      closeBookingSearch();
+
+      setTimeout(() => {
+
+        const element = document.querySelector(
+          `.booking[data-id="${id}"]`
+        );
+
+        if (!element) return;
+
+        element.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "center"
+        });
+
+        element.style.boxShadow =
+          "0 0 0 5px red";
+
+        setTimeout(() => {
+          element.style.boxShadow = "";
+        }, 5000);
+
+      }, 300);
+    }
+
+    function closeBookingSearch() {
+      document.getElementById("bookingSearchResults").style.display = "none";
     }
 
     function isEditAllowed() {
@@ -6158,23 +6344,24 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
           render();
 
-          logBookingAction({
-            bookingId: id,
-            action: "delete",
-            field: "booking",
+          if (!isAdmin()) {
+            logBookingAction({
+              bookingId: id,
+              action: "delete",
+              field: "booking",
 
-            oldValue: {
-              name: b.name || "",
-              company: b.company || "",
-              guests: b.guests || ""
-            },
+              oldValue: {
+                name: b.name || "",
+                company: b.company || "",
+                guests: b.guests || ""
+              },
 
-            newValue: "deleted",
-            room: rooms[b.row],
+              newValue: "deleted",
+              room: rooms[b.row],
 
-            bookingAt: b.end
-          });
-
+              bookingAt: b.end
+            });
+          }
           isDeleting = false;
         };
 
@@ -8963,7 +9150,8 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         e.target.closest("input") ||
         e.target.closest("select") ||
         e.target.closest("textarea") ||
-        e.target.closest("backupList")
+        e.target.closest("backupList") ||
+        e.target.closest("#bookingSearchResults")
       ) {
         return;
       }
@@ -8973,7 +9161,8 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         document.getElementById("bookingInfo").style.display === "block" ||
         document.getElementById("logOverview").style.display === "block" ||
         document.getElementById("backupList").style.display === "block" ||
-        document.getElementById("groupInfoBox").style.display === "block";
+        document.getElementById("groupInfoBox").style.display === "block" ||
+        document.getElementById("bookingSearchResults").style.display === "block";
 
       if (!overlayOpen) return;
 
@@ -8985,6 +9174,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       const log = document.getElementById("logOverview");
       const overlay = document.getElementById("overlay");
       const groupBox = document.getElementById("groupInfoBox");
+      const searchBox = document.getElementById("bookingSearchResults");
 
       let blocked = false;
 
@@ -9024,6 +9214,14 @@ ${renderGroupBadge(groupsMap[b.group_id])}
           blocked = true;
         }
       }
+
+      if (searchBox && searchBox.style.display === "block") {
+        if (!searchBox.contains(e.target)) {
+          closeBookingSearch();
+          blocked = true;
+        }
+      }
+
 
       if (blocked) {
         blockNextClick = true;
