@@ -222,6 +222,7 @@
     #logOverview,
     #bookingSearchResults,
     #groupForm,
+    #bookingSearch,
     #singleForm {
       font-size: 18px;
     }
@@ -877,7 +878,8 @@
       #bookingForm textarea,
       #infoContent,
       #groupForm,
-      #singleForm {
+      #singleForm,
+      #bookingSearch {
         font-size: 35px;
       }
 
@@ -3608,7 +3610,8 @@ window.onload = () => {
       if (
         neu.length === 0 &&
         zuleger.length === 0 &&
-        kontrolle.length === 0
+        kontrolle.length === 0 &&
+        extras.length === 0
       ) {
         return "";
       }
@@ -3909,7 +3912,7 @@ window.onload = () => {
 
           if (b.bluecard && b.bluecard_count) {
             if (b.bluecard_count === 1) {
-              bluecardText = " - blaue Karte";
+              bluecardText = " - 1 blaue Karte";
             } else {
               bluecardText = ` - ${b.bluecard_count} blaue Karten`;
             }
@@ -3919,7 +3922,7 @@ window.onload = () => {
 
           if (b.crib && b.crib_count) {
             if (b.crib_count === 1) {
-              cribText = "- Kinderbett";
+              cribText = " - 1 Kinderbett";
             } else {
               cribText = ` - ${b.crib_count} Kinderbetten`;
             }
@@ -3928,7 +3931,7 @@ window.onload = () => {
           html += `
                 <div class="row">
                   ${b.name || "-"} ${b.guests} ${(rooms[b.row] || "").split(" - ")[0]}
-                  (${duration} ${duration !== 1 ? "Nächte" : "Nacht"})${petText}
+                  (${duration} ${duration !== 1 ? "Nächte" : "Nacht"})${petText}${bluecardText}${cribText}
                 </div>
                 `;
         });
@@ -3957,7 +3960,7 @@ window.onload = () => {
 
 
       const hkStaff = parseInt(
-        prompt("Wie viele Housekeeping-Mitarbeiter sind eingeplant?")
+        prompt("Wie viele Housekeeping-Mitarbeiter sind für Samstag eingeplant?")
       );
 
       if (!hkStaff || hkStaff < 1) {
@@ -3992,11 +3995,17 @@ window.onload = () => {
 
       addSection(buildBreakfastHTML(saturdayStr));
 
+      const extras = [
+        "Rezeption",
+        "Toiletten",
+        "Saal"
+      ];
+
       addSection(
         buildHousekeepingHTML(
           saturdayStr,
           hkStaff,
-          []
+          extras
         )
       );
 
