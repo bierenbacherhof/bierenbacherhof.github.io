@@ -1265,7 +1265,14 @@
       <button onclick="closeForm()">Abbrechen</button>
     </div>
     <div id="groupForm" style="display: none">
-      <label>Gruppenname</label><br />
+      <div class="switch-wrapper">
+        <span>Gruppenname</span>
+        <label class="switch">
+          <input type="checkbox" id="g_isCompany">
+          <span class="slider"></span>
+        </label>
+        <span>Firma</span>
+      </div>
       <input type="text" id="g_name" required /><br />
 
       <div id="groupCategories" ; style="margin-top:4px"></div>
@@ -2005,6 +2012,7 @@
       let name = document.getElementById("g_name").value.trim();
       let startVal = document.getElementById("g_start").value;
       let endVal = document.getElementById("g_end").value;
+      let isCompany = document.getElementById("g_isCompany").checked;
 
       if (!name) return alert("Bitte Gruppenname eingeben");
       if (!startVal) return alert("Bitte Anreise wählen");
@@ -2044,7 +2052,21 @@
 
       document.getElementById("bookingForm").style.display = "none";
 
-      if (isOption) {
+      if (isCompany) {
+
+        await startPlacementMode(
+          data,
+          start,
+          end,
+          "yellow",
+          floorPriority,
+          name,
+          true
+        );
+
+        return;
+      } else if (isOption) {
+
         startPlacementMode(
           data,
           start,
@@ -2053,7 +2075,9 @@
           floorPriority,
           "Option: " + name
         );
+
       } else {
+
         openColorPicker(
           data,
           start,
@@ -2061,6 +2085,7 @@
           floorPriority,
           name
         );
+
       }
     }
 
@@ -2177,7 +2202,7 @@
 
     let groupPlacement = null;
 
-    async function startPlacementMode(data, start, end, color, floorPriority, customName = null) {
+    async function startPlacementMode(data, start, end, color, floorPriority, customName = null, isCompany = false) {
       window.balconyWarningShown = false;
       saveHistory();
 
@@ -2189,23 +2214,34 @@
 
       let stats = calculateGroupStats(data, "input");
 
-      let group = await createGroup(groupName, color, {
-        start,
-        end,
-        stats
-      });
+      let group = null;
 
-      if (!group) return;
+      if (!isCompany) {
+
+        group = await createGroup(
+          groupName,
+          color,
+          {
+            start,
+            end,
+            stats
+          }
+        );
+
+        if (!group) return;
+      }
 
       groupPlacement = {
         data: JSON.parse(JSON.stringify(data)),
         start,
         end,
-        groupId: group.id,
+        groupId: group ? group.id : null,
         placed: [],
         floorPriority: floorPriority,
-        bluecard: document.getElementById("g_bluecard").checked
+        bluecard: document.getElementById("g_bluecard").checked,
+        isCompany
       };
+
 
       render();
       updatePlacementBox();
@@ -2559,7 +2595,10 @@
 
       let group = groupsMap[groupPlacement.groupId];
 
-      let color = group ? group.color : "black";
+      let color =
+        groupPlacement.isCompany
+          ? "yellow"
+          : (group ? group.color : "black");
 
       box.style.background = color;
 
@@ -3061,7 +3100,9 @@ extra Räume
         "Semi 3",
         "Semi 4",
         "Semi 4a",
-        "Semi 5"
+        "Semi 5",
+        "Container leeren",
+        "Lager auffüllen"
       ];
 
 
@@ -3073,6 +3114,10 @@ extra Räume
 
         if (day === 0) {
           base.push("Restaurant", "Fachwerk", "Schenke", "Backoffice", "Kegelbahn", "Treppenhaus");
+        }
+
+        if (day === 2 || day === 5) {
+          base.push("Container leeren", "Lager auffüllen");
         }
 
         return base;
@@ -4820,11 +4865,12 @@ ${d.toLocaleDateString("de-DE", {
         start: groupPlacement.start.toISOString(),
         end: groupPlacement.end.toISOString(),
         name: "",
+        company: groupPlacement.isCompany ? document.getElementById("g_name").value.trim() : "",
         price: item.price,
         comment: "",
         guests: item.type,
-        group_id: group.id,
-        color: group.color,
+        group_id: group ? group.id : null,
+        color: group ? group.color : "yellow",
         user_id: user.id,
         paid: false,
         checkin: false,
@@ -5060,6 +5106,14 @@ ${d.toLocaleDateString("de-DE", {
         opt.innerText = o === "BLOCK" ? "🚫 Block" : o;
         select.appendChild(opt);
       });
+
+      // Vorauswahl
+      if (roomName.includes("DZ")) {
+        select.value = "DZ";
+      } else {
+        select.value = opts[0];
+      }
+
 
       let startDate = new Date(startOfWeek(current));
       startDate.setDate(startDate.getDate() + day);
@@ -5549,6 +5603,8 @@ ${d.toLocaleDateString("de-DE", {
       document.getElementById("f_crib").checked = false;
       document.getElementById("f_crib_count").value = 1;
       document.getElementById("f_crib_count").disabled = true;
+
+      resetGroupForm();
     }
 
     function renderGroupBadge(group) {
@@ -7611,6 +7667,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       drawLegend();
       openGroupInfo(groupId);
     }
+
     async function checkinGroup(groupId) {
       let groupBookings = bookings.filter((b) => b.group_id === groupId);
 
@@ -8139,19 +8196,22 @@ ${renderGroupBadge(groupsMap[b.group_id])}
 
     async function createBackupIfNeeded() {
       if (currentRole !== "staff" || isMobile) return;
-      const INTERVAL = 24 * 60 * 60 * 1000;
 
-      const { data, error } = await supa.from("backup_meta").select("*").eq("id", 1).single();
+      const { data, error } = await supa
+        .from("backup_meta")
+        .select("*")
+        .eq("id", 1)
+        .single();
 
       if (error) {
         console.error(error);
         return;
       }
 
-      const last = new Date(data.last_backup).getTime();
-      const now = Date.now();
+      const today = new Date().toLocaleDateString("de-DE");
+      const lastBackupDay = new Date(data.last_backup).toLocaleDateString("de-DE");
 
-      if (now - last < INTERVAL) {
+      if (today === lastBackupDay) {
         return;
       }
 
@@ -8164,6 +8224,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         })
         .eq("id", 1);
     }
+
     function resetGroupForm() {
       document.getElementById("g_name").value = "";
       document.getElementById("g_start").value = "";
@@ -8174,6 +8235,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       document.getElementById("g_floorPriority").checked = false;
       document.getElementById("g_option").checked = false;
       document.getElementById("g_bluecard").checked = false;
+      document.getElementById("g_isCompany").checked = false;
     }
 
 
@@ -8809,6 +8871,28 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       }
 
     }
+
+    document.getElementById("f_start").addEventListener("change", function () {
+      if (!this.value) return;
+      let d = new Date(this.value);
+      d.setDate(d.getDate() + 1);
+
+      document.getElementById("f_end").value =
+        d.toISOString().split("T")[0];
+
+    });
+
+    document.getElementById("g_start").addEventListener("change", function () {
+      if (!this.value) return;
+      let d = new Date(this.value);
+      d.setDate(d.getDate() + 1);
+
+      document.getElementById("g_end").value =
+        d.toISOString().split("T")[0];
+
+    });
+
+
     function printBooking(index) {
       let b = bookings[index];
       let group = groupsMap[b.group_id];
@@ -8863,6 +8947,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       win.document.write(html);
       win.document.close();
     }
+
     function resetCalendarPosition() {
       calendar.style.transition = "none";
       calendar.style.transform = "translateX(0)";
