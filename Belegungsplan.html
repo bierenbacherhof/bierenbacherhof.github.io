@@ -15,6 +15,7 @@
       -webkit-text-size-adjust: 100%;
     }
 
+
     html {
       height: 100%;
     }
@@ -2923,15 +2924,20 @@
 <div style="
   padding:10px;
   border-bottom:1px solid #ddd;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
 ">
-  <b>Name: ${b.name || "-"}</b>    
-  ${b.company ? `Firma: ${b.company}` : ""}
-  ${groupName !== "-" ? `Gruppe: ${groupName}` : ""}<br>
-  Anreise: ${formatDate(b.start)}
+  <div>
+    <b>Name: ${b.name || "-"} </b>
+    ${b.company ? `Firma: ${b.company}` : ""}
+    ${groupName !== "-" ? `Gruppe: ${groupName}` : ""}<br>
+    Anreise: ${formatDate(b.start)}
+  </div>
 
-  <button style="right 5px"; onclick="jumpToBooking('${b.id}','${b.start}')">
-  ➜
-</button>
+  <button onclick="jumpToBooking('${b.id}','${b.start}')">
+    ➜
+  </button>
 </div>
 `;
       });
@@ -3112,11 +3118,15 @@ extra Räume
 
         let base = ["Rezeption", "Toiletten", "Saal"];
 
-        if (day === 0) {
+        if (day === 1) {
           base.push("Restaurant", "Fachwerk", "Schenke", "Backoffice", "Kegelbahn", "Treppenhaus");
         }
 
-        if (day === 2 || day === 5) {
+        if (day === 3) {
+          base.push("Container leeren", "Lager auffüllen");
+        }
+
+        if (day === 6) {
           base.push("Container leeren", "Lager auffüllen");
         }
 
@@ -4042,7 +4052,9 @@ window.onload = () => {
       const extras = [
         "Rezeption",
         "Toiletten",
-        "Saal"
+        "Saal",
+        "Container leeren",
+        "Lager auffüllen"
       ];
 
       addSection(
@@ -8194,35 +8206,47 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       document.body.removeChild(a);
     }
 
+    let backupRunning = false;
+
     async function createBackupIfNeeded() {
       if (currentRole !== "staff" || isMobile) return;
 
-      const { data, error } = await supa
-        .from("backup_meta")
-        .select("*")
-        .eq("id", 1)
-        .single();
+      if (backupRunning) return;
+      backupRunning = true;
 
-      if (error) {
-        console.error(error);
-        return;
+      try {
+
+        const { data, error } = await supa
+          .from("backup_meta")
+          .select("*")
+          .eq("id", 1)
+          .single();
+
+        if (error) {
+          console.error(error);
+          return;
+        }
+
+        const today = new Date().toLocaleDateString("de-DE");
+        const lastBackupDay =
+          new Date(data.last_backup).toLocaleDateString("de-DE");
+
+        if (today === lastBackupDay) {
+          return;
+        }
+
+        await createBackup();
+
+        await supa
+          .from("backup_meta")
+          .update({
+            last_backup: new Date().toISOString()
+          })
+          .eq("id", 1);
+
+      } finally {
+        backupRunning = false;
       }
-
-      const today = new Date().toLocaleDateString("de-DE");
-      const lastBackupDay = new Date(data.last_backup).toLocaleDateString("de-DE");
-
-      if (today === lastBackupDay) {
-        return;
-      }
-
-      await createBackup();
-
-      await supa
-        .from("backup_meta")
-        .update({
-          last_backup: new Date().toISOString()
-        })
-        .eq("id", 1);
     }
 
     function resetGroupForm() {
