@@ -917,6 +917,13 @@
         display: inline-block !important;
       }
 
+      .searchJumpBtn {
+        display: inline-block !important;
+        font-size: 40px !important;
+        min-width: 60px;
+        min-height: 60px;
+      }
+
       body.admin #newBookingBtn {
         display: inline-block !important;
       }
@@ -2935,7 +2942,7 @@
     Anreise: ${formatDate(b.start)}
   </div>
 
-  <button onclick="jumpToBooking('${b.id}','${b.start}')">
+  <button class="searchJumpBtn" onclick="jumpToBooking('${b.id}','${b.start}')">
     ➜
   </button>
 </div>
