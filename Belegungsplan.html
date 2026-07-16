@@ -1051,7 +1051,6 @@
         <label for="datePicker" class="allowed">📅</label>
       </div>
 
-      <button onclick="undo()" id="undo" style="display: none" title="Rückgängig (Strg+Z)">↶</button>
       <button onclick="openBackupList()" id="backupBtn" style="display: none">Backups</button>
 
       <div id="backupList" class="overlay-box" style="display:none">
@@ -1457,9 +1456,7 @@
     let newBookingRow = null;
     let resizing = false;
     let editIndex = null;
-    let history = [];
     let isRestoring = false;
-    let isUndoing = false;
     let isDeleting = false;
     let justDragged = false;
     let clickTimer = null;
@@ -1489,8 +1486,6 @@
     if (savedWeek) {
       current = new Date(savedWeek);
     }
-
-    history = JSON.parse(localStorage.getItem("hotel_history") || "[]");
 
     function trimText(str, max) {
       if (!str) return "";
@@ -2218,7 +2213,7 @@
 
     async function startPlacementMode(data, start, end, color, floorPriority, customName = null, isCompany = false) {
       window.balconyWarningShown = false;
-      saveHistory();
+     
 
       isGroupCreating = true;
 
@@ -4373,7 +4368,6 @@ window.onload = function() {
       const newBookingBtn = document.getElementById("newBookingBtn");
       const printBtn = document.getElementById("printListsBtn");
       const monthlyBtn = document.getElementById("monthlyStatsBtn");
-      const undo = document.getElementById("undo");
       const checkInAllBtn = document.getElementById("checkInAllBtn");
       const backupBtn = document.getElementById("backupBtn");
       const weekUp = document.getElementById("weekUp");
@@ -4432,9 +4426,6 @@ window.onload = function() {
           }
         }
 
-        if (undo) {
-          undo.style.display = isEditAllowed() && !isMobile ? "inline-block" : "none";
-        }
 
         if (printBtn) {
           printBtn.style.display = !isMobile && currentRole !== "read" ? "inline-block" : "none";
@@ -4656,140 +4647,6 @@ ${d.toLocaleDateString("de-DE", {
       drawLegend();
 
       requestAnimationFrame(updateStickyPositions);
-    }
-
-    function saveHistory() {
-      try {
-        if (isGroupCreating) return;
-
-        const snapshot = {
-          bookings: JSON.parse(JSON.stringify(bookings)),
-          current: current.toISOString()
-        };
-
-        history.push(snapshot);
-
-        if (history.length > 10) {
-          history = history.slice(-10);
-        }
-
-        localStorage.setItem("hotel_history", JSON.stringify(history));
-      } catch (e) {
-        console.warn("⚠️ saveHistory Error – wird ignoriert", e);
-
-        history = [];
-        localStorage.removeItem("hotel_history");
-      }
-    }
-
-    async function undo() {
-      if (history.length === 0) return;
-
-      let last = history.pop();
-      if (!last) return;
-
-      const snapshot = last.bookings;
-
-      const { data: userData } = await supa.auth.getUser();
-      const currentUser = userData.user;
-
-      if (!currentUser) {
-        alert("Nicht eingeloggt!");
-        return;
-      }
-
-      const userId = currentUser.id;
-
-      let currentMap = new Map(bookings.map((b) => [String(b.id), b]));
-      let snapshotMap = new Map(snapshot.map((b) => [String(b.id), b]));
-
-      let toInsert = [];
-      let toUpdate = [];
-      let toDelete = [];
-
-      let skippedForeign = [];
-
-      for (let [id, snap] of snapshotMap) {
-        if (!currentMap.has(id)) {
-          if (snap.user_id && snap.user_id !== userId) {
-            skippedForeign.push(snap);
-            continue;
-          }
-
-          let copy = { ...snap };
-          delete copy.id;
-          toInsert.push(copy);
-          continue;
-        }
-
-        let cur = currentMap.get(id);
-
-        if (cur.user_id && cur.user_id !== userId) {
-          skippedForeign.push(cur);
-          continue;
-        }
-
-        if (JSON.stringify(cur) !== JSON.stringify(snap)) {
-          let copy = { ...snap };
-          delete copy.id;
-
-          toUpdate.push({ id, data: copy });
-        }
-      }
-
-      let groupDeletes = new Set();
-
-      for (let [id, cur] of currentMap) {
-        if (!snapshotMap.has(id)) {
-          if (cur.user_id && cur.user_id !== userId) {
-            skippedForeign.push(cur);
-            continue;
-          }
-
-          if (cur.group_id) {
-            groupDeletes.add(cur.group_id);
-          } else {
-            toDelete.push(id);
-          }
-        }
-      }
-
-      for (let groupId of groupDeletes) {
-        for (let [id, cur] of currentMap) {
-          if (cur.group_id === groupId) {
-            if (cur.user_id && cur.user_id !== userId) {
-              skippedForeign.push(cur);
-              continue;
-            }
-
-            toDelete.push(id);
-          }
-        }
-      }
-
-      isUndoing = true;
-
-      if (toDelete.length) {
-        await supa.from("bookings").delete().in("id", toDelete);
-
-        if (groupDeletes.size > 0) {
-          bookings = bookings.filter((b) => !groupDeletes.has(b.group_id));
-        } else {
-          bookings = bookings.filter((b) => !toDelete.includes(String(b.id)));
-        }
-      }
-
-      for (let u of toUpdate) {
-        await supa.from("bookings").update(u.data).eq("id", u.id);
-      }
-
-      if (toInsert.length) {
-        await supa.from("bookings").insert(toInsert);
-      }
-
-      isUndoing = false;
-
-      await loadData();
     }
 
     async function changeWeek(n) {
@@ -5291,8 +5148,6 @@ ${d.toLocaleDateString("de-DE", {
           return alert("Zimmer bereits belegt!");
         }
 
-        saveHistory();
-
         let oldStart = b.start;
         let oldEnd = b.end;
         let oldName = b.name;
@@ -5462,7 +5317,7 @@ ${d.toLocaleDateString("de-DE", {
 
     function startSinglePlacement(data) {
       window.balconyWarningShown = false;
-      saveHistory();
+    
 
       singlePlacement = {
         ...data
@@ -6418,7 +6273,6 @@ ${renderGroupBadge(groupsMap[b.group_id])}
           }
 
           isDeleting = true;
-          saveHistory();
 
           const { data, error } = await supa.from("bookings").delete().eq("id", id).select();
 
@@ -6643,8 +6497,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         newEnd.setHours(CHECKOUT_HOUR, 0, 0, 0);
 
         if (!overlapDates(b.row, newStart, newEnd, currentDrag.id)) {
-          saveHistory();
-
+          
           b.start = newStart.toISOString();
           b.end = newEnd.toISOString();
 
@@ -6775,7 +6628,6 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       };
 
       const resizeEnd = async (ev) => {
-        saveHistory();
 
         resizing = false;
         drag = null;
@@ -7016,8 +6868,6 @@ ${renderGroupBadge(groupsMap[b.group_id])}
           )
             return;
         }
-
-        saveHistory();
 
         const simpleColors = ["yellow", "pink", "orange", "turquoise"];
 
@@ -7975,7 +7825,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
     supa
       .channel("live-bookings")
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, (payload) => {
-        if (isRestoring || isUndoing || isDeleting || isDraggingUpdate || isResizingUpdate) {
+        if (isRestoring || isDeleting || isDraggingUpdate || isResizingUpdate) {
           return;
         }
 
@@ -8404,8 +8254,6 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         return;
       }
 
-      saveHistory();
-
       let ids = toDelete.map((b) => b.id);
 
       const loadingTimer = setTimeout(() => {
@@ -8462,12 +8310,6 @@ ${renderGroupBadge(groupsMap[b.group_id])}
           saveBooking();
           return;
         }
-      }
-
-      if (e.ctrlKey && e.key.toLowerCase() === "z") {
-        e.preventDefault();
-        undo();
-        return;
       }
 
       if (e.key.toLowerCase() === "f") {
