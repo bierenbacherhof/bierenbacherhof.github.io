@@ -2213,7 +2213,7 @@
 
     async function startPlacementMode(data, start, end, color, floorPriority, customName = null, isCompany = false) {
       window.balconyWarningShown = false;
-     
+
 
       isGroupCreating = true;
 
@@ -3046,7 +3046,7 @@
 <label><input type="checkbox" id="chk_afternoon"><b>Nachmittags drucken</b></label><br>
 
     <label><input type="checkbox" class="list-option"> Check-In</label><br>
-    
+     <label><input type="checkbox" class="list-option"> bleibende Hausgäste</label><br>
     <label><input type="checkbox" class="list-option"> Freie Zimmer</label><br>
    <label><input type="checkbox" class="list-option"> Check-Out</label><br>
 
@@ -3195,7 +3195,7 @@ extra Räume
         }
 
         if (options[1].checked) {
-          let html = buildFreeRoomsHTML(date);
+          let html = buildStayListHTML(date);
 
           if (html && html.trim() !== "") {
             content += `<div class="print-section">${html}</div>`;
@@ -3203,6 +3203,16 @@ extra Räume
         }
 
         if (options[2].checked) {
+          let html = buildFreeRoomsHTML(date);
+
+          if (html && html.trim() !== "") {
+            content += `<div class="print-section">${html}</div>`;
+          }
+        }
+
+
+
+        if (options[3].checked) {
           let html = buildCheckOutHTML(date);
 
           if (html && html.trim() !== "") {
@@ -3210,7 +3220,7 @@ extra Räume
           }
         }
 
-        if (options[3] && options[3].checked) {
+        if (options[4] && options[4].checked) {
           let limit = parseInt(hkValue);
 
           if (!limit) {
@@ -3229,7 +3239,7 @@ extra Räume
           }
         }
 
-        if (options[4].checked) {
+        if (options[5].checked) {
           let html = buildBreakfastHTML(date);
 
           if (html && html.trim() !== "") {
@@ -3359,14 +3369,14 @@ window.onload = () => {
       morningCheckbox.onchange = () => {
         if (morningCheckbox.checked) {
           options.forEach((opt, i) => {
-            opt.checked = i >= 2 && i <= 4;
+            opt.checked = i >= 3 && i <= 5;
           });
 
           afternoonCheckbox.checked = false;
           allCheckbox.checked = false;
         }
         if (!morningCheckbox.checked) {
-          [2, 3, 4].forEach(i => {
+          [3, 4, 5].forEach(i => {
             options[i].checked = false;
 
           });
@@ -3376,14 +3386,14 @@ window.onload = () => {
       afternoonCheckbox.onchange = () => {
         if (afternoonCheckbox.checked) {
           options.forEach((opt, i) => {
-            opt.checked = i === 0 || i === 1;
+            opt.checked = i === 0 || i === 1 || i === 2;
           });
 
           morningCheckbox.checked = false;
           allCheckbox.checked = false;
         }
         if (!afternoonCheckbox.checked) {
-          [0, 1].forEach(i => {
+          [0, 1, 2].forEach(i => {
             options[i].checked = false;
 
           });
@@ -3423,7 +3433,7 @@ window.onload = () => {
         return "";
       }
 
-      return buildListHTML("Check-In Liste", date, arrivals);
+      return buildListHTML("Check-In", date, arrivals);
     }
 
     function buildCheckOutHTML(dateStr) {
@@ -3450,32 +3460,84 @@ window.onload = () => {
         return "";
       }
 
-      return buildListHTML("Check-Out Liste", date, departures);
+      return buildListHTML("Check-Out", date, departures);
+    }
+
+    function buildStayListHTML(dateStr) {
+      const date = new Date(dateStr);
+      date.setHours(0, 0, 0, 0);
+
+      const uniqueBookings = Object.values(
+        Object.fromEntries(bookings.map(b => [b.id, b]))
+      );
+
+      const stayingGuests = uniqueBookings.filter(b => {
+        if (!isValidRoom(b.row)) return false;
+        if (b.guests === "BLOCK") return false;
+
+        const start = new Date(b.start);
+        const end = new Date(b.end);
+
+        start.setHours(0, 0, 0, 0);
+        end.setHours(0, 0, 0, 0);
+
+        // Gast ist bereits angereist UND reist noch nicht ab
+        return start < date && end > date;
+      });
+
+      if (!stayingGuests.length) {
+        return "";
+      }
+
+      return buildListHTML(
+        "bleibende Hausgäste",
+        date,
+        stayingGuests
+      );
     }
 
     function buildFreeRoomsHTML(dateStr) {
+
       const base = new Date(dateStr);
       base.setHours(0, 0, 0, 0);
 
-      let html = `<h1>Freie Zimmer ${base.toLocaleDateString("de-DE")}</h1>`;
+      let html = `
+<h1>
+  Freie Zimmer
+  ${base.toLocaleDateString("de-DE")}
+</h1>
+
+<table class="print-list">
+  <tbody>
+`;
 
       const nightsLimit = 7;
 
       rooms.forEach((roomName, rowIndex) => {
+
         if (!roomName || roomName.trim() === "") return;
+
         let consecutiveFreeNights = 0;
 
         for (let i = 0; i < nightsLimit; i++) {
-          let nightStart = new Date(base); nightStart.setDate(base.getDate() + i); let
-            nightEnd = new Date(base); nightEnd.setDate(base.getDate() + i + 1); let occupied = bookings.some((b) => {
-              if (b.row !== rowIndex) return false;
-              if (b.guests === "BLOCK") return true;
 
-              let start = new Date(b.start);
-              let end = new Date(b.end);
+          let nightStart = new Date(base);
+          nightStart.setDate(base.getDate() + i);
 
-              return start < nightEnd && end > nightStart;
-            });
+          let nightEnd = new Date(base);
+          nightEnd.setDate(base.getDate() + i + 1);
+
+          let occupied = bookings.some((b) => {
+
+            if (b.row !== rowIndex) return false;
+
+            if (b.guests === "BLOCK") return true;
+
+            let start = new Date(b.start);
+            let end = new Date(b.end);
+
+            return start < nightEnd && end > nightStart;
+          });
 
           if (occupied) break;
 
@@ -3484,26 +3546,36 @@ window.onload = () => {
 
         if (consecutiveFreeNights === 0) return;
 
-        let roomLabel = roomName;
-
         let text = "";
 
         if (consecutiveFreeNights >= 7) {
           text = "7+ Nächte";
         } else {
-          let endDate = new Date(base);
-          endDate.setDate(base.getDate() + consecutiveFreeNights);
 
-          text = `${consecutiveFreeNights} ${consecutiveFreeNights === 1 ? "Nacht" : "Nächte"
-            } (bis zum ${endDate.toLocaleDateString("de-DE")})`;
+          let endDate = new Date(base);
+          endDate.setDate(
+            base.getDate() + consecutiveFreeNights
+          );
+
+          text =
+            `${consecutiveFreeNights} ` +
+            `${consecutiveFreeNights === 1 ? "Nacht" : "Nächte"} ` +
+            `(bis ${endDate.toLocaleDateString("de-DE")})`;
         }
 
         html += `
-      <div class="row">
-        ${roomLabel}, ${text}
-      </div>
-      `;
+      <tr>
+        <td>
+          ${roomName} - ${text}
+        </td>
+      </tr>
+    `;
       });
+
+      html += `
+      </tbody>
+    </table>
+  `;
 
       return html;
     }
@@ -3815,15 +3887,21 @@ window.onload = () => {
     }
 
     function buildBreakfastHTML(dateStr) {
+
       const base = new Date(dateStr);
       base.setHours(0, 0, 0, 0);
 
       const breakfastDate = new Date(base);
       breakfastDate.setDate(base.getDate() + 1);
 
-      const uniqueBookings = Object.values(Object.fromEntries(bookings.map((b) => [b.id, b])));
+      const uniqueBookings = Object.values(
+        Object.fromEntries(
+          bookings.map((b) => [b.id, b])
+        )
+      );
 
       const relevant = uniqueBookings.filter((b) => {
+
         if (!isValidRoom(b.row)) return false;
         if (b.guests === "BLOCK") return false;
         if (b.breakfast === false) return false;
@@ -3834,12 +3912,16 @@ window.onload = () => {
         start.setHours(0, 0, 0, 0);
         end.setHours(0, 0, 0, 0);
 
-        return start < breakfastDate && end >= breakfastDate;
+        return (
+          start < breakfastDate &&
+          end >= breakfastDate
+        );
       });
 
       if (!relevant.length) {
         return "";
       }
+
       function getGuestCount(type) {
         if (type === "EZ" || type === "EZ B") return 1;
         if (type === "DZ" || type === "DZ B") return 2;
@@ -3855,10 +3937,13 @@ window.onload = () => {
       let totalGuests = 0;
 
       relevant.forEach((b) => {
+
         let count = getGuestCount(b.guests);
+
         totalGuests += count;
 
         if (b.group_id && groupsMap[b.group_id]) {
+
           const g = groupsMap[b.group_id];
 
           if (!groupedByGroup[g.id]) {
@@ -3869,60 +3954,97 @@ window.onload = () => {
           }
 
           groupedByGroup[g.id].guests += count;
+
         } else if (b.company) {
+
           if (!groupedByCompany[b.company]) {
             groupedByCompany[b.company] = 0;
           }
 
           groupedByCompany[b.company] += count;
+
         } else {
+
           singles.push({
             name: b.name || "-",
             guests: count
           });
+
         }
       });
 
       let html = `
-                <h1>
-                  Frühstücksliste ${breakfastDate.toLocaleDateString("de-DE")}
-                  <br>
-                  Gesamt: ${totalGuests} Personen
-                </h1>
-                `;
+<h1>
+  Frühstücksliste
+  ${breakfastDate.toLocaleDateString("de-DE")}
+  - Gesamt: ${totalGuests} Personen
+</h1>
+
+<table class="print-list">
+  <tbody>
+`;
 
       Object.values(groupedByGroup).forEach((g) => {
+
         html += `
-                <div class="row">
-                  Gruppe: ${trimText(g.name, 15)} – ${g.guests} Personen
-                </div>
-                `;
+      <tr>
+        <td>
+          Gruppe:
+          ${trimText(g.name, 15)}
+          - ${g.guests} Personen
+        </td>
+      </tr>
+    `;
       });
 
-      Object.entries(groupedByCompany).forEach(([company, guests]) => {
-        html += `
-                <div class="row">
-                  Firma: ${company} – ${guests} Personen
-                </div>
-                `;
-      });
+      Object.entries(groupedByCompany).forEach(
+        ([company, guests]) => {
+
+          html += `
+        <tr>
+          <td>
+            Firma:
+            ${company}
+            - ${guests} Personen
+          </td>
+        </tr>
+      `;
+        }
+      );
 
       if (singles.length) {
-        html += `<h2>Einzelgäste</h2>`;
+
+        html += `
+      <tr>
+        <td>
+          <b>Einzelgäste</b>
+        </td>
+      </tr>
+    `;
 
         singles.forEach((s) => {
+
           html += `
-                <div class="row">
-                  ${s.name} – ${s.guests} Person${s.guests > 1 ? "en" : ""}
-                </div>
-                `;
+        <tr>
+          <td>
+            ${s.name}
+            - ${s.guests}
+            Person${s.guests > 1 ? "en" : ""}
+          </td>
+        </tr>
+      `;
         });
       }
 
+      html += `
+      </tbody>
+    </table>
+  `;
+
       return html;
     }
-
     function buildListHTML(title, date, list) {
+      const isCheckInList = title.startsWith("Check-In");
       const groupedByGroup = {};
       const groupedByCompany = {};
       const singles = [];
@@ -3950,69 +4072,127 @@ window.onload = () => {
       });
 
       function renderList(title, list) {
+
         if (!list.length) return "";
 
-        let html = `<h2>${title}</h2>`;
+        let html = `
+    <table class="print-list">
+      <thead>
+  <tr>
+    <th colspan="${isCheckInList ? 7 : 6}">
+      <h2 style="margin:0;">
+        ${title}
+      </h2>
+    </th>
+  </tr>
+</thead>
+      <tbody>
+  `;
 
         list.forEach((b) => {
+
           let end = new Date(b.end);
           let start = new Date(b.start);
 
-          let duration = Math.round((end - start) / (1000 * 60 * 60 * 24));
+          let duration =
+            Math.round(
+              (end - start) /
+              (1000 * 60 * 60 * 24)
+            );
 
           let petText = "";
-
           if (b.pet && b.pet_count) {
-            if (b.pet_count === 1) {
-              petText = " - 1 Hund";
-            } else {
-              petText = ` - ${b.pet_count} Hunde`;
-            }
+            petText =
+              b.pet_count === 1
+                ? "1 Hund"
+                : `${b.pet_count} Hunde`;
           }
 
           let bluecardText = "";
-
           if (b.bluecard && b.bluecard_count) {
-            if (b.bluecard_count === 1) {
-              bluecardText = " - 1 blaue Karte";
-            } else {
-              bluecardText = ` - ${b.bluecard_count} blaue Karten`;
-            }
+            bluecardText =
+              b.bluecard_count === 1
+                ? "1 blaue Karte"
+                : `${b.bluecard_count} blaue Karten`;
           }
 
           let cribText = "";
-
           if (b.crib && b.crib_count) {
-            if (b.crib_count === 1) {
-              cribText = " - 1 Kinderbett";
-            } else {
-              cribText = ` - ${b.crib_count} Kinderbetten`;
-            }
+            cribText =
+              b.crib_count === 1
+                ? "1 Kinderbett"
+                : `${b.crib_count} Kinderbetten`;
           }
 
+          const extras = [
+            petText,
+            bluecardText,
+            cribText
+          ].filter(Boolean).join(", ");
+
           html += `
-                <div class="row">
-                  ${b.name || "-"} ${b.guests} ${(rooms[b.row] || "").split(" - ")[0]}
-                  (${duration} ${duration !== 1 ? "Nächte" : "Nacht"})${petText}${bluecardText}${cribText}
-                </div>
-                `;
+<tr>
+  <td>${b.name || "-"}</td>
+  <td>${b.guests}</td>
+  <td>${(rooms[b.row] || "").split(" - ")[0]}</td>
+  <td>
+    ${duration} ${duration !== 1 ? "Nächte" : "Nacht"}
+    ${extras ? " - " + extras : ""}
+  </td>
+  <td>${b.price || ""} €</td>
+  <td>
+    <input type="checkbox" ${b.paid ? "checked" : ""}>
+    bezahlt
+  </td>
+  ${isCheckInList
+              ? `
+      <td>
+        <input type="checkbox" ${b.checkin ? "checked" : ""}>
+        eingecheckt
+      </td>
+      `
+              : ""
+            }
+</tr>
+`;
+
+
+
         });
+
+        html += `
+      </tbody>
+    </table>
+  `;
 
         return html;
       }
-
-      let html = `<h1>${title} ${date.toLocaleDateString("de-DE")}</h1>`;
+      let html = `
+<h1>
+  ${title}
+  ${date.toLocaleDateString("de-DE")}
+</h1>
+`;
 
       Object.values(groupedByGroup).forEach((g) => {
-        html += renderList(`Gruppe: ${trimText(g.name, 15)}`, g.list);
+        html += renderList(
+          `Gruppe: ${trimText(g.name, 15)} (${date.toLocaleDateString("de-DE")})`,
+          g.list
+        );
       });
 
       Object.entries(groupedByCompany).forEach(([company, list]) => {
-        html += renderList(`Firma: ${trimText(company, 15)}`, list);
+        html += renderList(
+          `Firma: ${trimText(company, 15)} (${date.toLocaleDateString("de-DE")})`,
+          list
+        );
       });
 
       if (singles.length) {
-        html += renderList("Einzelgäste", singles);
+        html += renderList(
+          `Einzelgäste (${date.toLocaleDateString("de-DE")})`,
+          singles
+        );
       }
 
       return html;
@@ -4099,6 +4279,57 @@ window.onload = () => {
                         margin: 0 auto;
                       }
 
+                      .print-list {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+.print-list thead {
+  display: table-header-group;
+}
+
+.print-list tfoot {
+  display: table-footer-group;
+}
+
+.print-list tr {
+  page-break-inside: avoid;
+}
+
+.print-list th {
+  text-align: left;
+  font-size: 28px;
+  font-weight: bold;
+  padding: 8px 0;
+}
+
+.print-list td {
+  font-size: 22px;
+  padding: 3px 6px;
+  vertical-align: top;
+}
+
+.print-list input[type="checkbox"] {
+  transform: scale(1.2);
+  margin-right: 4px;
+}
+
+.hk-table {
+  page-break-inside: auto;
+}
+
+.hk-table thead th {
+  border-bottom: 2px solid black;
+  padding-bottom: 10px;
+}
+
+.hk-table td {
+  width: 33%;
+  vertical-align: top;
+}
+
+
                       h1 {
                         font-size: 30px;
                         margin-bottom: 20px;
@@ -4113,7 +4344,7 @@ window.onload = () => {
                       }
 
                       .row {
-                        font-size: 20px;
+                        font-size: 22px;
                         margin-bottom: 6px;
                         font-weight: normal;
                       }
@@ -5317,7 +5548,7 @@ ${d.toLocaleDateString("de-DE", {
 
     function startSinglePlacement(data) {
       window.balconyWarningShown = false;
-    
+
 
       singlePlacement = {
         ...data
@@ -6497,7 +6728,7 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         newEnd.setHours(CHECKOUT_HOUR, 0, 0, 0);
 
         if (!overlapDates(b.row, newStart, newEnd, currentDrag.id)) {
-          
+
           b.start = newStart.toISOString();
           b.end = newEnd.toISOString();
 
