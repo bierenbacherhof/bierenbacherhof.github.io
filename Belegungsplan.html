@@ -1230,8 +1230,11 @@
       <label>Abreise</label><br />
       <input type="date" id="f_end" /><br />
 
-      <label>Preis (€)</label><br />
-      <input type="text" id="f_price" /><br />
+      <label>Preis pro Nacht (€)</label><br>
+      <input type="text" id="f_price"><br>
+
+      <label>Gesamtpreis (€)</label><br>
+      <input type="text" id="f_totalprice"><br>
 
       <label>Kommentar</label><br />
       <input type="text" id="f_comment" /><br />
@@ -4128,6 +4131,7 @@ window.onload = () => {
             cribText
           ].filter(Boolean).join(", ");
 
+
           html += `
 <tr>
   <td>${b.name || "-"}</td>
@@ -4137,7 +4141,19 @@ window.onload = () => {
     ${duration} ${duration !== 1 ? "Nächte" : "Nacht"}
     ${extras ? " - " + extras : ""}
   </td>
-  <td>${b.price || ""} €</td>
+  <td>
+${isNaN(parseFloat(b.price))
+              ? b.price
+              : (
+                parseFloat(b.price) *
+                Math.round(
+                  (new Date(b.end) - new Date(b.start)) /
+                  (1000 * 60 * 60 * 24)
+                )
+              ).toFixed(2) + " €"
+            }
+</td>
+
   <td>
     <input type="checkbox" ${b.paid ? "checked" : ""}>
     bezahlt
@@ -5645,6 +5661,24 @@ ${d.toLocaleDateString("de-DE", {
       document.getElementById("f_name").value = b.name || "";
       document.getElementById("f_company").value = b.company || "";
       document.getElementById("f_price").value = b.price || "";
+
+      if (!isNaN(parseFloat(b.price))) {
+
+        let nights =
+          Math.round(
+            (new Date(b.end) - new Date(b.start)) /
+            (1000 * 60 * 60 * 24)
+          );
+
+        document.getElementById("f_totalprice").value =
+          (parseFloat(b.price) * nights).toFixed(2);
+
+      } else {
+
+        document.getElementById("f_totalprice").value = "";
+
+      }
+
       document.getElementById("f_comment").value = b.comment || "";
 
       document.getElementById("f_start").value = b.start ? toLocalDateInput(b.start) : "";
@@ -5697,6 +5731,7 @@ ${d.toLocaleDateString("de-DE", {
       document.getElementById("f_name").value = "";
       document.getElementById("f_company").value = "";
       document.getElementById("f_price").value = "";
+      document.getElementById("f_totalprice").value = "";
       document.getElementById("f_comment").value = "";
       document.getElementById("f_group").value = "";
       document.getElementById("f_breakfast").checked = true;
@@ -5840,6 +5875,25 @@ ${d.toLocaleDateString("de-DE", {
         extra += "👶".repeat(b.crib_count || 1);
       }
 
+      let nightlyPrice = b.price;
+
+      if (!isNaN(parseFloat(b.price))) {
+        nightlyPrice = Number(b.price).toFixed(2);
+      }
+
+      let totalPrice = b.price;
+
+      if (!isNaN(parseFloat(b.price))) {
+        let nights =
+          Math.round(
+            (new Date(b.end) - new Date(b.start)) /
+            (1000 * 60 * 60 * 24)
+          );
+
+        totalPrice =
+          (parseFloat(b.price) * nights).toFixed(2);
+      }
+
       let html = `
       <b>🚪 Zimmer:</b>${roomNumber}<br>
     <b>👥 Zimmerkategorie:</b>${b.guests || "-"}<br>
@@ -5847,7 +5901,8 @@ ${d.toLocaleDateString("de-DE", {
     <b>🏢 Firma:</b>${b.company || "-"}<br>
     <b>📅 Anreise:</b>${start}<br>
     <b>📅 Abreise:</b>${end}<br>
-    <b>💲 Preis:</b>${b.price || "-"}<br>
+    <b>💲 Preis pro Nacht:</b>${nightlyPrice} €<br>
+    <b>💰 Gesamtpreis:</b>${totalPrice} €<br>
     <b>💬 Kommentar:</b>${b.comment || "-"}<br>
     <b>✨ Extrainfo:</b>${extra || "-"}<br>
 
@@ -6308,7 +6363,16 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         } else if (isNaN(b.price)) {
           pr.innerHTML = b.price;
         } else {
-          pr.innerHTML = b.price + "€";
+          let nights =
+            Math.round(
+              (new Date(b.end) - new Date(b.start)) /
+              (1000 * 60 * 60 * 24)
+            );
+
+          let totalPrice =
+            (parseFloat(b.price || 0) * nights).toFixed(2);
+
+          pr.innerHTML = totalPrice + "€";
         }
 
         let r = document.createElement("div");
@@ -7166,6 +7230,8 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       if (form) form.style.display = "block";
     }
 
+
+
     function getSlotFromDate(date, weekStart, isEnd = false) {
       let diff = Math.floor((normalizeDate(date) - weekStart) / (1000 * 60 * 60 * 24));
 
@@ -7316,6 +7382,50 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       }
 
       return null;
+    }
+
+    function updatePrices(changedField) {
+      let start = document.getElementById("f_start").value;
+      let end = document.getElementById("f_end").value;
+
+      if (!start || !end) return;
+
+      let nights = Math.round(
+        (new Date(end) - new Date(start)) /
+        (1000 * 60 * 60 * 24)
+      );
+
+      if (nights <= 0) return;
+
+      let priceField = document.getElementById("f_price");
+      let totalField = document.getElementById("f_totalprice");
+
+      if (changedField === "nightly") {
+        let nightly = parseFloat(
+          priceField.value.replace(",", ".")
+        );
+
+        if (!isNaN(nightly)) {
+          totalField.value =
+            (nightly * nights).toFixed(2);
+        }
+      }
+
+      if (changedField === "total") {
+
+        let total = parseFloat(
+          totalField.value.replace(",", ".")
+        );
+
+        if (!isNaN(total)) {
+
+          priceField.value =
+            total / nights;
+
+        }
+
+        return;
+      }
     }
 
     function calculateGroupDates(groupBookings) {
@@ -9034,7 +9144,19 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         <div class="line"><b>Firma:</b> ${b.company || "-"}</div>
         <div class="line"><b>Anreise:</b> ${start}</div>
         <div class="line"><b>Abreise:</b> ${end}</div>
-        <div class="line"><b>Preis:</b> ${b.price || "-"}</div>
+       <div class="line">
+  <b>Preis:</b>
+  ${isNaN(parseFloat(b.price))
+          ? b.price
+          : (
+            parseFloat(b.price) *
+            Math.round(
+              (new Date(b.end) - new Date(b.start)) /
+              (1000 * 60 * 60 * 24)
+            )
+          ).toFixed(2) + " €"
+        }
+</div>
         <div class="line"><b>Kommentar:</b> ${b.comment || "-"}</div>
 
         <div class="line"><b>Gruppe:</b> ${group ? group.name : "-"}</div>
@@ -9473,7 +9595,28 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       if (el) {
         el.style.display = "inline-block";
       }
+
+      document.getElementById("f_price")
+        .addEventListener("input", () => {
+          updatePrices("nightly");
+        });
+
+      document.getElementById("f_totalprice")
+        .addEventListener("input", () => {
+          updatePrices("total");
+        });
+
+      document.getElementById("f_start")
+        .addEventListener("change", () => {
+          updatePrices("nightly");
+        });
+
+      document.getElementById("f_end")
+        .addEventListener("change", () => {
+          updatePrices("nightly");
+        });
     });
+
 
     requestAnimationFrame(updateStickyPositions);
   </script>
