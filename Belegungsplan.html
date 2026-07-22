@@ -3537,7 +3537,11 @@ window.onload = () => {
             let start = new Date(b.start);
             let end = new Date(b.end);
 
-            return start < nightEnd && end > nightStart;
+            start.setHours(0, 0, 0, 0);
+            end.setHours(0, 0, 0, 0);
+
+            return nightStart >= start && nightStart < end;
+
           });
 
           if (occupied) break;
