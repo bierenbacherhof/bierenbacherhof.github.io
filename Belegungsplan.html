@@ -4125,6 +4125,8 @@ window.onload = () => {
                 : `${b.crib_count} Kinderbetten`;
           }
 
+          let comment = b.comment || "";
+
           const extras = [
             petText,
             bluecardText,
@@ -4140,6 +4142,7 @@ window.onload = () => {
   <td>
     ${duration} ${duration !== 1 ? "Nächte" : "Nacht"}
     ${extras ? " - " + extras : ""}
+    ${comment}
   </td>
   <td>
 ${isNaN(parseFloat(b.price))
