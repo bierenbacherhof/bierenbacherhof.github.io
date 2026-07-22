@@ -2825,7 +2825,7 @@
       const options = document.querySelectorAll(".list-option");
 
       options.forEach((opt, i) => {
-        opt.checked = i === 2 || i === 3 || i === 4; // ✅ Check-In + Freie Zimmer
+        opt.checked = i === 3 || i === 4 || i === 5;
       });
 
       const allCheckbox = document.getElementById("chk_all");
@@ -2844,9 +2844,7 @@
 
       // Beispiel: andere Auswahl als morgens
       options.forEach((opt, i) => {
-        opt.checked = i === 0 || i === 1;
-        // 👉 hier definierst DU was "Nachmittag" ist
-        // z.B. Abreisen + Reinigung
+        opt.checked = i === 0 || i === 1 || i === 2;
       });
 
       const allCheckbox = document.getElementById("chk_all");
