@@ -3952,10 +3952,15 @@ window.onload = () => {
       const uniqueBookings = Object.values(
         Object.fromEntries(bookings.map(b => [b.id, b]))
       );
+      const endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+
+      const formatDate = (date) =>
+        date.toLocaleDateString("de-DE");
 
       let html = `
-    <h1>Housekeeping nächste Woche</h1>
-  `;
+  <h1>Zimmer von ${formatDate(startDate)} bis ${formatDate(endDate)}</h1>
+`;
 
       for (let i = 0; i < 7; i++) {
 
