@@ -3750,6 +3750,15 @@ window.onload = () => {
         return start <= targetDate && end >= targetDate;
       });
 
+      const wcKontrollen = uniqueBookings.filter((b) => {
+        if ((b.name || "").toLowerCase() !== "wc") return false;
+
+        let end = new Date(b.end);
+        end.setHours(0, 0, 0, 0);
+
+        return end.getTime() === targetDate.getTime();
+      });
+
       // ✅ Kategorien
       let neu = [];
       let zuleger = [];
@@ -3785,6 +3794,14 @@ window.onload = () => {
         b => !neuRows.has(b.row)
       );
 
+      wcKontrollen.forEach((b) => {
+        if (!kontrolle.some(k => k.row === b.row)) {
+          kontrolle.push({
+            ...b,
+            toiletControl: true
+          });
+        }
+      });
 
       if (
         neu.length === 0 &&
@@ -3907,7 +3924,9 @@ window.onload = () => {
             cribText = ` 👶 ${task.crib_count || 1}`;
           }
 
-          html += `<div class="row">${roomNumber} – ${type}${cribText}<br></div>`;
+          const toiletText = task.toiletControl ? " Toilette" : "";
+
+          html += `<div class="row">${roomNumber} – ${type}${toiletText}${cribText}<br></div>`;
         });
         html += `<br><br><br><br><br>`;
         html += `</td>
