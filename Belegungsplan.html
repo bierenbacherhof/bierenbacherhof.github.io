@@ -1282,6 +1282,14 @@
       </div>
 
       <div style="display: flex; align-items: center; gap: 5px">
+        <label>
+          <input type="checkbox" id="f_late_checkout" checked />
+          Late Checkout 🕒
+        </label>
+        <br />
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 5px">
         <label> <input type="checkbox" id="f_bluecard" onchange="toggleBluecardField()" /> Blaue Karte 🟦 </label>
 
         <input type="number" id="f_bluecard_count" min="1" value="1" style="width: 60px" disabled />
@@ -3549,7 +3557,18 @@ window.onload = () => {
             start.setHours(0, 0, 0, 0);
             end.setHours(0, 0, 0, 0);
 
-            return nightStart >= start && nightStart < end;
+            if (nightStart >= start && nightStart < end) {
+              return true;
+            }
+
+            if (
+              b.late_checkout &&
+              nightStart.getTime() === end.getTime()
+            ) {
+              return true;
+            }
+
+            return false;
 
           });
 
@@ -3777,6 +3796,11 @@ window.onload = () => {
         }
 
         if (end.getTime() === targetDate.getTime()) {
+
+          if (b.late_checkout) {
+            return;
+          }
+
           neu.push(b);
           return;
         }
@@ -3785,6 +3809,26 @@ window.onload = () => {
           zuleger.push(b);
         }
       });
+
+      uniqueBookings.forEach((b) => {
+
+        if (!b.late_checkout) return;
+
+        let end = new Date(b.end);
+        end.setHours(0, 0, 0, 0);
+
+        let cleanupDay = new Date(end);
+        cleanupDay.setDate(cleanupDay.getDate() + 1);
+
+        if (
+          cleanupDay.getTime() ===
+          targetDate.getTime()
+        ) {
+          neu.push(b);
+        }
+
+      });
+
 
       const neuRows = new Set(
         neu.map(b => b.row)
@@ -5308,6 +5352,7 @@ ${d.toLocaleDateString("de-DE", {
         paid: false,
         checkin: false,
         breakfast: breakfast,
+        late_checkout: singlePlacement.late_checkout || false,
         pet: singlePlacement.pet || false,
         pet_count: singlePlacement.pet_count || 0,
         bluecard: singlePlacement.bluecard || false,
@@ -5540,7 +5585,7 @@ ${d.toLocaleDateString("de-DE", {
 
       let comment = document.getElementById("f_comment").value;
       let breakfast = document.getElementById("f_breakfast").checked;
-
+      let late_checkout = document.getElementById("f_late_checkout").checked;
       let pet = document.getElementById("f_pet").checked;
       let pet_count = pet ? Number(document.getElementById("f_pet_count").value) || 1 : 0;
 
@@ -5566,7 +5611,7 @@ ${d.toLocaleDateString("de-DE", {
             guests,
             group_id: group || null,
             breakfast: breakfast,
-
+            late_checkout: late_checkout,
             pet: pet,
             pet_count: pet ? pet_count : 0,
 
@@ -5599,7 +5644,7 @@ ${d.toLocaleDateString("de-DE", {
           paid: false,
           checkin: false,
           breakfast: breakfast,
-
+          late_checkout: late_checkout,
           pet: pet,
           pet_count: pet ? pet_count : 0,
 
@@ -5640,7 +5685,7 @@ ${d.toLocaleDateString("de-DE", {
         let oldComment = b.comment;
         let oldGuests = b.guests;
         let oldBreakfast = b.breakfast;
-
+        let oldLateCheckout = b.late_checkout;
         let oldPet = b.pet;
         let oldPetCount = b.pet_count;
 
@@ -5659,7 +5704,7 @@ ${d.toLocaleDateString("de-DE", {
         b.comment = comment;
         b.guests = guests;
         b.breakfast = breakfast;
-
+        b.late_checkout = late_checkout;
         b.pet = pet;
         b.pet_count = pet_count;
 
@@ -5681,6 +5726,7 @@ ${d.toLocaleDateString("de-DE", {
             comment,
             guests,
             breakfast,
+            late_checkout: late_checkout,
             group_id: b.group_id,
 
             pet: b.pet,
@@ -5749,6 +5795,13 @@ ${d.toLocaleDateString("de-DE", {
               changes.breakfast = {
                 old: oldBreakfast,
                 new: b.breakfast
+              };
+            }
+
+            if (oldLateCheckout !== b.late_checkout) {
+              changes.late_checkout = {
+                old: oldLateCheckout,
+                new: b.late_checkout
               };
             }
 
@@ -5926,6 +5979,7 @@ ${d.toLocaleDateString("de-DE", {
       document.getElementById("f_end").value = b.end ? toLocalDateInput(b.end) : "";
 
       document.getElementById("f_breakfast").checked = b.breakfast !== false;
+      document.getElementById("f_late_checkout").checked = !!b.late_checkout;
       document.getElementById("f_pet").checked = !!b.pet;
 
       let petInput = document.getElementById("f_pet_count");
@@ -5975,7 +6029,7 @@ ${d.toLocaleDateString("de-DE", {
       document.getElementById("f_comment").value = "";
       document.getElementById("f_group").value = "";
       document.getElementById("f_breakfast").checked = true;
-
+      document.getElementById("f_late_checkout").checked = false;
       document.getElementById("f_bluecard").checked = false;
       document.getElementById("f_bluecard_count").value = 1;
       document.getElementById("f_bluecard_count").disabled = true;
@@ -6102,6 +6156,10 @@ ${d.toLocaleDateString("de-DE", {
 
       if (b.breakfast === false) {
         extra += "<span class='no-breakfast-icon'><span>☕</span></span>";
+      }
+
+      if (b.late_checkout) {
+        extra += "🕒";
       }
 
       if (b.bluecard) {
@@ -6555,6 +6613,10 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         let commentText = b.comment ? " - " + b.comment : "";
         if (b.breakfast === false) {
           icons += `<span class='no-breakfast-icon'><span>☕</span></span>`;
+        }
+
+        if (b.late_checkout) {
+          icons += `<span class="icons"><span title="Late Check-Out">🕒</span></span>`;
         }
 
         if (b.bluecard) {
