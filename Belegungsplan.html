@@ -4424,11 +4424,32 @@ ${isNaN(parseFloat(b.price))
             }
 </td>
 
-  <td>
+ <td>
   <input type="checkbox" ${b.paid ? "checked" : ""}>
-  bezahlt
+  bez.
 </td>
-  ${isCheckInList
+
+${!isCheckInList && b.bluecard && b.bluecard_count > 0
+              ? `
+      <td>
+  ${b.bluecard && b.bluecard_count > 0
+                ? `
+       ${Array.from(
+                  { length: b.bluecard_count },
+                  (_, i) =>
+                    `<input
+             type="checkbox"
+             ${(b.bluecard_paid_count || 0) > i ? "checked" : ""}
+           >`
+                ).join(" ")}bl. K.`
+                : ""
+              }
+</td>
+    `
+              : ""
+            }
+
+${isCheckInList
               ? `
       <td>
         <input type="checkbox" ${b.checkin ? "checked" : ""}>
@@ -6163,7 +6184,23 @@ ${d.toLocaleDateString("de-DE", {
       }
 
       if (b.bluecard) {
-        extra += "🟦".repeat(b.bluecard_count || 1);
+
+        const totalCards = b.bluecard_count || 1;
+        const paidCards = b.bluecard_paid_count || 0;
+
+        let cards = "";
+
+        for (let i = 0; i < totalCards; i++) {
+
+          if (i < paidCards) {
+            cards += "⬜";
+          } else {
+            cards += "🟦";
+          }
+
+        }
+
+        extra += cards;
       }
 
       if (b.pet) {
@@ -6214,6 +6251,42 @@ ${renderGroupBadge(groupsMap[b.group_id])}
     <b>💰 Bezahlt:</b>${b.paid ? "🟢" : "🔴"}<br>
     <b>🏨 Check-in:</b>${b.checkin ? "🟢" : "🔴"}
   `;
+
+
+      if (b.bluecard && b.bluecard_count > 0) {
+
+        html += `
+    <br>
+    <b>🟦 Blaue Karte(n) bezahlt:</b><br>
+  `;
+
+        for (let i = 1; i <= b.bluecard_count; i++) {
+
+          const checked =
+            (b.bluecard_paid_count || 0) >= i
+              ? "checked"
+              : "";
+
+          html += `
+      <input
+        type="checkbox"
+        ${checked}
+        onclick="
+event.preventDefault();
+handleBluecardCheckbox('${b.id}', ${i});
+"
+
+        style="
+          width:20px;
+          height:20px;
+          margin-right:6px;
+          cursor:pointer;
+        "
+      >
+    `;
+        }
+
+      }
 
       html += `
     <br><br>
@@ -6342,6 +6415,53 @@ ${renderGroupBadge(groupsMap[b.group_id])}
       });
 
       openInfo(bookings.indexOf(b));
+    }
+
+
+    async function handleBluecardCheckbox(id, position) {
+
+      const b = bookings.find(
+        x => String(x.id) === String(id)
+      );
+
+      if (!b) return;
+
+      const current = b.bluecard_paid_count || 0;
+
+      let newCount;
+
+      if (position <= current) {
+        newCount = position - 1;
+      } else {
+        newCount = position;
+      }
+
+      const oldValue = current;
+
+      b.bluecard_paid_count = newCount;
+
+      openInfo(bookings.indexOf(b));
+
+      const user = currentUser;
+
+      const { error } = await supa
+        .from("bookings")
+        .update({
+          bluecard_paid_count: newCount,
+          user_id: user?.id
+        })
+        .eq("id", b.id);
+
+      if (error) {
+
+        b.bluecard_paid_count = oldValue;
+
+        openInfo(bookings.indexOf(b));
+
+        alert("Fehler beim Speichern");
+
+        console.error(error);
+      }
     }
 
     function closeInfo() {
@@ -6620,7 +6740,29 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         }
 
         if (b.bluecard) {
-          icons += `<span class="icons"><span title="Blaue Karte">${"🟦".repeat(b.bluecard_count || 1)}</span></span>`;
+
+          const totalCards = b.bluecard_count || 1;
+          const paidCards = b.bluecard_paid_count || 0;
+
+          let cards = "";
+
+          for (let i = 0; i < totalCards; i++) {
+
+            if (i < paidCards) {
+              cards += "⬜";
+            } else {
+              cards += "🟦";
+            }
+
+          }
+
+          icons += `
+    <span class="icons">
+      <span title="Blaue Karte">
+        ${cards}
+      </span>
+    </span>
+  `;
         }
 
         if (b.pet) {
@@ -8064,7 +8206,20 @@ ${renderGroupBadge(groupsMap[b.group_id])}
   >
   Blaue Karten 🟦
 </label>
+
+<button
+  onclick="markAllGroupBluecardsPaid('${groupId}')"
+  style="
+    margin-top:6px;
+    padding:4px 8px;
+    border-radius:6px;
+    cursor:pointer;
+  "
+>
+  Alle blauen Karten bezahlt
+</button>
 `;
+
 
       let showCheckinBtn = !isMobile && currentRole !== "read";
 
@@ -8341,6 +8496,79 @@ ${renderGroupBadge(groupsMap[b.group_id])}
         console.error(error);
         alert("Fehler beim Speichern");
         return;
+      }
+    }
+
+
+    async function markAllGroupBluecardsPaid(groupId) {
+
+      const groupBookings =
+        bookings.filter(
+          b =>
+            b.group_id === groupId &&
+            b.bluecard &&
+            b.bluecard_count > 0
+        );
+
+      if (!groupBookings.length) {
+        return;
+      }
+
+      const loadingTimer = setTimeout(() => {
+        showLoading("Blaue Karten werden als bezahlt markiert...");
+      }, 200);
+
+      try {
+
+        const user = currentUser;
+
+        const ids = [];
+
+        groupBookings.forEach(b => {
+
+          b.bluecard_paid_count =
+            b.bluecard_count;
+
+          ids.push(b.id);
+
+        });
+
+        const updates = groupBookings.map(b =>
+          supa
+            .from("bookings")
+            .update({
+              bluecard_paid_count: b.bluecard_count,
+              user_id: user?.id
+            })
+            .eq("id", b.id)
+        );
+
+        const results = await Promise.all(updates);
+
+        const failed = results.find(
+          r => r.error
+        );
+
+        if (failed) {
+
+          console.error(failed.error);
+
+          alert("Fehler beim Speichern");
+
+          return;
+        }
+
+        render();
+
+        openGroupInfo(groupId);
+
+      } finally {
+
+        await waitForUI();
+
+        clearTimeout(loadingTimer);
+
+        hideLoading();
       }
     }
 
