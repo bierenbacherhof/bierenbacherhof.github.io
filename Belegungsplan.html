@@ -3758,7 +3758,6 @@ window.onload = () => {
 
       const relevant = uniqueBookings.filter((b) => {
         if (!isValidRoom(b.row)) return false;
-        if (b.guests === "BLOCK") return false;
 
         let start = new Date(b.start);
         let end = new Date(b.end);
@@ -3784,11 +3783,22 @@ window.onload = () => {
       let kontrolle = [];
 
       relevant.forEach((b) => {
+
         let start = new Date(b.start);
         let end = new Date(b.end);
 
         start.setHours(0, 0, 0, 0);
         end.setHours(0, 0, 0, 0);
+
+        // BLOCK-Zimmer erst nach Blockende als NEU
+        if (b.guests === "BLOCK") {
+
+          if (end.getTime() === targetDate.getTime()) {
+            neu.push(b);
+          }
+
+          return;
+        }
 
         if (start.getTime() === targetDate.getTime()) {
           kontrolle.push(b);
@@ -3796,7 +3806,6 @@ window.onload = () => {
         }
 
         if (end.getTime() === targetDate.getTime()) {
-
           if (b.late_checkout) {
             return;
           }
