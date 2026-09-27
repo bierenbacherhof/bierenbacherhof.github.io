@@ -1115,6 +1115,10 @@
       </button>
       <div id="topRightButtons">
 
+        <button id="checkOffAllBtn" class="admin-only" style="display:none">
+          Alle abhaken
+        </button>
+
         <button id="checkInAllBtn" style="display:none">
           Alle einchecken
         </button>
@@ -4792,6 +4796,229 @@ window.onload = function() {
       document.body.appendChild(overlay);
     }
 
+    function getOperationalDate(now = new Date()) {
+
+      const operationalDate = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate()
+      );
+
+      // Bis 03:00 Uhr gilt noch der Vortag
+      if (now.getHours() < 3) {
+        operationalDate.setDate(
+          operationalDate.getDate() - 1
+        );
+      }
+
+      return operationalDate;
+    }
+
+    function toLocalDateKey(date) {
+
+      const d = new Date(date);
+
+      return [
+        d.getFullYear(),
+        String(d.getMonth() + 1).padStart(2, "0"),
+        String(d.getDate()).padStart(2, "0")
+      ].join("-");
+    }
+
+    async function checkOffAllArrivals() {
+
+      if (!isAdmin()) {
+        return;
+      }
+
+      const operationalDate =
+        getOperationalDate();
+
+      const dateKey =
+        toLocalDateKey(operationalDate);
+
+      const dateLabel =
+        operationalDate.toLocaleDateString(
+          "de-DE",
+          {
+            weekday: "short",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric"
+          }
+        );
+
+      const affected = bookings.filter((booking) => {
+
+        if (!booking.id) {
+          return false;
+        }
+
+        if (
+          String(booking.id).startsWith("tmp_")
+        ) {
+          return false;
+        }
+
+        if (booking.guests === "BLOCK") {
+          return false;
+        }
+
+        if (!booking.start) {
+          return false;
+        }
+
+        return (
+          toLocalDateKey(booking.start) ===
+          dateKey &&
+          (
+            !booking.checkin ||
+            !booking.paid
+          )
+        );
+
+      });
+
+      if (affected.length === 0) {
+
+        alert(
+          `Für den ${dateLabel} wurden keine offenen Anreisen gefunden.`
+        );
+
+        return;
+      }
+
+      if (
+        !confirm(
+          `${affected.length} Zimmer vom ${dateLabel} als eingecheckt und bezahlt markieren?`
+        )
+      ) {
+        return;
+      }
+
+      let user = currentUser;
+
+      if (!user) {
+
+        const {
+          data: {
+            user: loadedUser
+          }
+        } = await supa.auth.getUser();
+
+        user = loadedUser;
+
+      }
+
+      if (!user) {
+
+        alert(
+          "Aktueller Benutzer konnte nicht ermittelt werden."
+        );
+
+        return;
+      }
+
+      const previousState = affected.map(
+        booking => ({
+          id: booking.id,
+          checkin: booking.checkin,
+          paid: booking.paid,
+          user_id: booking.user_id
+        })
+      );
+
+      const ids =
+        affected.map(
+          booking => booking.id
+        );
+
+      affected.forEach((booking) => {
+
+        booking.checkin = true;
+        booking.paid = true;
+        booking.user_id = user.id;
+
+      });
+
+      render();
+
+      const loadingTimer = setTimeout(() => {
+
+        showLoading(
+          "Zimmer werden abgehakt..."
+        );
+
+      }, 200);
+
+      try {
+
+        const { error } = await supa
+          .from("bookings")
+          .update({
+            checkin: true,
+            paid: true,
+            user_id: user.id
+          })
+          .in("id", ids);
+
+        if (error) {
+
+          console.error(error);
+
+          previousState.forEach(old => {
+
+            const booking =
+              bookings.find(
+                b =>
+                  String(b.id) ===
+                  String(old.id)
+              );
+
+            if (!booking) {
+              return;
+            }
+
+            booking.checkin =
+              old.checkin;
+
+            booking.paid =
+              old.paid;
+
+            booking.user_id =
+              old.user_id;
+
+          });
+
+          render();
+
+          alert(
+            "Fehler beim Abhaken."
+          );
+
+          return;
+        }
+
+        render();
+
+        alert(
+          `${affected.length} Zimmer vom ${dateLabel} wurden abgehakt.`
+        );
+
+      } finally {
+
+        await waitForUI();
+
+        clearTimeout(
+          loadingTimer
+        );
+
+        hideLoading();
+
+      }
+
+    }
+
     function openCheckInAllDialog() {
       let options = [];
 
@@ -4917,6 +5144,7 @@ window.onload = function() {
       const monthlyBtn = document.getElementById("monthlyStatsBtn");
       const checkInAllBtn = document.getElementById("checkInAllBtn");
       const backupBtn = document.getElementById("backupBtn");
+      const checkOffAllBtn = document.getElementById("checkOffAllBtn");
       const weekUp = document.getElementById("weekUp");
       const weekDown = document.getElementById("weekDown");
       const {
@@ -4966,6 +5194,13 @@ window.onload = function() {
           checkInAllBtn.style.display = isEditAllowed() && !isMobile ? "inline-block" : "none";
         }
 
+        if (checkOffAllBtn) {
+
+          checkOffAllBtn.style.display =
+            isAdmin() && !isMobile
+              ? "inline-block"
+              : "none";
+        }
 
         if (newBookingBtn) {
           newBookingBtn.style.display = isEditAllowed() ? "inline-block" : "none";
@@ -10416,7 +10651,17 @@ handleBluecardCheckbox('${b.id}', ${i});
       true
     );
 
-    document.getElementById("checkInAllBtn")?.addEventListener("click", openCheckInAllDialog);
+    document.getElementById("checkOffAllBtn")
+      ?.addEventListener(
+        "click",
+        checkOffAllArrivals
+      );
+
+    document.getElementById("checkInAllBtn")
+      ?.addEventListener(
+        "click",
+        openCheckInAllDialog
+      );
 
     window.addEventListener("load", () => {
       const el = document.getElementById("datePickerWrapper");
