@@ -1274,6 +1274,14 @@
       <label>Gesamtpreis (€)</label><br>
       <input type="text" id="f_totalprice"><br>
 
+      <div style="display:flex;align-items:center;gap:10px;margin-top:8px;margin-bottom:8px;">
+        <label class="switch">
+          <input type="checkbox" id="f_invoice_pending">
+          <span class="slider"></span>
+        </label>
+        <span>Zahlung auf Rechnung</span>
+      </div>
+
       <label>Kommentar</label><br />
       <input type="text" id="f_comment" /><br />
 
@@ -1339,6 +1347,14 @@
 
       <div id="groupCategories" ; style="margin-top:4px"></div>
       <br />
+
+      <div class="switch-wrapper">
+        <label class="switch">
+          <input type="checkbox" id="g_invoice_pending">
+          <span class="slider"></span>
+        </label>
+        <span>Gruppe auf Rechnung</span>
+      </div>
 
       <label style="display: flex; align-items: center; gap: 6px">
         <input type="checkbox" id="g_floorPriority" />
@@ -1871,7 +1887,24 @@
       document.getElementById("f_name").value = "";
       document.getElementById("f_company").value = "";
       document.getElementById("f_price").value = "";
+      document.getElementById("f_invoice_pending").checked = false;
       document.getElementById("f_comment").value = "";
+      document.getElementById("f_breakfast").checked = true;
+
+      document.getElementById("f_late_checkout").checked = false;
+
+      document.getElementById("f_bluecard").checked = false;
+      document.getElementById("f_bluecard_count").value = 1;
+      document.getElementById("f_bluecard_count").disabled = true;
+
+      document.getElementById("f_pet").checked = false;
+      document.getElementById("f_pet_count").value = 1;
+      document.getElementById("f_pet_count").disabled = true;
+
+      document.getElementById("f_crib").checked = false;
+      document.getElementById("f_crib_count").value = 1;
+      document.getElementById("f_crib_count").disabled = true;
+
 
       let start = new Date();
       let end = new Date();
@@ -2286,6 +2319,8 @@
         placed: [],
         floorPriority: floorPriority,
         bluecard: document.getElementById("g_bluecard").checked,
+        invoice_pending:
+          document.getElementById("g_invoice_pending").checked,
         isCompany
       };
 
@@ -4425,15 +4460,19 @@ window.onload = () => window.print();
     ${comment}
   </td>
   <td>
-${isNaN(parseFloat(b.price))
-              ? b.price
+${b.invoice_pending
+              ? "Rg."
               : (
-                parseFloat(b.price) *
-                Math.round(
-                  (new Date(b.end) - new Date(b.start)) /
-                  (1000 * 60 * 60 * 24)
-                )
-              ).toFixed(2) + " €"
+                isNaN(parseFloat(b.price))
+                  ? b.price
+                  : (
+                    parseFloat(b.price) *
+                    Math.round(
+                      (new Date(b.end) - new Date(b.start))
+                      / (1000 * 60 * 60 * 24)
+                    )
+                  ).toFixed(2) + " €"
+              )
             }
 </td>
 
@@ -5533,6 +5572,8 @@ ${d.toLocaleDateString("de-DE", {
         name: "",
         company: groupPlacement.isCompany ? document.getElementById("g_name").value.trim() : "",
         price: item.price,
+        invoice_pending:
+          groupPlacement.invoice_pending || false,
         comment: "",
         guests: item.type,
         group_id: group ? group.id : null,
@@ -5610,6 +5651,7 @@ ${d.toLocaleDateString("de-DE", {
         end: end.toISOString(),
         name: singlePlacement.name,
         price: singlePlacement.price,
+        invoice_pending: singlePlacement.invoice_pending || false,
         comment: singlePlacement.comment,
         guests: singlePlacement.guests,
         color: color,
@@ -5843,6 +5885,8 @@ ${d.toLocaleDateString("de-DE", {
       let start = new Date(document.getElementById("f_start").value);
       let end = new Date(document.getElementById("f_end").value);
       let price = document.getElementById("f_price").value.trim();
+      let invoice_pending =
+        document.getElementById("f_invoice_pending").checked;
 
       if (!price && guests !== "BLOCK") {
         return alert("Preis ist ein Pflichtfeld");
@@ -5872,6 +5916,7 @@ ${d.toLocaleDateString("de-DE", {
             name,
             company,
             price,
+            invoice_pending: invoice_pending,
             comment,
             guests,
             group_id: group || null,
@@ -5902,6 +5947,7 @@ ${d.toLocaleDateString("de-DE", {
           name: name,
           company: company,
           price: price,
+          invoice_pending: invoice_pending,
           comment: comment,
           guests: guests,
           color: "yellow",
@@ -5966,6 +6012,7 @@ ${d.toLocaleDateString("de-DE", {
         b.name = name;
         b.company = company;
         b.price = price;
+        b.invoice_pending = invoice_pending;
         b.comment = comment;
         b.guests = guests;
         b.breakfast = breakfast;
@@ -5988,6 +6035,7 @@ ${d.toLocaleDateString("de-DE", {
             name,
             company,
             price,
+            invoice_pending: b.invoice_pending,
             comment,
             guests,
             breakfast,
@@ -6219,6 +6267,7 @@ ${d.toLocaleDateString("de-DE", {
       document.getElementById("f_name").value = b.name || "";
       document.getElementById("f_company").value = b.company || "";
       document.getElementById("f_price").value = b.price || "";
+      document.getElementById("f_invoice_pending").checked = !!b.invoice_pending;
 
       if (!isNaN(parseFloat(b.price))) {
 
@@ -6291,6 +6340,7 @@ ${d.toLocaleDateString("de-DE", {
       document.getElementById("f_company").value = "";
       document.getElementById("f_price").value = "";
       document.getElementById("f_totalprice").value = "";
+      document.getElementById("f_invoice_pending").checked = false;
       document.getElementById("f_comment").value = "";
       document.getElementById("f_group").value = "";
       document.getElementById("f_breakfast").checked = true;
@@ -6485,6 +6535,7 @@ ${d.toLocaleDateString("de-DE", {
     <b>📅 Abreise:</b>${end}<br>
     <b>💲 Preis pro Nacht:</b>${nightlyPrice} ${isNaN(nightlyPrice) ? "" : "€"}<br>
     <b>💰 Gesamtpreis:</b>${totalPrice} ${isNaN(totalPrice) ? "" : "€"}<br>
+    <b>🧾 Kostenübernahme:</b>${b.invoice_pending ? "Ja" : "Nein"}<br>
     <b>💬 Kommentar:</b>${b.comment || "-"}<br>
     <b>✨ Extrainfo:</b>${extra || "-"}<br>
 
@@ -7075,19 +7126,29 @@ handleBluecardCheckbox('${b.id}', ${i});
         pr.className = "price";
 
         if (!b.price || isMobile) {
+
           pr.innerHTML = "";
+
+        } else if (b.invoice_pending) {
+
+          pr.innerHTML = "Rg.";
+
         } else {
+
           const price = parseFloat(
             String(b.price).replace(",", ".")
           );
 
           if (isNaN(price)) {
+
             pr.innerHTML = b.price;
+
           } else {
+
             let nights =
               Math.round(
-                (new Date(b.end) - new Date(b.start)) /
-                (1000 * 60 * 60 * 24)
+                (new Date(b.end) - new Date(b.start))
+                / (1000 * 60 * 60 * 24)
               );
 
             let totalPrice =
@@ -7096,6 +7157,7 @@ handleBluecardCheckbox('${b.id}', ${i});
             pr.innerHTML = totalPrice + "€";
           }
         }
+
         let r = document.createElement("div");
         r.className = "handle right";
         r.onmousedown = (e) => {
@@ -8406,7 +8468,11 @@ handleBluecardCheckbox('${b.id}', ${i});
       let stats = calculateGroupStats(groupId, "bookings");
       updateGroupStatsInDB(groupId, stats);
       let groupBookings = bookings.filter((b) => b.group_id === groupId);
-
+      const allGroupBookingsOnInvoice =
+        groupBookings.length > 0 &&
+        groupBookings.every(
+          b => !!b.invoice_pending
+        );
       let dateCalc = calculateGroupDates(groupBookings);
 
       // ✅ DB sync
@@ -8432,9 +8498,44 @@ handleBluecardCheckbox('${b.id}', ${i});
     4er: ${stats.er4}<br><br>
 
     <b>👥 Personen:</b> ${stats.guests}<br><br>
-
+     ${groupBookings.length > 0 &&
+          groupBookings.every(b => b.invoice_pending)
+          ? "<b>🧾 Rechnung:</b> Kosten für die Gruppe gehen auf Rechnung.<br><br>"
+          : ""
+        }   
     <b>👤 Angelegt von:</b> ${creator}<br>
     <b>🕓 Erstellt am:</b> ${createdAt}
+  </div>
+`;
+
+      info += `
+  <div
+    style="
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      margin-top:10px;
+      margin-bottom:14px;
+    "
+  >
+    <label class="switch">
+      <input
+        type="checkbox"
+        id="groupInvoiceToggle"
+        ${allGroupBookingsOnInvoice ? "checked" : ""}
+        onchange="
+          toggleGroupInvoicePending(
+            '${groupId}',
+            this.checked,
+            this
+          )
+        "
+      >
+      <span class="slider"></span>
+    </label>
+
+    <span>Gruppe auf Rechnung</span>
   </div>
 `;
 
@@ -8702,6 +8803,146 @@ handleBluecardCheckbox('${b.id}', ${i});
       }
 
       openGroupInfo(groupId);
+    }
+
+    async function toggleGroupInvoicePending(
+      groupId,
+      enabled,
+      toggleElement = null
+    ) {
+      if (!isEditAllowed()) {
+        if (toggleElement) {
+          toggleElement.checked = !enabled;
+        }
+
+        alert("Keine Berechtigung zum Bearbeiten.");
+        return;
+      }
+
+      const groupBookings = bookings.filter(
+        b =>
+          b.group_id === groupId &&
+          b.id &&
+          !String(b.id).startsWith("tmp_")
+      );
+
+      if (!groupBookings.length) {
+        if (toggleElement) {
+          toggleElement.checked = !enabled;
+        }
+
+        alert("Keine Buchungen in dieser Gruppe gefunden.");
+        return;
+      }
+
+      const confirmed = confirm(
+        "Möchten Sie den Rechnungsstatus der gesamten Gruppe wirklich ändern?"
+      );
+
+      if (!confirmed) {
+
+        if (toggleElement) {
+          toggleElement.checked = !enabled;
+        }
+
+        return;
+      }
+
+      const oldStates = groupBookings.map(b => ({
+        id: b.id,
+        invoice_pending: !!b.invoice_pending
+      }));
+
+      /*
+       * Nur tatsächlich abweichende Buchungen aktualisieren.
+       * Beim Einschalten bleiben bereits individuell aktivierte
+       * Buchungen unverändert.
+       */
+      const changedBookings = groupBookings.filter(
+        b => !!b.invoice_pending !== enabled
+      );
+
+      if (!changedBookings.length) {
+        await openGroupInfo(groupId);
+        return;
+      }
+
+      changedBookings.forEach(b => {
+        b.invoice_pending = enabled;
+      });
+
+      render();
+
+      const ids = changedBookings.map(b => b.id);
+      const user = currentUser;
+
+      const loadingTimer = setTimeout(() => {
+        showLoading(
+          enabled
+            ? "Gruppe wird auf Rechnung gesetzt..."
+            : "Rechnungskennzeichnung wird entfernt..."
+        );
+      }, 200);
+
+      try {
+        const { error } = await supa
+          .from("bookings")
+          .update({
+            invoice_pending: enabled,
+            user_id: user?.id
+          })
+          .in("id", ids);
+
+        if (error) {
+          console.error(error);
+
+          oldStates.forEach(oldState => {
+            const booking = bookings.find(
+              b => String(b.id) === String(oldState.id)
+            );
+
+            if (booking) {
+              booking.invoice_pending =
+                oldState.invoice_pending;
+            }
+          });
+
+          render();
+
+          if (toggleElement) {
+            toggleElement.checked = !enabled;
+          }
+
+          alert(
+            "Die Rechnungseinstellung konnte nicht gespeichert werden."
+          );
+
+          return;
+        }
+
+        changedBookings.forEach(b => {
+          const oldState = oldStates.find(
+            old => String(old.id) === String(b.id)
+          );
+
+          logBookingAction({
+            bookingId: b.id,
+            action: "update",
+            field: "invoice_pending",
+            oldValue: oldState?.invoice_pending || false,
+            newValue: enabled,
+            room: rooms[b.row],
+            bookingAt: b.end
+          });
+        });
+
+        render();
+        await openGroupInfo(groupId);
+      } finally {
+        await waitForUI();
+        clearTimeout(loadingTimer);
+        hideLoading();
+      }
     }
 
     async function toggleGroupBluecards(groupId, enabled) {
@@ -9167,6 +9408,7 @@ handleBluecardCheckbox('${b.id}', ${i});
         name: b.name ?? "",
         company: b.company ?? "",
         price: b.price ?? "",
+        invoice_pending: b.invoice_pending ?? false,
         comment: b.comment ?? "",
         guests: b.guests ?? "",
         color: b.color ?? "",
@@ -9317,6 +9559,7 @@ handleBluecardCheckbox('${b.id}', ${i});
 
       document.querySelectorAll(".g_count").forEach((el) => (el.value = ""));
       document.querySelectorAll(".g_price").forEach((el) => (el.value = ""));
+      document.getElementById("g_invoice_pending").checked = false;
       document.getElementById("g_floorPriority").checked = false;
       document.getElementById("g_option").checked = false;
       document.getElementById("g_bluecard").checked = false;
@@ -10209,16 +10452,20 @@ handleBluecardCheckbox('${b.id}', ${i});
         <div class="line"><b>Anreise:</b> ${start}</div>
         <div class="line"><b>Abreise:</b> ${end}</div>
        <div class="line">
-  <b>Preis:</b>
-  ${isNaN(parseFloat(b.price))
-          ? b.price
+<b>Preis:</b>
+${b.invoice_pending
+          ? "Rg."
           : (
-            parseFloat(b.price) *
-            Math.round(
-              (new Date(b.end) - new Date(b.start)) /
-              (1000 * 60 * 60 * 24)
-            )
-          ).toFixed(2) + " €"
+            isNaN(parseFloat(b.price))
+              ? b.price
+              : (
+                parseFloat(b.price) *
+                Math.round(
+                  (new Date(b.end) - new Date(b.start))
+                  / (1000 * 60 * 60 * 24)
+                )
+              ).toFixed(2) + " €"
+          )
         }
 </div>
         <div class="line"><b>Kommentar:</b> ${b.comment || "-"}</div>
