@@ -5565,13 +5565,27 @@ ${d.toLocaleDateString("de-DE", {
 
       let group = groupsMap[groupPlacement.groupId];
 
+      const nights = Math.round(
+        (groupPlacement.end - groupPlacement.start) /
+        (1000 * 60 * 60 * 24)
+      );
+
+      const enteredTotalPrice = parseFloat(
+        String(item.price).replace(",", ".")
+      );
+
+      const nightlyPrice =
+        !isNaN(enteredTotalPrice) && nights > 0
+          ? (enteredTotalPrice / nights).toFixed(2)
+          : item.price;
+
       let newBooking = {
         row,
         start: groupPlacement.start.toISOString(),
         end: groupPlacement.end.toISOString(),
         name: "",
         company: groupPlacement.isCompany ? document.getElementById("g_name").value.trim() : "",
-        price: item.price,
+        price: nightlyPrice,
         invoice_pending:
           groupPlacement.invoice_pending || false,
         comment: "",
