@@ -1295,7 +1295,7 @@
 
       <div style="display: flex; align-items: center; gap: 5px">
         <label>
-          <input type="checkbox" id="f_late_checkout" checked />
+          <input type="checkbox" id="f_late_checkout" />
           Late Checkout 🕒
         </label>
         <br />
@@ -3585,30 +3585,23 @@ window.onload = () => {
           nightEnd.setDate(base.getDate() + i + 1);
 
           let occupied = bookings.some((b) => {
-
-            if (b.row !== rowIndex) return false;
-
-            if (b.guests === "BLOCK") return true;
-
-            let start = new Date(b.start);
-            let end = new Date(b.end);
-
-            start.setHours(0, 0, 0, 0);
-            end.setHours(0, 0, 0, 0);
-
-            if (nightStart >= start && nightStart < end) {
-              return true;
-            }
-
             if (
-              b.late_checkout &&
-              nightStart.getTime() === end.getTime()
+              Number(b.row) !==
+              Number(rowIndex)
             ) {
-              return true;
+              return false;
             }
 
-            return false;
+            const bookingStart =
+              normalizeDate(b.start);
 
+            const bookingEnd =
+              normalizeDate(b.end);
+
+            return (
+              nightStart < bookingEnd &&
+              nightEnd > bookingStart
+            );
           });
 
           if (occupied) break;
@@ -3858,25 +3851,6 @@ window.onload = () => {
         }
       });
 
-      uniqueBookings.forEach((b) => {
-
-        if (!b.late_checkout) return;
-
-        let end = new Date(b.end);
-        end.setHours(0, 0, 0, 0);
-
-        let cleanupDay = new Date(end);
-        cleanupDay.setDate(cleanupDay.getDate() + 1);
-
-        if (
-          cleanupDay.getTime() ===
-          targetDate.getTime()
-        ) {
-          neu.push(b);
-        }
-
-      });
-
 
       const neuRows = new Set(
         neu.map(b => b.row)
@@ -4079,9 +4053,9 @@ window.onload = () => {
         targetDate.setDate(startDate.getDate() + i);
 
         const relevant = uniqueBookings.filter((b) => {
-
-          if (!isValidRoom(b.row)) return false;
-          if (b.guests === "BLOCK") return false;
+          if (!isValidRoom(b.row)) {
+            return false;
+          }
 
           let start = new Date(b.start);
           let end = new Date(b.end);
@@ -4089,9 +4063,11 @@ window.onload = () => {
           start.setHours(0, 0, 0, 0);
           end.setHours(0, 0, 0, 0);
 
-          return start <= targetDate && end >= targetDate;
+          return (
+            start <= targetDate &&
+            end >= targetDate
+          );
         });
-
         let neu = [];
         let zuleger = [];
         let kontrolle = [];
@@ -4104,12 +4080,30 @@ window.onload = () => {
           start.setHours(0, 0, 0, 0);
           end.setHours(0, 0, 0, 0);
 
+          if (b.guests === "BLOCK") {
+            if (
+              end.getTime() ===
+              targetDate.getTime()
+            ) {
+              neu.push(b);
+            }
+
+            return;
+          }
+
           if (start.getTime() === targetDate.getTime()) {
             kontrolle.push(b);
             return;
           }
 
-          if (end.getTime() === targetDate.getTime()) {
+          if (
+            end.getTime() ===
+            targetDate.getTime()
+          ) {
+            if (b.late_checkout) {
+              return;
+            }
+
             neu.push(b);
             return;
           }
@@ -5447,7 +5441,14 @@ ${d.toLocaleDateString("de-DE", {
             }
 
             if (singlePlacement) {
-              possible = canPlaceInRoom(row, singlePlacement.guests, singlePlacement.start, singlePlacement.end);
+              possible = canPlaceInRoom(
+                row,
+                singlePlacement.guests,
+                singlePlacement.start,
+                singlePlacement.end,
+                -1,
+                singlePlacement
+              );
             }
 
             if (!possible) {
@@ -5484,14 +5485,177 @@ ${d.toLocaleDateString("de-DE", {
       render();
     }
 
-    function canPlaceInRoom(row, type, start, end, ignoreIndex = -1) {
+    function canPlaceLateCheckoutBlock(
+      row,
+      booking,
+      ignoreBookingId = null
+    ) {
+      if (!booking) {
+        return true;
+      }
+
+      /*
+       * Kein Late Checkout:
+       * keine zusätzliche Prüfung notwendig.
+       */
+      if (!booking.late_checkout) {
+        return true;
+      }
+
+      /*
+       * BLOCK-Einträge selbst bekommen natürlich
+       * keinen weiteren Late-Checkout-BLOCK.
+       */
+      if (booking.guests === "BLOCK") {
+        return true;
+      }
+
+      /*
+       * Die BLOCK-Nacht beginnt mit der Abreise
+       * und endet einen Tag später.
+       */
+      const blockStart =
+        new Date(booking.end);
+
+      blockStart.setHours(
+        CHECKIN_HOUR,
+        0,
+        0,
+        0
+      );
+
+      const blockEnd =
+        new Date(blockStart);
+
+      blockEnd.setDate(
+        blockEnd.getDate() + 1
+      );
+
+      blockEnd.setHours(
+        CHECKOUT_HOUR,
+        0,
+        0,
+        0
+      );
+
+      const normalizedBlockStart =
+        normalizeDate(blockStart);
+
+      const normalizedBlockEnd =
+        normalizeDate(blockEnd);
+
+      const linkedBlock =
+        booking.id
+          ? findLateCheckoutBlock(booking.id)
+          : null;
+
+      return !bookings.some((other) => {
+
+        /*
+         * Gastbuchung selbst ignorieren.
+         */
+        if (
+          ignoreBookingId !== null &&
+          String(other.id) ===
+          String(ignoreBookingId)
+        ) {
+          return false;
+        }
+
+        /*
+         * Den zu dieser Gastbuchung gehörenden
+         * Late-Checkout-BLOCK ebenfalls ignorieren.
+         *
+         * Der BLOCK wird nach dem Verschieben
+         * sowieso synchronisiert.
+         */
+        if (
+          linkedBlock &&
+          String(other.id) ===
+          String(linkedBlock.id)
+        ) {
+          return false;
+        }
+
+        /*
+         * Nur das gewünschte Zielzimmer prüfen.
+         */
+        if (
+          Number(other.row) !==
+          Number(row)
+        ) {
+          return false;
+        }
+
+        const otherStart =
+          normalizeDate(other.start);
+
+        const otherEnd =
+          normalizeDate(other.end);
+
+        return (
+          normalizedBlockStart < otherEnd &&
+          normalizedBlockEnd > otherStart
+        );
+      });
+    }
+
+    function canPlaceInRoom(
+      row,
+      type,
+      start,
+      end,
+      ignoreId = -1,
+      booking = null
+    ) {
       let roomName = rooms[row];
 
-      if (!roomName || roomName.trim() === "") return false;
+      if (
+        !roomName ||
+        roomName.trim() === ""
+      ) {
+        return false;
+      }
 
-      if (!canUseRoomSimple(roomName, type)) return false;
+      if (
+        !canUseRoomSimple(
+          roomName,
+          type
+        )
+      ) {
+        return false;
+      }
 
-      if (overlapDates(row, start, end, ignoreIndex)) return false;
+      /*
+       * Normale Buchungsbelegung prüfen.
+       */
+      if (
+        overlapDates(
+          row,
+          start,
+          end,
+          ignoreId
+        )
+      ) {
+        return false;
+      }
+
+      /*
+       * Bei einer bestehenden Buchung mit
+       * Late Checkout zusätzlich prüfen,
+       * ob die anschließende BLOCK-Nacht
+       * im Zielzimmer frei ist.
+       */
+      if (
+        booking &&
+        !canPlaceLateCheckoutBlock(
+          row,
+          booking,
+          ignoreId
+        )
+      ) {
+        return false;
+      }
 
       return true;
     }
@@ -5637,15 +5801,23 @@ ${d.toLocaleDateString("de-DE", {
       let start = singlePlacement.start;
       let end = singlePlacement.end;
       let breakfast = singlePlacement.breakfast ?? true;
-      if (overlapDates(row, start, end, -1)) {
-        alert("Zimmer ist belegt");
-        return;
-      }
+      const possible =
+        canPlaceInRoom(
+          row,
+          singlePlacement.guests,
+          start,
+          end,
+          -1,
+          singlePlacement
+        );
 
-      let roomName = rooms[row];
+      if (!possible) {
+        alert(
+          "Dieses Zimmer ist für die Buchung nicht verfügbar.\n\n" +
+          "Bei Late Checkout muss auch die anschließende " +
+          "BLOCK-Nacht frei sein."
+        );
 
-      if (!canUseRoomSimple(roomName, singlePlacement.guests)) {
-        alert("Zimmer passt nicht zur aktuellen Regel");
         return;
       }
 
@@ -5697,23 +5869,42 @@ ${d.toLocaleDateString("de-DE", {
     }
 
     function highlightMoveOptions(b) {
-      let rows = document.querySelectorAll("tr");
+      const rows =
+        document.querySelectorAll("tr");
 
       rows.forEach((tr, rIndex) => {
-        if (rIndex === 0) return;
+        if (rIndex === 0) {
+          return;
+        }
 
-        let rowIndex = rIndex - 1;
+        const rowIndex =
+          rIndex - 1;
 
-        let possible = canPlaceInRoom(rowIndex, b.guests, new Date(b.start), new Date(b.end), moving.id);
+        const possible =
+          canPlaceInRoom(
+            rowIndex,
+            b.guests,
+            new Date(b.start),
+            new Date(b.end),
 
-        let tds = tr.querySelectorAll("td");
+            // Wichtig:
+            // ID der Gastbuchung übergeben,
+            // nicht moving.id.
+            b.id,
 
-        tds.forEach((td) => {
-          if (!possible) {
-            td.classList.add("move-blocked");
-          } else {
-            td.classList.remove("move-blocked");
-          }
+            // Vollständige Buchung für die
+            // zusätzliche Late-Checkout-Prüfung.
+            b
+          );
+
+        const cells =
+          tr.querySelectorAll("td");
+
+        cells.forEach((cell) => {
+          cell.classList.toggle(
+            "move-blocked",
+            !possible
+          );
         });
       });
     }
@@ -5735,7 +5926,14 @@ ${d.toLocaleDateString("de-DE", {
         }
 
         if (singlePlacement) {
-          possible = canPlaceInRoom(row, singlePlacement.guests, singlePlacement.start, singlePlacement.end);
+          possible = canPlaceInRoom(
+            row,
+            singlePlacement.guests,
+            singlePlacement.start,
+            singlePlacement.end,
+            -1,
+            singlePlacement
+          );
         }
 
         if (!possible) return;
@@ -5830,8 +6028,10 @@ ${d.toLocaleDateString("de-DE", {
         select.appendChild(opt);
       });
 
-      // Vorauswahl
-      if (roomName.includes("DZ")) {
+      // Vorauswahl der Zimmerkategorie
+      if (roomName.includes("kl. DZ")) {
+        select.value = "EZ";
+      } else if (roomName.includes("DZ")) {
         select.value = "DZ";
       } else {
         select.value = opts[0];
@@ -5882,6 +6082,48 @@ ${d.toLocaleDateString("de-DE", {
       };
       document.getElementById("bookingForm").style.display = "block";
       document.getElementById("f_name").focus();
+    }
+
+    function hasBookingConflict(
+      row,
+      start,
+      end,
+      guestBookingId = null
+    ) {
+      const normalizedStart = normalizeDate(start);
+      const normalizedEnd = normalizeDate(end);
+
+      const linkedBlock = guestBookingId
+        ? findLateCheckoutBlock(guestBookingId)
+        : null;
+
+      return bookings.some((other) => {
+        if (
+          guestBookingId !== null &&
+          String(other.id) === String(guestBookingId)
+        ) {
+          return false;
+        }
+
+        if (
+          linkedBlock &&
+          String(other.id) === String(linkedBlock.id)
+        ) {
+          return false;
+        }
+
+        if (Number(other.row) !== Number(row)) {
+          return false;
+        }
+
+        const otherStart = normalizeDate(other.start);
+        const otherEnd = normalizeDate(other.end);
+
+        return (
+          normalizedStart < otherEnd &&
+          normalizedEnd > otherStart
+        );
+      });
     }
 
     async function saveBooking() {
@@ -5954,6 +6196,32 @@ ${d.toLocaleDateString("de-DE", {
           return alert("Zimmer ist im gewählten Zeitraum bereits belegt!");
         }
 
+        if (
+          late_checkout &&
+          guests !== "BLOCK"
+        ) {
+          const bookingForCheck = {
+            row: newBookingRow,
+            start: start.toISOString(),
+            end: end.toISOString(),
+            guests: guests,
+            late_checkout: true
+          };
+
+          const lateCheckoutPossible =
+            canPlaceLateCheckoutBlock(
+              newBookingRow,
+              bookingForCheck
+            );
+
+          if (!lateCheckoutPossible) {
+            return alert(
+              "Late Checkout ist in diesem Zimmer nicht möglich.\n\n" +
+              "Die anschließende BLOCK-Nacht ist bereits belegt."
+            );
+          }
+        }
+
         let booking = {
           row: newBookingRow,
           start: start.toISOString(),
@@ -5999,8 +6267,47 @@ ${d.toLocaleDateString("de-DE", {
       } else {
         let b = bookings[editIndex];
 
-        if (overlapDates(b.row, start, end, b.id)) {
-          return alert("Zimmer bereits belegt!");
+        if (
+          hasBookingConflict(
+            b.row,
+            start,
+            end,
+            b.id
+          )
+        ) {
+          return alert(
+            "Zimmer bereits belegt!"
+          );
+        }
+
+        const bookingAfterEdit = {
+          ...b,
+          row: Number(b.row),
+          start: start.toISOString(),
+          end: end.toISOString(),
+          guests: guests,
+          late_checkout: late_checkout
+        };
+
+        if (late_checkout && guests !== "BLOCK") {
+          const currentBlock =
+            findLateCheckoutBlock(b.id);
+
+          const blockConflict =
+            hasLateCheckoutBlockConflict(
+              bookingAfterEdit,
+              currentBlock
+                ? currentBlock.id
+                : null
+            );
+
+          if (blockConflict) {
+            return alert(
+              "Die Änderung kann nicht gespeichert werden.\n\n" +
+              "Die anschließende Late-Checkout-BLOCK-Nacht " +
+              "ist bereits belegt."
+            );
+          }
         }
 
         let oldStart = b.start;
@@ -6073,6 +6380,17 @@ ${d.toLocaleDateString("de-DE", {
               alert("Fehler beim Speichern");
               return;
             }
+
+            const blockOk = await syncLateCheckoutBlock(b);
+
+            if (!blockOk) {
+              alert(
+                "Der Late-Checkout-BLOCK konnte nicht aktualisiert werden.\n\n" +
+                "Bitte prüfen, ob das Zimmer in der BLOCK-Nacht bereits belegt ist."
+              );
+            }
+
+            render();
 
             let changes = {};
 
@@ -7177,16 +7495,40 @@ handleBluecardCheckbox('${b.id}', ${i});
         r.onmousedown = (e) => {
           if (isMobile) return;
           if (f) return;
+
+          if (isLateCheckoutBlock(b)) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            alert(
+              "Dieser BLOCK wird automatisch durch " +
+              "die Late-Checkout-Buchung verwaltet."
+            );
+
+            return;
+          }
+
           e.stopPropagation();
           resize(e, i, 1);
         };
-
         let l = document.createElement("div");
         l.className = "handle left";
 
         l.onmousedown = (e) => {
           if (isMobile) return;
           if (f) return;
+
+          if (isLateCheckoutBlock(b)) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            alert(
+              "Dieser BLOCK wird automatisch durch " +
+              "die Late-Checkout-Buchung verwaltet."
+            );
+
+            return;
+          }
 
           e.stopPropagation();
           e.preventDefault();
@@ -7241,6 +7583,10 @@ handleBluecardCheckbox('${b.id}', ${i});
         d.addEventListener("mouseenter", () => {
           if (isMobile) return;
           if (moving) return;
+
+          if (isLateCheckoutBlock(b)) {
+            return;
+          }
           moveBtn.style.display = "flex";
         });
 
@@ -7252,47 +7598,150 @@ handleBluecardCheckbox('${b.id}', ${i});
         d.append(flags, dragHandle, moveBtn, txt, pr);
 
         dragHandle.onmousedown = (e) => {
-          let el = document.querySelector(`.booking[data-index='${i}']`);
-          let b = bookings[i];
-
-          let weekStart = normalizeDate(startOfWeek(current));
-          let startDate = normalizeDate(b.start);
-
-          let startDay = Math.floor((startDate - weekStart) / (1000 * 60 * 60 * 24));
-
-          let layer = el.parentElement;
-          let layerRect = layer.getBoundingClientRect();
-
-          let start = new Date(b.start);
-          let end = new Date(b.end);
-
-          let rowEl = document.querySelectorAll("tr")[b.row + 1];
-
-          let cells = rowEl.querySelectorAll("td:not(.room)");
-
-          let firstCellRect = cells[0].getBoundingClientRect();
-
-          let dayWidth = firstCellRect.width;
-
-          let offsetX = e.clientX - firstCellRect.left;
-
-          let durationDays = (end - start) / (1000 * 60 * 60 * 24);
-
-          let elRect = el.getBoundingClientRect();
-
-          let correctedLeft = elRect.left - layerRect.left;
-
-          let diffStart = Math.round((start - weekStart) / (1000 * 60 * 60 * 24));
-
-          if (diffStart < 0) {
-            correctedLeft += diffStart * dayWidth;
+          if (isMobile) {
+            return;
           }
 
-          el.style.width = durationDays * dayWidth + "px";
-          el.style.left = correctedLeft + "px";
+          if (f) {
+            return;
+          }
 
-          let closestDay = Math.round(offsetX / dayWidth);
-          closestDay = Math.max(0, Math.min(6, closestDay));
+          if (!isEditAllowed()) {
+            return;
+          }
+
+          /*
+           * Wichtig:
+           * b muss definiert werden, BEVOR
+           * isLateCheckoutBlock(b) aufgerufen wird.
+           */
+          let b = bookings[i];
+
+          if (!b) {
+            return;
+          }
+
+          /*
+           * Automatisch erzeugte Late-Checkout-BLOCKs
+           * dürfen nicht separat verschoben werden.
+           */
+          if (isLateCheckoutBlock(b)) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            return;
+          }
+
+          e.preventDefault();
+          e.stopPropagation();
+
+          let el = document.querySelector(
+            `.booking[data-index='${i}']`
+          );
+
+          if (!el) {
+            return;
+          }
+
+          let weekStart =
+            normalizeDate(
+              startOfWeek(current)
+            );
+
+          let startDate =
+            normalizeDate(b.start);
+
+          let startDay =
+            Math.floor(
+              (startDate - weekStart) /
+              (1000 * 60 * 60 * 24)
+            );
+
+          let layer =
+            el.parentElement;
+
+          let layerRect =
+            layer.getBoundingClientRect();
+
+          let start =
+            new Date(b.start);
+
+          let end =
+            new Date(b.end);
+
+          let rowEl =
+            document.querySelectorAll("tr")[
+            b.row + 1
+            ];
+
+          if (!rowEl) {
+            return;
+          }
+
+          let cells =
+            rowEl.querySelectorAll(
+              "td:not(.room)"
+            );
+
+          if (!cells.length) {
+            return;
+          }
+
+          let firstCellRect =
+            cells[0].getBoundingClientRect();
+
+          let dayWidth =
+            firstCellRect.width;
+
+          let offsetX =
+            e.clientX -
+            firstCellRect.left;
+
+          let durationDays =
+            (end - start) /
+            (1000 * 60 * 60 * 24);
+
+          let elRect =
+            el.getBoundingClientRect();
+
+          let correctedLeft =
+            elRect.left -
+            layerRect.left;
+
+          let diffStart =
+            Math.round(
+              (start - weekStart) /
+              (1000 * 60 * 60 * 24)
+            );
+
+          if (diffStart < 0) {
+            correctedLeft +=
+              diffStart * dayWidth;
+          }
+
+          el.style.width =
+            durationDays *
+            dayWidth +
+            "px";
+
+          el.style.left =
+            correctedLeft +
+            "px";
+
+          let closestDay =
+            Math.round(
+              offsetX /
+              dayWidth
+            );
+
+          closestDay =
+            Math.max(
+              0,
+              Math.min(
+                6,
+                closestDay
+              )
+            );
 
           drag = {
             id: b.id,
@@ -7303,27 +7752,52 @@ handleBluecardCheckbox('${b.id}', ${i});
           };
 
           resizing = false;
-          document.body.style.userSelect = "none";
+
+          document.body.style.userSelect =
+            "none";
         };
 
         moveBtn.onmousedown = (e) => {
-          document.body.classList.add("moving");
-          if (isMobile) return;
-          if (f) return;
-          if (!isEditAllowed()) return;
+          if (isMobile) {
+            return;
+          }
 
+          if (f) {
+            return;
+          }
+
+          if (!isEditAllowed()) {
+            return;
+          }
+
+          const b = bookings[i];
+
+          /*
+           * Den automatisch erzeugten BLOCK selbst
+           * nicht unabhängig von der Gastbuchung
+           * verschieben lassen.
+           */
+          if (isLateCheckoutBlock(b)) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+
+          e.preventDefault();
           e.stopPropagation();
 
-          let b = bookings[i];
+          document.body.classList.add("moving");
 
           moving = {
+            id: b.id,
             index: i,
             startRow: b.row
           };
 
           highlightMoveOptions(b);
 
-          document.body.style.userSelect = "none";
+          document.body.style.userSelect =
+            "none";
         };
 
         d.ondblclick = (e) => {
@@ -7353,6 +7827,16 @@ handleBluecardCheckbox('${b.id}', ${i});
           if (f) return;
           if (!isEditAllowed()) return;
 
+          if (isLateCheckoutBlock(b)) {
+            alert(
+              "Dieser BLOCK gehört zu einer " +
+              "Late-Checkout-Buchung.\n\n" +
+              "Bitte entferne Late Checkout in der Gastbuchung."
+            );
+
+            return;
+          }
+
           if (!confirm("Löschen?")) return;
 
           const id = d.dataset.id;
@@ -7361,6 +7845,11 @@ handleBluecardCheckbox('${b.id}', ${i});
             console.warn("Keine ID gefunden!");
             return;
           }
+
+          const bookingToDelete =
+            bookings.find((booking) =>
+              String(booking.id) === String(id)
+            );
 
           isDeleting = true;
 
@@ -7373,7 +7862,30 @@ handleBluecardCheckbox('${b.id}', ${i});
             return;
           }
 
-          bookings = bookings.filter((x) => String(x.id) !== String(id));
+          bookings = bookings.filter(
+            (x) => String(x.id) !== String(id)
+          );
+
+          /*
+           * Wurde eine normale Gastbuchung gelöscht,
+           * den dazugehörigen automatischen BLOCK
+           * ebenfalls löschen.
+           */
+          if (
+            bookingToDelete &&
+            bookingToDelete.guests !== "BLOCK"
+          ) {
+            const blockDeleted =
+              await deleteLateCheckoutBlock(
+                bookingToDelete.id
+              );
+
+            if (!blockDeleted) {
+              console.error(
+                "Late-Checkout-BLOCK konnte beim Löschen nicht entfernt werden"
+              );
+            }
+          }
 
           render();
 
@@ -7426,18 +7938,19 @@ handleBluecardCheckbox('${b.id}', ${i});
         });
 
         if (closestRow !== b.row) {
-
-          if (canPlaceInRoom(
-            closestRow,
-            b.guests,
-            new Date(b.start),
-            new Date(b.end),
-            b.id
-          )) {
+          if (
+            canPlaceInRoom(
+              closestRow,
+              b.guests,
+              new Date(b.start),
+              new Date(b.end),
+              b.id,
+              b
+            )
+          ) {
             b.row = closestRow;
             draw();
           }
-
         }
 
         return;
@@ -7459,6 +7972,167 @@ handleBluecardCheckbox('${b.id}', ${i});
       }
     };
 
+    function canMoveBookingHorizontally(
+      booking,
+      newStart,
+      newEnd
+    ) {
+      const normalizedStart =
+        normalizeDate(newStart);
+
+      const normalizedEnd =
+        normalizeDate(newEnd);
+
+      const movedBooking = {
+        ...booking,
+        start: newStart.toISOString(),
+        end: newEnd.toISOString()
+      };
+
+      /*
+       * Prüft den neuen Gastzeitraum.
+       *
+       * Ignoriert werden:
+       * - die Gastbuchung selbst
+       * - der bisherige eigene Late-Checkout-BLOCK
+       */
+      const guestRangeConflict =
+        bookings.some((other) => {
+          if (!other) {
+            return false;
+          }
+
+          if (
+            String(other.id) ===
+            String(booking.id)
+          ) {
+            return false;
+          }
+
+          /*
+           * Der alte eigene BLOCK darf die neue
+           * Position der Gastbuchung nicht blockieren.
+           */
+          if (
+            isLateCheckoutBlock(
+              other,
+              booking.id
+            )
+          ) {
+            return false;
+          }
+
+          if (
+            Number(other.row) !==
+            Number(booking.row)
+          ) {
+            return false;
+          }
+
+          const otherStart =
+            normalizeDate(other.start);
+
+          const otherEnd =
+            normalizeDate(other.end);
+
+          return (
+            normalizedStart < otherEnd &&
+            normalizedEnd > otherStart
+          );
+        });
+
+      if (guestRangeConflict) {
+        return {
+          possible: false,
+          reason: "BOOKING_CONFLICT"
+        };
+      }
+
+      /*
+       * Ohne Late Checkout muss keine zusätzliche
+       * BLOCK-Nacht geprüft werden.
+       */
+      if (
+        !booking.late_checkout ||
+        booking.guests === "BLOCK"
+      ) {
+        return {
+          possible: true,
+          reason: null
+        };
+      }
+
+      const blockDates =
+        getLateCheckoutBlockDates(
+          movedBooking
+        );
+
+      const normalizedBlockStart =
+        normalizeDate(blockDates.start);
+
+      const normalizedBlockEnd =
+        normalizeDate(blockDates.end);
+
+      /*
+       * Prüft die neue BLOCK-Nacht.
+       *
+       * Auch hier werden die Gastbuchung selbst
+       * und der bisherige eigene BLOCK ignoriert.
+       */
+      const blockRangeConflict =
+        bookings.some((other) => {
+          if (!other) {
+            return false;
+          }
+
+          if (
+            String(other.id) ===
+            String(booking.id)
+          ) {
+            return false;
+          }
+
+          if (
+            isLateCheckoutBlock(
+              other,
+              booking.id
+            )
+          ) {
+            return false;
+          }
+
+          if (
+            Number(other.row) !==
+            Number(booking.row)
+          ) {
+            return false;
+          }
+
+          const otherStart =
+            normalizeDate(other.start);
+
+          const otherEnd =
+            normalizeDate(other.end);
+
+          return (
+            normalizedBlockStart < otherEnd &&
+            normalizedBlockEnd > otherStart
+          );
+        });
+
+      if (blockRangeConflict) {
+        return {
+          possible: false,
+          reason: "BLOCK_CONFLICT"
+        };
+      }
+
+      return {
+        possible: true,
+        reason: null
+      };
+    }
+
     window.onmouseup = async (event) => {
       if (moving) {
         resetMoveHighlight();
@@ -7476,6 +8150,39 @@ handleBluecardCheckbox('${b.id}', ${i});
 
         if (oldRow !== newRow) {
           const user = currentUser;
+
+          /*
+           * Bei Late Checkout zuerst prüfen, ob die
+           * BLOCK-Nacht im neuen Zimmer frei ist.
+           */
+          if (b.late_checkout) {
+            const testBooking = {
+              ...b,
+              row: newRow
+            };
+
+            const currentBlock =
+              findLateCheckoutBlock(b.id);
+
+            const hasConflict =
+              hasLateCheckoutBlockConflict(
+                testBooking,
+                currentBlock ? currentBlock.id : null
+              );
+
+            if (hasConflict) {
+              b.row = oldRow;
+              render();
+
+              alert(
+                "Zimmerwechsel nicht möglich.\n\n" +
+                "Die Late-Checkout-BLOCK-Nacht ist " +
+                "im neuen Zimmer bereits belegt."
+              );
+
+              return;
+            }
+          }
 
           const { error } = await supa
             .from("bookings")
@@ -7495,6 +8202,19 @@ handleBluecardCheckbox('${b.id}', ${i});
             return;
           }
 
+          /*
+           * Zugehörigen Late-Checkout-BLOCK
+           * ebenfalls ins neue Zimmer verschieben.
+           */
+          const blockOk =
+            await syncLateCheckoutBlock(b);
+
+          if (!blockOk) {
+            console.error(
+              "Late-Checkout-BLOCK konnte nicht verschoben werden"
+            );
+          }
+
           logBookingAction({
             bookingId: b.id,
             action: "update",
@@ -7504,6 +8224,8 @@ handleBluecardCheckbox('${b.id}', ${i});
             room: newRoom,
             bookingAt: b.end
           });
+
+          render();
         } else {
           render();
         }
@@ -7574,24 +8296,80 @@ handleBluecardCheckbox('${b.id}', ${i});
       let oldEnd = b.end;
 
       if (moveDays !== 0) {
-        let baseStart = new Date(b.start);
-        let baseEnd = new Date(b.end);
+        const baseStart =
+          new Date(b.start);
 
-        let duration = baseEnd - baseStart;
+        const baseEnd =
+          new Date(b.end);
 
-        let newStart = new Date(baseStart);
-        newStart.setDate(newStart.getDate() + moveDays);
+        const duration =
+          baseEnd.getTime() -
+          baseStart.getTime();
 
-        let newEnd = new Date(newStart.getTime() + duration);
-        newStart.setHours(CHECKIN_HOUR, 0, 0, 0);
-        newEnd.setHours(CHECKOUT_HOUR, 0, 0, 0);
+        const newStart =
+          new Date(baseStart);
 
-        if (!overlapDates(b.row, newStart, newEnd, currentDrag.id)) {
+        newStart.setDate(
+          newStart.getDate() + moveDays
+        );
 
-          b.start = newStart.toISOString();
-          b.end = newEnd.toISOString();
+        const newEnd =
+          new Date(
+            newStart.getTime() +
+            duration
+          );
+
+        newStart.setHours(
+          CHECKIN_HOUR,
+          0,
+          0,
+          0
+        );
+
+        newEnd.setHours(
+          CHECKOUT_HOUR,
+          0,
+          0,
+          0
+        );
+
+        const moveCheck =
+          canMoveBookingHorizontally(
+            b,
+            newStart,
+            newEnd
+          );
+
+        if (moveCheck.possible) {
+          b.start =
+            newStart.toISOString();
+
+          b.end =
+            newEnd.toISOString();
 
           changed = true;
+        } else {
+          if (
+            moveCheck.reason ===
+            "BOOKING_CONFLICT"
+          ) {
+            alert(
+              "Die Buchung kann nicht dorthin verschoben werden.\n\n" +
+              "Der neue Aufenthaltszeitraum ist durch " +
+              "eine andere Buchung belegt."
+            );
+          }
+
+          if (
+            moveCheck.reason ===
+            "BLOCK_CONFLICT"
+          ) {
+            alert(
+              "Die Buchung kann nicht dorthin verschoben werden.\n\n" +
+              "Für den Late-Checkout-BLOCK ist nach der " +
+              "neuen Abreise kein Platz."
+            );
+          }
         }
       }
       document.body.style.cursor = "default";
@@ -7649,7 +8427,57 @@ handleBluecardCheckbox('${b.id}', ${i});
         });
 
         if (data && data[0]) {
-          bookings = bookings.map((x) => (x.id === currentDrag.id ? data[0] : x));
+          const updatedBooking = {
+            ...data[0],
+            row: Number(data[0].row)
+          };
+
+          bookings = bookings.map((x) =>
+            String(x.id) === String(currentDrag.id)
+              ? updatedBooking
+              : x
+          );
+
+          const blockOk =
+            await syncLateCheckoutBlock(
+              updatedBooking
+            );
+
+          if (!blockOk) {
+            updatedBooking.start = oldStart;
+            updatedBooking.end = oldEnd;
+
+            await supa
+              .from("bookings")
+              .update({
+                start: oldStart,
+                end: oldEnd,
+                user_id: user?.id
+              })
+              .eq("id", updatedBooking.id);
+
+            bookings = bookings.map((x) =>
+              String(x.id) === String(updatedBooking.id)
+                ? updatedBooking
+                : x
+            );
+
+            await syncLateCheckoutBlock(
+              updatedBooking
+            );
+
+            render();
+
+            alert(
+              "Die Buchung konnte nicht verschoben werden.\n\n" +
+              "Die Late-Checkout-BLOCK-Nacht ist " +
+              "am neuen Datum bereits belegt."
+            );
+
+            return;
+          }
+
+          render();
         }
       }
     };
@@ -7790,7 +8618,7 @@ handleBluecardCheckbox('${b.id}', ${i});
 
           newStart.setHours(CHECKIN_HOUR, 0, 0, 0);
 
-          if (!overlapDates(b.row, newStart, baseEnd, b.id)) {
+          if (!hasBookingConflict(b.row, newStart, baseEnd, b.id)) {
             let oldStart = b.start;
 
             b.start = newStart.toISOString();
@@ -7834,7 +8662,30 @@ handleBluecardCheckbox('${b.id}', ${i});
 
           newEnd.setHours(CHECKOUT_HOUR, 0, 0, 0);
 
-          if (!overlapDates(b.row, baseStart, newEnd, b.id)) {
+          const resizedBooking = {
+            ...b,
+            end: newEnd.toISOString()
+          };
+
+          const normalRangeIsFree =
+            !hasBookingConflict(
+              b.row,
+              baseStart,
+              newEnd,
+              b.id
+            );
+
+          const lateCheckoutBlockIsFree =
+            canPlaceLateCheckoutBlock(
+              b.row,
+              resizedBooking,
+              b.id
+            );
+
+          if (
+            normalRangeIsFree &&
+            lateCheckoutBlockIsFree
+          ) {
             let oldEnd = b.end;
 
             b.end = newEnd.toISOString();
@@ -7859,6 +8710,41 @@ handleBluecardCheckbox('${b.id}', ${i});
               render();
               isResizingUpdate = false;
               return;
+            }
+
+            if (
+              b.late_checkout &&
+              b.guests !== "BLOCK"
+            ) {
+              const blockOk =
+                await syncLateCheckoutBlock(b);
+
+              if (!blockOk) {
+                /*
+                 * Änderung zurücknehmen, weil die neue
+                 * BLOCK-Nacht nicht verfügbar ist.
+                 */
+                b.end = oldEnd;
+
+                await supa
+                  .from("bookings")
+                  .update({
+                    end: oldEnd,
+                    user_id: user?.id
+                  })
+                  .eq("id", b.id);
+
+                await syncLateCheckoutBlock(b);
+
+                render();
+
+                alert(
+                  "Die Abreise konnte nicht geändert werden.\n\n" +
+                  "Die neue Late-Checkout-BLOCK-Nacht ist bereits belegt."
+                );
+
+                return;
+              }
             }
 
             logBookingAction({
@@ -9607,6 +10493,441 @@ handleBluecardCheckbox('${b.id}', ${i});
       setInterval(createBackupIfNeeded, 30 * 60 * 1000);
     }
 
+    const LATE_CHECKOUT_BLOCK_COMMENT = "Late Checkout";
+
+
+    function isLateCheckoutBlock(booking, guestBookingId = null) {
+      if (!booking) return false;
+
+      if (booking.guests !== "BLOCK") return false;
+
+      if (booking.comment !== LATE_CHECKOUT_BLOCK_COMMENT) {
+        return false;
+      }
+
+      if (guestBookingId !== null) {
+        return String(booking.name) === String(guestBookingId);
+      }
+
+      return true;
+    }
+
+
+    function findLateCheckoutBlock(guestBookingId) {
+      return bookings.find((booking) => {
+        return isLateCheckoutBlock(
+          booking,
+          guestBookingId
+        );
+      }) || null;
+    }
+
+
+    function getLateCheckoutBlockDates(guestBooking) {
+      const blockStart = new Date(guestBooking.end);
+
+      blockStart.setHours(
+        CHECKIN_HOUR,
+        0,
+        0,
+        0
+      );
+
+      const blockEnd = new Date(blockStart);
+
+      blockEnd.setDate(
+        blockEnd.getDate() + 1
+      );
+
+      blockEnd.setHours(
+        CHECKOUT_HOUR,
+        0,
+        0,
+        0
+      );
+
+      return {
+        start: blockStart,
+        end: blockEnd
+      };
+    }
+
+
+    function hasLateCheckoutBlockConflict(
+      guestBooking,
+      currentBlockId = null
+    ) {
+      const blockDates =
+        getLateCheckoutBlockDates(guestBooking);
+
+      const blockStart =
+        normalizeDate(blockDates.start);
+
+      const blockEnd =
+        normalizeDate(blockDates.end);
+
+      return bookings.some((other) => {
+        if (!other) return false;
+
+        if (
+          guestBooking.id &&
+          String(other.id) === String(guestBooking.id)
+        ) {
+          return false;
+        }
+
+        if (
+          currentBlockId &&
+          String(other.id) === String(currentBlockId)
+        ) {
+          return false;
+        }
+
+        if (
+          Number(other.row) !==
+          Number(guestBooking.row)
+        ) {
+          return false;
+        }
+
+        const otherStart =
+          normalizeDate(other.start);
+
+        const otherEnd =
+          normalizeDate(other.end);
+
+        return (
+          blockStart < otherEnd &&
+          blockEnd > otherStart
+        );
+      });
+    }
+
+
+    async function deleteLateCheckoutBlock(
+      guestBookingId
+    ) {
+      if (!guestBookingId) return;
+
+      const { data, error } = await supa
+        .from("bookings")
+        .select("id")
+        .eq("guests", "BLOCK")
+        .eq(
+          "comment",
+          LATE_CHECKOUT_BLOCK_COMMENT
+        )
+        .eq(
+          "name",
+          String(guestBookingId)
+        );
+
+      if (error) {
+        console.error(
+          "Fehler beim Suchen des Late-Checkout-BLOCKs:",
+          error
+        );
+
+        return false;
+      }
+
+      if (!data || data.length === 0) {
+        return true;
+      }
+
+      const ids = data.map((block) => block.id);
+
+      const { error: deleteError } = await supa
+        .from("bookings")
+        .delete()
+        .in("id", ids);
+
+      if (deleteError) {
+        console.error(
+          "Fehler beim Löschen des Late-Checkout-BLOCKs:",
+          deleteError
+        );
+
+        return false;
+      }
+
+      const idStrings = ids.map((id) => String(id));
+
+      bookings = bookings.filter((booking) => {
+        return !idStrings.includes(
+          String(booking.id)
+        );
+      });
+
+      return true;
+    }
+
+
+    async function syncLateCheckoutBlock(
+      guestBooking
+    ) {
+      if (!guestBooking) return false;
+
+      if (!guestBooking.id) return false;
+
+      if (guestBooking.guests === "BLOCK") {
+        return true;
+      }
+
+      const existingBlock =
+        findLateCheckoutBlock(guestBooking.id);
+
+      /*
+       * Late Checkout AUS:
+       * eventuell vorhandenen BLOCK entfernen.
+       */
+      if (!guestBooking.late_checkout) {
+        return await deleteLateCheckoutBlock(
+          guestBooking.id
+        );
+      }
+
+      /*
+       * Gewünschten Zeitraum des BLOCKs bestimmen.
+       */
+      const blockDates =
+        getLateCheckoutBlockDates(guestBooking);
+
+      /*
+       * Prüfen, ob die BLOCK-Nacht bereits
+       * durch eine andere Buchung belegt ist.
+       */
+      if (
+        hasLateCheckoutBlockConflict(
+          guestBooking,
+          existingBlock ? existingBlock.id : null
+        )
+      ) {
+        return false;
+      }
+
+      const blockData = {
+        row: Number(guestBooking.row),
+
+        start: blockDates.start.toISOString(),
+        end: blockDates.end.toISOString(),
+
+        name: String(guestBooking.id),
+
+        company: "",
+
+        price: "",
+
+        invoice_pending: false,
+
+        comment:
+          LATE_CHECKOUT_BLOCK_COMMENT,
+
+        guests: "BLOCK",
+
+        color: "#444",
+
+        group_id: null,
+
+        paid: false,
+
+        checkin: false,
+
+        breakfast: false,
+
+        late_checkout: false,
+
+        pet: false,
+
+        pet_count: 0,
+
+        bluecard: false,
+
+        bluecard_count: 0,
+
+        crib: false,
+
+        crib_count: 0,
+
+        user_id:
+          currentUser ? currentUser.id : null
+      };
+
+
+      /*
+       * Bereits vorhandenen BLOCK aktualisieren.
+       */
+      if (existingBlock) {
+        const { data, error } = await supa
+          .from("bookings")
+          .update(blockData)
+          .eq("id", existingBlock.id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error(
+            "Late-Checkout-BLOCK konnte nicht aktualisiert werden:",
+            error
+          );
+
+          return false;
+        }
+
+        const updatedBlock = {
+          ...data,
+          row: Number(data.row)
+        };
+
+        bookings = bookings.map((booking) => {
+          if (
+            String(booking.id) ===
+            String(updatedBlock.id)
+          ) {
+            return updatedBlock;
+          }
+
+          return booking;
+        });
+
+        return true;
+      }
+
+
+      /*
+       * Zusätzlich in Supabase prüfen.
+       *
+       * Dadurch wird verhindert, dass durch Realtime
+       * versehentlich ein zweiter BLOCK entsteht.
+       */
+      const {
+        data: databaseBlocks,
+        error: searchError
+      } = await supa
+        .from("bookings")
+        .select("*")
+        .eq("guests", "BLOCK")
+        .eq(
+          "comment",
+          LATE_CHECKOUT_BLOCK_COMMENT
+        )
+        .eq(
+          "name",
+          String(guestBooking.id)
+        )
+        .limit(1);
+
+      if (searchError) {
+        console.error(
+          "Late-Checkout-BLOCK konnte nicht gesucht werden:",
+          searchError
+        );
+
+        return false;
+      }
+
+
+      /*
+       * BLOCK existiert in Supabase,
+       * aber noch nicht im lokalen Array.
+       */
+      if (
+        databaseBlocks &&
+        databaseBlocks.length > 0
+      ) {
+        const databaseBlock =
+          databaseBlocks[0];
+
+        const {
+          data: updatedData,
+          error: updateError
+        } = await supa
+          .from("bookings")
+          .update(blockData)
+          .eq("id", databaseBlock.id)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error(
+            "Late-Checkout-BLOCK konnte nicht aktualisiert werden:",
+            updateError
+          );
+
+          return false;
+        }
+
+        const updatedBlock = {
+          ...updatedData,
+          row: Number(updatedData.row)
+        };
+
+        const existsLocally =
+          bookings.some((booking) => {
+            return (
+              String(booking.id) ===
+              String(updatedBlock.id)
+            );
+          });
+
+        if (existsLocally) {
+          bookings = bookings.map((booking) => {
+            if (
+              String(booking.id) ===
+              String(updatedBlock.id)
+            ) {
+              return updatedBlock;
+            }
+
+            return booking;
+          });
+        } else {
+          bookings.push(updatedBlock);
+        }
+
+        return true;
+      }
+
+
+      /*
+       * Noch kein BLOCK vorhanden:
+       * jetzt neu erstellen.
+       */
+      const { data, error } = await supa
+        .from("bookings")
+        .insert([blockData])
+        .select()
+        .single();
+
+      if (error) {
+        console.error(
+          "Late-Checkout-BLOCK konnte nicht erstellt werden:",
+          error
+        );
+
+        return false;
+      }
+
+      const newBlock = {
+        ...data,
+        row: Number(data.row)
+      };
+
+      const existsLocally =
+        bookings.some((booking) => {
+          return (
+            String(booking.id) ===
+            String(newBlock.id)
+          );
+        });
+
+      if (!existsLocally) {
+        bookings.push(newBlock);
+      }
+
+      return true;
+    }
+
     async function addBookingToDB(b) {
       const user = currentUser;
 
@@ -9628,30 +10949,92 @@ handleBluecardCheckbox('${b.id}', ${i});
       render();
 
       lastChangeTime = Date.now();
-      const { data, error } = await supa.from("bookings").insert([b]).select();
 
+      const { data, error } = await supa
+        .from("bookings")
+        .insert([b])
+        .select();
 
       if (error) {
         console.error(error);
         alert("Fehler beim Speichern");
 
-        bookings = bookings.filter((x) => x.id !== tempId);
+        bookings = bookings.filter(
+          (x) => x.id !== tempId
+        );
+
         render();
         return;
       }
 
       if (data && data[0]) {
-        logBookingAction({
-          bookingId: data[0].id,
+        const savedBooking = {
+          ...data[0],
+          row: Number(data[0].row)
+        };
+
+        await logBookingAction({
+          bookingId: savedBooking.id,
           action: "create",
           field: "booking",
           newValue: "created",
-          room: rooms[data[0].row],
-
-          bookingAt: data[0].end
+          room: rooms[savedBooking.row],
+          bookingAt: savedBooking.end
         });
 
-        bookings = bookings.map((x) => (x.id === tempId ? data[0] : x));
+        bookings = bookings.map((x) =>
+          x.id === tempId
+            ? savedBooking
+            : x
+        );
+
+        /*
+         * Late Checkout:
+         * Nach erfolgreichem Speichern der Gastbuchung
+         * den zugehörigen BLOCK erzeugen.
+         */
+        if (
+          savedBooking.late_checkout &&
+          savedBooking.guests !== "BLOCK"
+        ) {
+          const blockOk =
+            await syncLateCheckoutBlock(
+              savedBooking
+            );
+
+          if (!blockOk) {
+            /*
+             * BLOCK konnte nicht angelegt werden.
+             * Late Checkout deshalb an der Gastbuchung
+             * wieder deaktivieren.
+             */
+            savedBooking.late_checkout = false;
+
+            const { error: lateCheckoutError } =
+              await supa
+                .from("bookings")
+                .update({
+                  late_checkout: false,
+                  user_id: user.id
+                })
+                .eq("id", savedBooking.id);
+
+            if (lateCheckoutError) {
+              console.error(
+                "Late Checkout konnte nicht zurückgesetzt werden:",
+                lateCheckoutError
+              );
+            }
+
+            alert(
+              "Die Buchung wurde gespeichert, aber der " +
+              "Late-Checkout-BLOCK konnte nicht angelegt werden.\n\n" +
+              "Das Zimmer ist möglicherweise in der " +
+              "folgenden Nacht bereits belegt.\n\n" +
+              "Late Checkout wurde wieder deaktiviert."
+            );
+          }
+        }
 
         render();
       }
