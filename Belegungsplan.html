@@ -9421,7 +9421,7 @@ handleBluecardCheckbox('${b.id}', ${i});
       let fileContainer = document.getElementById("groupInfoFiles");
 
       let group = groupsMap[groupId];
-      let creator = userMap[group.user_id] || "Unbekannt";
+      let lastEditor = userMap[group.user_id] || "Unbekannt";
 
 
       let createdAt = group.created_at
@@ -9460,16 +9460,51 @@ handleBluecardCheckbox('${b.id}', ${i});
 <b>📅 Anreise:</b> ${formatDate(dateCalc.start)}${dateCalc.startNote}<br>
 <b>📅 Abreise:</b> ${formatDate(dateCalc.end)}${dateCalc.endNote}<br><br>
 
-${group.comment
-          ? `<b>💬 Kommentar:</b> ${escapeHTML(group.comment)}<br><br>`
+<b>💬 Kommentar:</b>
+${group.comment ? escapeHTML(group.comment) : "-"}
+${isEditAllowed()
+          ? `
+    <button
+      type="button"
+      onclick="editGroupComment('${groupId}')"
+      title="Kommentar bearbeiten"
+      style="
+        border:none;
+        background:transparent;
+        cursor:pointer;
+        padding:2px 5px;
+        font-size:16px;
+      "
+    >✏️</button>
+  `
           : ""
         }
+<br><br>
 
-<b>🛏️ Zimmer:</b><br>
-    EZ: ${stats.ez}<br>
-    DZ: ${stats.dz}<br>
-    3er: ${stats.er3}<br>
-    4er: ${stats.er4}<br><br>
+<b>🛏️ Zimmer:</b>
+${isEditAllowed()
+          ? `
+    <button
+      type="button"
+      onclick="openGroupRoomEditor('${groupId}')"
+      title="Zimmerpreise bearbeiten"
+      style="
+        border:none;
+        background:transparent;
+        cursor:pointer;
+        padding:2px 5px;
+        font-size:16px;
+      "
+    >✏️</button>
+  `
+          : ""
+        }
+<br>
+
+EZ: ${stats.ez}<br>
+DZ: ${stats.dz}<br>
+3er: ${stats.er3}<br>
+4er: ${stats.er4}<br><br>
 
     <b>👥 Personen:</b> ${stats.guests}<br><br>
      ${groupBookings.length > 0 &&
@@ -9477,8 +9512,8 @@ ${group.comment
           ? "<b>🧾 Rechnung:</b> Kosten für die Gruppe gehen auf Rechnung.<br><br>"
           : ""
         }   
-    <b>👤 Angelegt von:</b> ${creator}<br>
-    <b>🕓 Erstellt am:</b> ${createdAt}
+   <b>👤 Zuletzt geändert von:</b> ${lastEditor}<br>
+<b>🕓 Erstellt am:</b> ${createdAt}
   </div>
 `;
 
@@ -9649,6 +9684,607 @@ ${group.comment
       }
     }
 
+    async function editGroupComment(groupId) {
+      if (!isEditAllowed()) {
+        alert("Keine Berechtigung zum Bearbeiten.");
+        return;
+      }
+
+      const group = groupsMap[groupId];
+
+      if (!group) {
+        alert("Gruppe nicht gefunden.");
+        return;
+      }
+
+      const newComment = prompt(
+        "Kommentar der Gruppe bearbeiten:",
+        group.comment || ""
+      );
+
+      // Abbrechen
+      if (newComment === null) {
+        return;
+      }
+
+      const cleanComment = newComment.trim();
+
+      const loadingTimer = setTimeout(() => {
+        showLoading("Kommentar wird gespeichert...");
+      }, 200);
+
+      try {
+        const { error } = await supa
+          .from("groups")
+          .update({
+            comment: cleanComment || null
+          })
+          .eq("id", groupId);
+
+        if (error) {
+          console.error(error);
+          alert("Kommentar konnte nicht gespeichert werden.");
+          return;
+        }
+
+        groupsMap[groupId].comment = cleanComment || null;
+
+        await updateGroupLastEditor(groupId);
+
+        await openGroupInfo(groupId);
+
+      } finally {
+        clearTimeout(loadingTimer);
+        hideLoading();
+      }
+    }
+
+    async function updateGroupLastEditor(groupId) {
+      const user = currentUser;
+
+      if (!user || !groupsMap[groupId]) {
+        return;
+      }
+
+      const { error } = await supa
+        .from("groups")
+        .update({
+          user_id: user.id
+        })
+        .eq("id", groupId);
+
+      if (error) {
+        console.error(
+          "Zuletzt geändert von konnte nicht aktualisiert werden:",
+          error
+        );
+        return;
+      }
+
+      // Lokal ebenfalls aktualisieren
+      groupsMap[groupId].user_id = user.id;
+    }
+
+
+    function openGroupRoomEditor(groupId) {
+      if (!isEditAllowed()) {
+        alert("Keine Berechtigung zum Bearbeiten.");
+        return;
+      }
+
+      const groupBookings = bookings.filter(b =>
+        b.group_id === groupId &&
+        b.guests !== "BLOCK" &&
+        b.id &&
+        !String(b.id).startsWith("tmp_")
+      );
+
+      if (!groupBookings.length) {
+        alert("Keine Zimmer in dieser Gruppe gefunden.");
+        return;
+      }
+
+      // Falls bereits ein Editor offen ist
+      document
+        .getElementById("groupRoomEditorOverlay")
+        ?.remove();
+
+      // ---------------------------------
+      // Vorhandene Kategorien ermitteln
+      // ---------------------------------
+      const categories = {};
+
+      groupBookings.forEach(booking => {
+        const category = booking.guests;
+
+        if (!category) {
+          return;
+        }
+
+        if (!categories[category]) {
+          categories[category] = {
+            category: category,
+            count: 0,
+            prices: []
+          };
+        }
+
+        categories[category].count++;
+
+        const price = String(
+          booking.price ?? ""
+        ).trim();
+
+        if (!categories[category].prices.includes(price)) {
+          categories[category].prices.push(price);
+        }
+      });
+
+      // Gewünschte Reihenfolge
+      const categoryOrder = [
+        "EZ",
+        "DZ",
+        "3er",
+        "4er",
+        "EZ B",
+        "DZ B"
+      ];
+
+      // Nur Kategorien, die wirklich vorkommen
+      const activeCategories = categoryOrder.filter(
+        category => categories[category]
+      );
+
+      // Sicherheitshalber unbekannte Kategorien ergänzen
+      Object.keys(categories).forEach(category => {
+        if (!activeCategories.includes(category)) {
+          activeCategories.push(category);
+        }
+      });
+
+      // ---------------------------------
+      // Overlay
+      // ---------------------------------
+      const overlay = document.createElement("div");
+
+      overlay.id = "groupRoomEditorOverlay";
+
+      overlay.style = `
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.45);
+    z-index:999999;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:15px;
+    box-sizing:border-box;
+  `;
+
+      // ---------------------------------
+      // Fenster
+      // ---------------------------------
+      const box = document.createElement("div");
+
+      box.id = "groupRoomEditorBox";
+
+      box.style = `
+    background:white;
+    width:min(520px, 92vw);
+    max-height:85vh;
+    overflow:auto;
+    padding:20px;
+    border-radius:10px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.3);
+    font-family:Arial, sans-serif;
+    box-sizing:border-box;
+  `;
+
+      let html = `
+    <h3 style="
+      margin-top:0;
+      margin-bottom:20px;
+      text-align:center;
+    ">
+      Zimmerpreise bearbeiten
+    </h3>
+
+    <div style="
+      display:grid;
+      grid-template-columns:90px 1fr 150px;
+      gap:10px;
+      align-items:center;
+      font-weight:bold;
+      border-bottom:2px solid #ccc;
+      padding-bottom:7px;
+    ">
+      <div>Typ</div>
+      <div>Anzahl</div>
+      <div>Preis / Nacht</div>
+    </div>
+  `;
+
+      // ---------------------------------
+      // Nur vorhandene Kategorien anzeigen
+      // ---------------------------------
+      activeCategories.forEach(category => {
+        const data = categories[category];
+
+        // Wenn alle Buchungen dieser Kategorie
+        // denselben Preis haben, diesen anzeigen.
+        const hasUniformPrice =
+          data.prices.length === 1;
+
+        const currentPrice =
+          hasUniformPrice
+            ? data.prices[0]
+            : "";
+
+        html += `
+      <div
+        class="group-category-edit-row"
+        data-category="${escapeHTML(category)}"
+        data-mixed-prices="${hasUniformPrice ? "false" : "true"}"
+        style="
+          display:grid;
+          grid-template-columns:90px 1fr 150px;
+          gap:10px;
+          align-items:center;
+          padding:12px 0;
+          border-bottom:1px solid #eee;
+        "
+      >
+
+        <div>
+          <b>${escapeHTML(category)}</b>
+        </div>
+
+        <div>
+          ${data.count}
+          ${data.count === 1 ? "Zimmer" : "Zimmer"}
+        </div>
+
+        <div>
+          <input
+            type="text"
+            class="group-category-price"
+            value="${escapeHTML(currentPrice)}"
+            placeholder="${hasUniformPrice ? "Preis" : "unterschiedlich"}"
+            inputmode="decimal"
+            style="
+              width:100%;
+              box-sizing:border-box;
+              padding:7px 8px;
+              font-size:16px;
+              border:1px solid #ccc;
+              border-radius:5px;
+            "
+          >
+
+          ${!hasUniformPrice
+            ? `
+                <div style="
+                  font-size:11px;
+                  color:#d97706;
+                  margin-top:3px;
+                ">
+                  unterschiedliche Preise
+                </div>
+              `
+            : ""
+          }
+
+        </div>
+
+      </div>
+    `;
+      });
+
+      html += `
+    <div style="
+      margin-top:20px;
+      display:flex;
+      justify-content:flex-end;
+      gap:10px;
+    ">
+
+      <button
+        type="button"
+        onclick="event.stopPropagation(); closeGroupRoomEditor(event);"
+        style="
+          padding:8px 14px;
+          font-size:16px;
+          cursor:pointer;
+        "
+      >
+        Abbrechen
+      </button>
+
+      <button
+        type="button"
+        onclick="event.stopPropagation(); saveGroupRoomEditor('${groupId}');"
+        style="
+          padding:8px 14px;
+          font-size:16px;
+          font-weight:bold;
+          cursor:pointer;
+          background:#4caf50;
+          color:white;
+          border:none;
+          border-radius:6px;
+        "
+      >
+        Speichern
+      </button>
+
+    </div>
+  `;
+
+      box.innerHTML = html;
+
+      // ---------------------------------
+      // Klick IM Fenster
+      // ---------------------------------
+      box.addEventListener("click", function (event) {
+        event.stopPropagation();
+      });
+
+      box.addEventListener("mousedown", function (event) {
+        event.stopPropagation();
+      });
+
+      box.addEventListener("pointerdown", function (event) {
+        event.stopPropagation();
+      });
+
+      // ---------------------------------
+      // Klick AUSSERHALB:
+      // nur Preis-Editor schließen
+      // ---------------------------------
+      overlay.addEventListener("click", function (event) {
+        event.stopPropagation();
+
+        if (event.target === overlay) {
+          closeGroupRoomEditor(event);
+        }
+      });
+
+      overlay.addEventListener("mousedown", function (event) {
+        event.stopPropagation();
+      });
+
+      overlay.addEventListener("pointerdown", function (event) {
+        event.stopPropagation();
+      });
+
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+    }
+
+
+    function closeGroupRoomEditor(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      const overlay =
+        document.getElementById("groupRoomEditorOverlay");
+
+      if (overlay) {
+        overlay.remove();
+      }
+    }
+
+
+    async function saveGroupRoomEditor(groupId) {
+      if (!isEditAllowed()) {
+        alert("Keine Berechtigung zum Bearbeiten.");
+        return;
+      }
+
+      const overlay =
+        document.getElementById("groupRoomEditorOverlay");
+
+      if (!overlay) {
+        return;
+      }
+
+      // ---------------------------------
+      // Neue Kategoriepreise auslesen
+      // ---------------------------------
+      const categoryPrices = {};
+
+      const categoryRows =
+        overlay.querySelectorAll(
+          ".group-category-edit-row"
+        );
+
+      for (const row of categoryRows) {
+        const category =
+          row.dataset.category;
+
+        const priceInput =
+          row.querySelector(
+            ".group-category-price"
+          );
+
+        const price =
+          priceInput.value.trim();
+
+        const hadMixedPrices =
+          row.dataset.mixedPrices === "true";
+
+        /*
+         * Bei unterschiedlichen bisherigen Preisen:
+         * Leeres Feld bedeutet "nicht verändern".
+         */
+        if (hadMixedPrices && price === "") {
+          continue;
+        }
+
+        /*
+         * Bei normalen Kategorien darf der Preis
+         * nicht versehentlich leer gespeichert werden.
+         */
+        if (!hadMixedPrices && price === "") {
+          alert(
+            `Bitte für ${category} einen Preis eingeben.`
+          );
+
+          priceInput.focus();
+          return;
+        }
+
+        categoryPrices[category] = price;
+      }
+
+      // ---------------------------------
+      // Buchungen der Gruppe ermitteln
+      // ---------------------------------
+      const groupBookings = bookings.filter(b =>
+        b.group_id === groupId &&
+        b.guests !== "BLOCK" &&
+        b.id &&
+        !String(b.id).startsWith("tmp_")
+      );
+
+      if (!groupBookings.length) {
+        alert(
+          "Keine Zimmer in dieser Gruppe gefunden."
+        );
+        return;
+      }
+
+      // ---------------------------------
+      // Nur tatsächlich notwendige
+      // Änderungen ermitteln
+      // ---------------------------------
+      const changes = [];
+
+      groupBookings.forEach(booking => {
+        const category =
+          booking.guests;
+
+        /*
+         * Kategorie wurde nicht geändert.
+         * Das kann bei einer Kategorie mit bisher
+         * unterschiedlichen Preisen vorkommen.
+         */
+        if (
+          categoryPrices[category] === undefined
+        ) {
+          return;
+        }
+
+        const newPrice =
+          categoryPrices[category];
+
+        const oldPrice =
+          String(booking.price ?? "");
+
+        if (
+          oldPrice === String(newPrice)
+        ) {
+          return;
+        }
+
+        changes.push({
+          booking,
+          oldPrice,
+          newPrice
+        });
+      });
+
+      // Nichts geändert
+      if (!changes.length) {
+        closeGroupRoomEditor();
+
+        await openGroupInfo(groupId);
+
+        return;
+      }
+
+      const loadingTimer = setTimeout(() => {
+        showLoading(
+          "Zimmerpreise werden gespeichert..."
+        );
+      }, 200);
+
+      try {
+        const user = currentUser;
+
+        let hasError = false;
+
+        // ---------------------------------
+        // Geänderte Buchungen speichern
+        // ---------------------------------
+        for (const change of changes) {
+          const booking =
+            change.booking;
+
+          const { error } = await supa
+            .from("bookings")
+            .update({
+              price: change.newPrice,
+              user_id: user?.id
+            })
+            .eq("id", booking.id);
+
+          if (error) {
+            console.error(
+              "Preis konnte nicht gespeichert werden:",
+              booking.id,
+              error
+            );
+
+            hasError = true;
+            continue;
+          }
+
+          // Lokal aktualisieren
+          booking.price =
+            change.newPrice;
+
+          booking.user_id =
+            user?.id;
+
+          // Änderung protokollieren
+          await logBookingAction({
+            bookingId: booking.id,
+            action: "update",
+            field: "price",
+            oldValue: change.oldPrice,
+            newValue: change.newPrice,
+            room: rooms[booking.row],
+            bookingAt: booking.end
+          });
+        }
+
+        render();
+
+        if (hasError) {
+          alert(
+            "Einige Zimmerpreise konnten nicht gespeichert werden. " +
+            "Bitte prüfe die Gruppe erneut."
+          );
+
+          return;
+        }
+
+        await updateGroupLastEditor(groupId);
+
+        closeGroupRoomEditor();
+
+        await openGroupInfo(groupId);
+
+      } finally {
+        clearTimeout(loadingTimer);
+        hideLoading();
+      }
+    }
+
+
     function getFreeGroupColor(groupId) {
       const group = groupsMap[groupId];
       if (!group) return null;
@@ -9696,6 +10332,8 @@ ${group.comment
 
       groupsMap[groupId].color = newColor;
       groupsMap[groupId].name = newName;
+
+      await updateGroupLastEditor(groupId);
 
       render();
       drawLegend();
@@ -9910,6 +10548,8 @@ ${group.comment
           });
         });
 
+        await updateGroupLastEditor(groupId);
+
         render();
         await openGroupInfo(groupId);
       } finally {
@@ -9920,7 +10560,6 @@ ${group.comment
     }
 
     async function toggleGroupBluecards(groupId, enabled) {
-
       const groupBookings = bookings.filter(
         b => b.group_id === groupId
       );
@@ -9956,9 +10595,12 @@ ${group.comment
         alert("Fehler beim Speichern");
         return;
       }
+
+      // Letzten Bearbeiter der Gruppe aktualisieren
+      await updateGroupLastEditor(groupId);
+
+      await openGroupInfo(groupId);
     }
-
-
     async function markAllGroupBluecardsPaid(groupId) {
 
       const groupBookings =
