@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="de">
+<head><meta charset="utf-8"><title>SEPA DATEV BIC Fix</title>
+<style>body{font-family:Segoe UI,Arial,sans-serif;background:#f4f6f8;color:#17212b;margin:0}.box{max-width:760px;margin:50px auto;background:white;padding:30px;border-radius:12px;box-shadow:0 8px 30px #0002}button{background:#0067b8;color:#fff;border:0;border-radius:6px;padding:11px 16px;font-size:15px;cursor:pointer;margin:8px 6px 0 0}button:disabled{background:#9aa5af}.status{margin-top:18px;padding:14px;background:#eef3f7;border-radius:6px;white-space:pre-wrap}.warn{color:#9b1c1c;font-weight:600}code{background:#eef1f4;padding:2px 4px;border-radius:3px}</style></head>
+<body><div class="box">
+<h1>SEPA DATEV BIC Fix</h1>
+<p>Das Werkzeug veraendert nur den Auftraggeber-Bankeintrag <code>NOTPROVIDED</code> in <code>BICFI = WELADED1GMB</code>. Die XML wird nicht geparst oder neu aufgebaut.</p>
+<input id="file" type="file" accept=".xml,text/xml,application/xml"><br>
+<button id="convert" onclick="convertFile()">1. Pruefen &amp; konvertieren</button>
+<button id="download" onclick="downloadFile()" disabled>2. DATEV-Datei herunterladen</button>
+<div id="status" class="status">Bereit.</div>
+<p class="warn">Originaldatei bleibt unveraendert. Das Werkzeug bricht ab, wenn der erwartete Eintrag nicht exakt einmal gefunden wird.</p>
+</div>
+<script>
+const BIC='WELADED1GMB';
+let prepared=null, outputName='';
+function status(x){document.getElementById('status').textContent=x}
+function occurrences(text,re){return [...text.matchAll(re)].length}
+async function convertFile(){
+ prepared=null; document.getElementById('download').disabled=true;
+ const f=document.getElementById('file').files[0]; if(!f){status('Bitte zuerst eine XML-Datei auswaehlen.');return}
+ const buf=await f.arrayBuffer();
+ // Read as UTF-8 while preserving source text. UTF-16 is intentionally rejected for safety.
+ const bytes=new Uint8Array(buf);
+ if((bytes[0]===0xFF&&bytes[1]===0xFE)||(bytes[0]===0xFE&&bytes[1]===0xFF)){status('Abbruch: UTF-16-Datei erkannt. Keine Aenderung vorgenommen.');return}
+ let text=new TextDecoder('utf-8',{fatal:true}).decode(buf);
+ if(!text.includes('pain.001.001.09')){status('Abbruch: pain.001.001.09 wurde nicht gefunden. Keine Aenderung vorgenommen.');return}
+ // Match only entire FinInstnId whose sole child is Othr/Id=NOTPROVIDED, tolerating namespace prefixes and whitespace.
+ const re=/<(?:[A-Za-z_][\w.-]*:)?FinInstnId\b[^>]*>\s*<(?:[A-Za-z_][\w.-]*:)?Othr\b[^>]*>\s*<(?:[A-Za-z_][\w.-]*:)?Id\b[^>]*>\s*NOTPROVIDED\s*<\/(?:[A-Za-z_][\w.-]*:)?Id>\s*<\/(?:[A-Za-z_][\w.-]*:)?Othr>\s*<\/(?:[A-Za-z_][\w.-]*:)?FinInstnId>/g;
+ const matches=[...text.matchAll(re)];
+ if(matches.length!==1){status('Abbruch: Erwartet wurde genau ein passender NOTPROVIDED-Auftraggeberbank-Eintrag. Gefunden: '+matches.length+'. Keine Aenderung vorgenommen.');return}
+ const m=matches[0];
+ // Preserve FinInstnId opening/closing style and indentation. File otherwise remains character-for-character unchanged.
+ const open=m[0].match(/^<(?:[A-Za-z_][\w.-]*:)?FinInstnId\b[^>]*>/)[0];
+ const close=m[0].match(/<\/(?:[A-Za-z_][\w.-]*:)?FinInstnId>\s*$/)[0].trim();
+ const prefixMatch=open.match(/^<([A-Za-z_][\w.-]*:)?FinInstnId/); const prefix=prefixMatch&&prefixMatch[1]?prefixMatch[1]:'';
+ const replacement=open+'<'+prefix+'BICFI>'+BIC+'</'+prefix+'BICFI>'+close;
+ const updated=text.slice(0,m.index)+replacement+text.slice(m.index+m[0].length);
+ prepared=new Blob([new TextEncoder().encode(updated)],{type:'application/xml'});
+ outputName=f.name.replace(/\.xml$/i,'')+'_DATEV.xml';
+ document.getElementById('download').disabled=false;
+ status('Pruefung erfolgreich.\nGenau 1 Eintrag wird geaendert:\nNOTPROVIDED -> BICFI '+BIC+'\n\nJetzt auf "2. DATEV-Datei herunterladen" klicken.\nDateiname: '+outputName);
+}
+function downloadFile(){if(!prepared)return; const a=document.createElement('a'); const u=URL.createObjectURL(prepared); a.href=u;a.download=outputName;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);status('Datei zum Download bereitgestellt: '+outputName+'\nDie Originaldatei blieb unveraendert.');}
+</script></body></html>
