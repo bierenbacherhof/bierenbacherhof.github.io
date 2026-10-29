@@ -59,13 +59,13 @@
       overflow: visible;
     }
 
-    thead {
+    #calendar thead {
       position: relative;
       z-index: 2001 !important;
       border-collapse: collapse;
     }
 
-    thead th {
+    #calendar thead th {
       position: sticky;
       top: 120px;
       font-size: 20px;
@@ -73,19 +73,15 @@
       background: #eee;
     }
 
-    thead th:not(:last-child)::before {
+    #calendar thead th:not(:last-child)::before {
       content: "";
       position: absolute;
-
       top: 0;
       right: -1px;
       width: 2px;
       height: 100%;
-
       background: #666;
-
       z-index: 2001;
-      /* ✅ ÜBER ALLEM */
       pointer-events: none;
     }
 
@@ -780,6 +776,19 @@
       border-radius: 4px;
     }
 
+    /* Eingabefelder Gruppenbuchung */
+    #groupForm input:not([type="checkbox"]) {
+      border: 1px solid #767676;
+      border-radius: 2px;
+      box-sizing: border-box;
+    }
+
+    #groupForm input:not([type="checkbox"]):focus {
+      border-color: #333;
+      outline: 1px solid #333;
+      outline-offset: 0;
+    }
+
     @media (max-width: 600px) {
       /* ✅ HEADER */
 
@@ -796,14 +805,14 @@
         transform: scale(2);
       }
 
-      thead th {
+      #calendar thead th {
         font-size: 26px !important;
         line-height: 1.2;
         padding: 10px 4px;
         height: 80px;
       }
 
-      thead th:not(:last-child)::before {
+      #calendar thead th:not(:last-child)::before {
         width: 2px;
       }
 
@@ -1335,25 +1344,37 @@
       <button onclick="closeForm()">Abbrechen</button>
     </div>
     <div id="groupForm" style="display: none">
+
       <div class="switch-wrapper">
         <span>Gruppenname</span>
+
         <label class="switch">
           <input type="checkbox" id="g_isCompany">
           <span class="slider"></span>
         </label>
+
         <span>Firma</span>
       </div>
-      <input type="text" id="g_name" required /><br />
 
-      <div id="groupCategories" ; style="margin-top:4px"></div>
-      <br />
+      <input type="text" id="g_name" required />
+      <br><br>
+
+      <input type="text" id="g_gruppenkommentar" placeholder="Kommentar" />
+      <br><br>
+
+      <div id="groupCategories" style="margin-top:4px"></div>
+
+      <br>
 
       <div class="switch-wrapper">
+
         <label class="switch">
           <input type="checkbox" id="g_invoice_pending">
           <span class="slider"></span>
         </label>
+
         <span>Gruppe auf Rechnung</span>
+
       </div>
 
       <label style="display: flex; align-items: center; gap: 6px">
@@ -1556,6 +1577,16 @@
       if (!str) return "";
       return str.length > max ? str.slice(0, max) + "…" : str;
     }
+
+    function escapeHTML(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
     async function login() {
       const usernameInput = document.getElementById("login_email");
       const passwordInput = document.getElementById("login_password");
@@ -2109,6 +2140,10 @@
 
     async function submitGroupBooking() {
       let name = document.getElementById("g_name").value.trim();
+
+      let gruppenkommentar =
+        document.getElementById("g_gruppenkommentar").value.trim();
+
       let startVal = document.getElementById("g_start").value;
       let endVal = document.getElementById("g_end").value;
       let isCompany = document.getElementById("g_isCompany").checked;
@@ -2161,7 +2196,6 @@
       document.getElementById("bookingForm").style.display = "none";
 
       if (isCompany) {
-
         await startPlacementMode(
           data,
           start,
@@ -2171,7 +2205,6 @@
           name,
           true
         );
-
         return;
       } else if (isOption) {
 
@@ -2181,7 +2214,10 @@
           end,
           "turquoise",
           floorPriority,
-          "Option: " + name
+          "Option: " + name,
+          false,
+          null,
+          gruppenkommentar
         );
 
       } else {
@@ -2191,7 +2227,8 @@
           start,
           end,
           floorPriority,
-          name
+          name,
+          gruppenkommentar
         );
 
       }
@@ -2212,7 +2249,8 @@
       start,
       end,
       floorPriority,
-      groupName
+      groupName,
+      groupComment = ""
     ) {
 
       colorPickerOpen = true;
@@ -2234,7 +2272,10 @@
             end,
             cat.color,
             floorPriority,
-            groupName
+            groupName,
+            false,
+            null,
+            groupComment
           );
         },
 
@@ -2268,7 +2309,10 @@
             end,
             color,
             floorPriority,
-            groupName
+            groupName,
+            false,
+            null,
+            groupComment
           );
         }
 
@@ -2278,7 +2322,17 @@
 
     let groupPlacement = null;
 
-    async function startPlacementMode(data, start, end, color, floorPriority, customName = null, isCompany = false, existingGroupId = null) {
+    async function startPlacementMode(
+      data,
+      start,
+      end,
+      color,
+      floorPriority,
+      customName = null,
+      isCompany = false,
+      existingGroupId = null,
+      groupComment = ""
+    ) {
       window.balconyWarningShown = false;
 
 
@@ -2304,7 +2358,8 @@
           {
             start,
             end,
-            stats
+            stats,
+            comment: groupComment
           }
         );
 
@@ -4356,7 +4411,11 @@ window.onload = () => window.print();
           const g = groupsMap[b.group_id];
 
           if (!groupedByGroup[g.id]) {
-            groupedByGroup[g.id] = { name: g.name, list: [] };
+            groupedByGroup[g.id] = {
+              name: g.name,
+              comment: g.comment || "",
+              list: []
+            };
           }
 
           groupedByGroup[g.id].list.push(b);
@@ -4526,8 +4585,12 @@ ${isCheckInList
 `;
 
       Object.values(groupedByGroup).forEach((g) => {
+        const groupComment = g.comment
+          ? ` – ${escapeHTML(g.comment)}`
+          : "";
+
         html += renderList(
-          `Gruppe: ${trimText(g.name, 15)} (${date.toLocaleDateString("de-DE")})`,
+          `Gruppe: ${escapeHTML(trimText(g.name, 15))}${groupComment} (${date.toLocaleDateString("de-DE")})`,
           g.list
         );
       });
@@ -5740,7 +5803,10 @@ ${d.toLocaleDateString("de-DE", {
 
       const nightlyPrice =
         !isNaN(enteredTotalPrice) && nights > 0
-          ? (enteredTotalPrice / nights).toFixed(2)
+          ? (enteredTotalPrice / nights)
+            .toFixed(10)
+            .replace(/0+$/, "")
+            .replace(/\.$/, "")
           : item.price;
 
       let newBooking = {
@@ -5988,6 +6054,7 @@ ${d.toLocaleDateString("de-DE", {
       document.getElementById("groupForm").style.display = "none";
       document.querySelector(".switch-wrapper").style.display = "flex";
       document.getElementById("g_name").value = "";
+      document.getElementById("g_gruppenkommentar").value = "";
       document.getElementById("g_start").value = "";
       document.getElementById("g_end").value = "";
       document.getElementById("groupCategories").innerHTML = "";
@@ -6720,7 +6787,7 @@ ${d.toLocaleDateString("de-DE", {
 
       calendar.style.marginTop = height - 1 + "px";
 
-      document.querySelectorAll("thead th").forEach((th) => {
+      document.querySelectorAll("#calendar thead th").forEach((th) => {
         th.style.top = height - 1 + "px";
       });
     }
@@ -9390,11 +9457,15 @@ handleBluecardCheckbox('${b.id}', ${i});
     background:#f5f5f5;
     border-radius:8px;
   ">
-  <b>📅 Anreise:</b> ${formatDate(dateCalc.start)}${dateCalc.startNote}<br>
+<b>📅 Anreise:</b> ${formatDate(dateCalc.start)}${dateCalc.startNote}<br>
 <b>📅 Abreise:</b> ${formatDate(dateCalc.end)}${dateCalc.endNote}<br><br>
 
+${group.comment
+          ? `<b>💬 Kommentar:</b> ${escapeHTML(group.comment)}<br><br>`
+          : ""
+        }
 
-    <b>🛏️ Zimmer:</b><br>
+<b>🛏️ Zimmer:</b><br>
     EZ: ${stats.ez}<br>
     DZ: ${stats.dz}<br>
     3er: ${stats.er3}<br>
@@ -10101,6 +10172,7 @@ handleBluecardCheckbox('${b.id}', ${i});
       let insertObj = {
         name,
         color,
+        comment: extra.comment?.trim() || null,
         user_id: user?.id || null
       };
 
@@ -10334,6 +10406,7 @@ handleBluecardCheckbox('${b.id}', ${i});
       const groupRows = groupsData.map((g) => ({
         id: g.id ?? "",
         name: g.name ?? "",
+        comment: g.comment ?? "",
         color: g.color ?? "",
         start: g.start ? new Date(g.start) : "",
         end: g.end ? new Date(g.end) : "",
@@ -10457,6 +10530,7 @@ handleBluecardCheckbox('${b.id}', ${i});
 
     function resetGroupForm() {
       document.getElementById("g_name").value = "";
+      document.getElementById("g_gruppenkommentar").value = "";
       document.getElementById("g_start").value = "";
       document.getElementById("g_end").value = "";
 
