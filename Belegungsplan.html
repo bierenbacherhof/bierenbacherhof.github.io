@@ -9088,7 +9088,6 @@ handleBluecardCheckbox('${b.id}', ${i});
       }
 
       if (changedField === "total") {
-
         let rawValue = totalField.value.trim();
 
         let total = parseFloat(
@@ -9097,14 +9096,18 @@ handleBluecardCheckbox('${b.id}', ${i});
 
         if (!isNaN(total)) {
 
+          const exactNightlyPrice = total / nights;
+
+          // Intern genügend Nachkommastellen behalten
           priceField.value =
-            (total / nights).toFixed(2);
+            exactNightlyPrice.toFixed(10)
+              .replace(/0+$/, "")
+              .replace(/\.$/, "");
 
         } else if (rawValue !== "") {
 
           // Text direkt als Preis pro Nacht übernehmen
           priceField.value = rawValue;
-
         }
 
         return;
