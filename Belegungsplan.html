@@ -1200,6 +1200,40 @@
       .booking-layer {
         width: calc(100vw - 65px);
       }
+
+      #occupancyCalendarOverlay {
+        padding: 8px;
+      }
+
+      #occupancyCalendarBox {
+        width: calc(100vw - 16px);
+        max-width: none;
+        max-height: calc(100vh - 16px);
+        padding: 12px;
+      }
+
+      .occupancy-calendar-days,
+      .occupancy-calendar-weekdays {
+        gap: 3px;
+      }
+
+      .occupancy-calendar-day {
+        min-height: 55px;
+        padding: 5px 2px;
+      }
+
+      .occupancy-calendar-day-number {
+        font-size: 18px;
+      }
+
+      .occupancy-calendar-percent {
+        font-size: 11px;
+      }
+
+      .occupancy-calendar-title {
+        font-size: 20px;
+      }
+
     }
   </style>
 </head>
@@ -13277,19 +13311,6 @@ DZ: ${stats.dz}<br>
             (event) => {
               event.preventDefault();
               event.stopPropagation();
-
-              const input =
-                document.getElementById("datePicker");
-
-              if (isMobile) {
-                if (input?.showPicker) {
-                  input.showPicker();
-                } else {
-                  input?.click();
-                }
-
-                return;
-              }
 
               openOccupancyCalendar();
             }
