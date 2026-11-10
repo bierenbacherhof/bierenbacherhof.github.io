@@ -3,7 +3,9 @@
 
 <head>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="auth.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
   <meta charset="UTF-8" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -606,6 +608,31 @@
     body.readonly button:not(.allowed),
     body.readonly input:not(.allowed) {
       display: none !important;
+    }
+
+    #backupList {
+      position: fixed !important;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+
+      min-width: 300px;
+      max-width: 400px;
+      max-height: 400px;
+
+      padding: 20px;
+
+      overflow-y: auto;
+      overflow-x: auto;
+
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+
+      z-index: 20000;
+
+      box-shadow:
+        0 20px 40px rgba(0, 0, 0, 0.3);
     }
 
     #backupList button {
@@ -1263,7 +1290,7 @@
       <input type="password" id="login_password" name="password" placeholder="Passwort" enterkeyhint="go"
         autocomplete="current-password" /><br /><br />
 
-      <button type="submit" id="loginSubmitBtn">Login</button>
+      <button type="submit" id="loginButton">Login</button>
     </form>
   </div>
   <div id="groupInfoBox" style="
@@ -1356,29 +1383,6 @@
         <button id="monthlyStatsBtn" style="display: none">monatliche Zählung</button>
         <button id="printListsBtn" style="display: none">Listen drucken</button>
       </div>
-      <div id="backupList" class="overlay-box" style="
-            position: fixed !important;
-
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-
-            background: #fff;
-            border: 1px solid #ccc;
-            padding: 20px;
-
-            max-height: 400px;
-            min-width: 300px;
-            max-width: 400px;
-            overflow-y: auto;
-            overflow-x: auto;
-
-            display: none;
-            z-index: 10001;
-
-            border-radius: 10px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-          "></div>
 
       <div id="logOverview" style="
             position: fixed;
@@ -1741,10 +1745,7 @@
       ""
     ];
 
-    const SUPABASE_URL = "https://ansbdavzifbfjqbzdafn.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_pkEDopMJHBRRlQvc-j3F7Q_80FvJ2hC";
 
-    const supa = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const CHECKIN_HOUR = 14;
     const CHECKOUT_HOUR = 11;
     let isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
@@ -1762,7 +1763,6 @@
     let justDragged = false;
     let clickTimer = null;
     let isGroupCreating = false;
-    let currentRole = "read";
     let userMap = {};
     let allLogs = [];
     let groupsMap = {};
@@ -1776,7 +1776,6 @@
     let blockNextClick = false;
     let currentGroupId = null;
     let moving = null;
-    let currentUser = null;
     let isDraggingUpdate = false;
     let isResizingUpdate = false;
     let lastTap = 0;
@@ -1800,49 +1799,6 @@
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
-    }
-
-    async function login() {
-      const usernameInput = document.getElementById("login_email");
-      const passwordInput = document.getElementById("login_password");
-      const submitButton = document.getElementById("loginSubmitBtn");
-
-      if (!usernameInput || !passwordInput) return;
-
-      const username = usernameInput.value.trim();
-      const password = passwordInput.value;
-
-      if (!username || !password) {
-        alert("Bitte Benutzername und Passwort eingeben");
-        return;
-      }
-
-      if (submitButton) submitButton.disabled = true;
-
-      try {
-        const { data, error } = await supa.from("user_roles").select("email").ilike("username", username).single();
-
-        if (error || !data) {
-          alert("Benutzer nicht gefunden");
-          console.error(error);
-          return;
-        }
-
-        const { error: loginError } = await supa.auth.signInWithPassword({
-          email: data.email,
-          password: password
-        });
-
-        if (loginError) {
-          alert("Falsches Passwort");
-          console.error(loginError);
-          return;
-        }
-
-        await checkAuth();
-      } finally {
-        if (submitButton) submitButton.disabled = false;
-      }
     }
 
     async function applyLogFilter() {
@@ -2087,11 +2043,23 @@
     }
 
     async function loadGroups() {
-      let { data } = await supa.from("groups").select("*");
+      const { data, error } = await supa
+        .from("groups")
+        .select("*");
+
+      if (error) {
+        console.error(
+          "Gruppen konnten nicht geladen werden:",
+          error
+        );
+
+        throw error;
+      }
 
       groupsMap = {};
-      data.forEach((g) => {
-        groupsMap[g.id] = g;
+
+      (data || []).forEach((group) => {
+        groupsMap[group.id] = group;
       });
     }
 
@@ -2100,17 +2068,26 @@
     }
 
     async function loadUserMap() {
-      const { data, error } = await supa.from("user_roles").select("id, username");
+      const { data, error } = await supa.rpc(
+        "get_user_directory"
+      );
 
       if (error) {
-        console.error("Fehler beim Laden der User", error);
+        console.error(
+          "Benutzerverzeichnis konnte nicht geladen werden:",
+          error
+        );
+
+        userMap = {};
+
         return;
       }
 
       userMap = {};
 
-      data.forEach((u) => {
-        userMap[u.id] = u.username;
+      (data || []).forEach((user) => {
+        userMap[user.id] =
+          user.username;
       });
     }
 
@@ -2268,7 +2245,7 @@
       room = null,
       bookingAt = null
     }) {
-      const user = currentUser;
+      const user = getCurrentUser();
       if (!user) return;
 
       try {
@@ -3294,32 +3271,13 @@
       return x;
     }
 
-    async function loadUserRole() {
-      const {
-        data: { user }
-      } = await supa.auth.getUser();
-
-      if (!user) {
-        currentRole = "read";
-        return;
-      }
-
-      const { data, error } = await supa.from("user_roles").select("role").eq("id", user.id).single();
-
-      if (error || !data) {
-        console.warn("Keine Rolle gefunden → fallback read");
-        currentRole = "read";
-      } else {
-        currentRole = data.role;
-      }
-    }
 
     function canEdit() {
-      return currentRole === "admin" || currentRole === "staff";
+      return isStaff();
     }
 
     function runPrintReminder(key, timeCheck, confirmText, presetFn) {
-      if (isMobile || currentRole === "read") return;
+      if (isMobile || getCurrentRole() === "read") return;
 
       const today = new Date().toISOString().slice(0, 10);
       if (localStorage.getItem(key) === today) return;
@@ -3549,9 +3507,7 @@
       }
     }
 
-    function isAdmin() {
-      return currentRole === "admin";
-    }
+
 
     function isValidRoom(row) {
       return rooms[row] && rooms[row].trim() !== "";
@@ -5610,8 +5566,6 @@ window.onload = function() {
 
       closeOccupancyCalendar();
 
-      await loadUserRole();
-
       render();
     }
 
@@ -5913,7 +5867,7 @@ window.onload = function() {
         return;
       }
 
-      let user = currentUser;
+      let user = getCurrentUser();
 
       if (!user) {
 
@@ -6155,147 +6109,241 @@ window.onload = function() {
       alert(`${affected.length} Buchung(en) eingecheckt.`);
     }
 
-    async function checkAuth() {
-      const newBookingBtn = document.getElementById("newBookingBtn");
-      const printBtn = document.getElementById("printListsBtn");
-      const monthlyBtn = document.getElementById("monthlyStatsBtn");
-      const checkInAllBtn = document.getElementById("checkInAllBtn");
-      const backupBtn = document.getElementById("backupBtn");
-      const checkOffAllBtn = document.getElementById("checkOffAllBtn");
-      const weekUp = document.getElementById("weekUp");
-      const weekDown = document.getElementById("weekDown");
-      const {
-        data: { user }
-      } = await supa.auth.getUser();
-      currentUser = user;
+    let belegungsplanGestartet = false;
 
-      const {
-        data: { session }
-      } = await supa.auth.getSession();
-
-      if (session) {
-        document.body.classList.add("logged-in");
-
-        document.getElementById("loginBox").style.display = "none";
-        document.getElementById("loginBlocker").style.display = "none";
-
-        await Promise.all([
-          loadGroups(),
-          loadUserRole(),
-          loadUserMap()
-        ]);
-        const userDisplay = document.getElementById("currentUserDisplay");
-        if (userDisplay) {
-          userDisplay.textContent = userMap[user.id] || "";
-        }
-
-        if (isAdmin()) {
-          document.body.classList.add("admin");
-        } else {
-          document.body.classList.remove("admin");
-        }
-
-        if (backupBtn) {
-          backupBtn.style.display = isAdmin() && !isMobile ? "inline-block" : "none";
-        }
-
-        if (weekUp) {
-          weekUp.style.display = !isMobile ? "inline-block" : "none";
-        }
-
-        if (weekDown) {
-          weekDown.style.display = !isMobile ? "inline-block" : "none";
-        }
-
-        if (checkInAllBtn) {
-          checkInAllBtn.style.display = isEditAllowed() && !isMobile ? "inline-block" : "none";
-        }
-
-        if (checkOffAllBtn) {
-
-          checkOffAllBtn.style.display =
-            isAdmin() && !isMobile
-              ? "inline-block"
-              : "none";
-        }
-
-        if (newBookingBtn) {
-          newBookingBtn.style.display = isEditAllowed() ? "inline-block" : "none";
-
-          if (isMobile) {
-            newBookingBtn.textContent = "➕";
-          }
-        }
-
-
-        if (printBtn) {
-          printBtn.style.display = !isMobile && currentRole !== "read" ? "inline-block" : "none";
-        }
-
-        if (monthlyBtn) {
-          monthlyBtn.style.display = !isMobile && currentRole !== "read" ? "inline-block" : "none";
-        }
-
-        if (currentRole === "read" || isMobile && !isAdmin()) {
-          document.body.classList.add("readonly");
-        } else {
-          document.body.classList.remove("readonly");
-        }
-
-        await loadData();
-        setTimeout(() => {
-          tryStartBackup();
-          startPrintReminder();
-        }, 1000);
-      } else {
-        document.body.classList.remove("logged-in");
-        document.getElementById("loginBox").style.display = "block";
-        document.getElementById("loginBlocker").style.display = "block";
-
-        render();
+    async function initializeBelegungsplan() {
+      /*
+       * Verhindert einen doppelten Start, falls auth:ready
+       * durch eine erneute Sessionprüfung nochmals ausgelöst wird.
+       */
+      if (belegungsplanGestartet) {
+        return;
       }
 
-      requestAnimationFrame(updateStickyPositions);
-    }
+      belegungsplanGestartet = true;
 
-    const loginForm = document.getElementById("loginForm");
-    const loginEmail = document.getElementById("login_email");
-    const loginPassword = document.getElementById("login_password");
+      const newBookingBtn =
+        document.getElementById("newBookingBtn");
 
-    if (loginForm) {
-      loginForm.addEventListener("submit", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        login();
-      });
-    }
+      const printBtn =
+        document.getElementById("printListsBtn");
 
-    [loginEmail, loginPassword].forEach((input) => {
-      if (!input) return;
+      const monthlyBtn =
+        document.getElementById("monthlyStatsBtn");
 
-      input.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          login();
-        }
-      });
-    });
+      const checkInAllBtn =
+        document.getElementById("checkInAllBtn");
 
-    checkAuth();
+      const backupBtn =
+        document.getElementById("backupBtn");
 
-    async function logout() {
-      await supa.auth.signOut();
+      const checkOffAllBtn =
+        document.getElementById("checkOffAllBtn");
 
+      const weekUp =
+        document.getElementById("weekUp");
+
+      const weekDown =
+        document.getElementById("weekDown");
+
+      /*
+       * Die Anmeldung und die Rolle wurden bereits zentral
+       * durch auth.js geprüft und geladen.
+       */
+
+      const user = getCurrentUser();
+      const role = getCurrentRole();
+
+      if (!user) {
+        belegungsplanGestartet = false;
+
+        console.error(
+          "Belegungsplan konnte nicht gestartet werden: " +
+          "Kein angemeldeter Benutzer vorhanden."
+        );
+
+        return;
+      }
+
+      document.body.classList.add("logged-in");
+
+      /*
+       * Gruppen und Benutzernamen parallel laden.
+       */
+      await Promise.all([
+        loadGroups(),
+        loadUserMap()
+      ]);
+
+      /*
+       * Angemeldeten Benutzernamen anzeigen.
+       */
       const userDisplay =
         document.getElementById("currentUserDisplay");
 
       if (userDisplay) {
-        userDisplay.textContent = "";
+        userDisplay.textContent =
+          userMap[user.id] ||
+          user.email ||
+          "";
       }
 
-      document.body.classList.remove("logged-in");
-      location.reload();
+      /*
+       * Bestehende CSS-Adminlogik beibehalten.
+       */
+      if (isAdmin()) {
+        document.body.classList.add("admin");
+      } else {
+        document.body.classList.remove("admin");
+      }
+
+      /*
+       * Backupverwaltung nur für Admin auf Desktop.
+       */
+      if (backupBtn) {
+        backupBtn.style.display =
+          isAdmin() && !isMobile
+            ? "inline-block"
+            : "none";
+      }
+
+      /*
+       * Wochensteuerung für alle Rollen auf Desktop.
+       */
+      if (weekUp) {
+        weekUp.style.display =
+          !isMobile
+            ? "inline-block"
+            : "none";
+      }
+
+      if (weekDown) {
+        weekDown.style.display =
+          !isMobile
+            ? "inline-block"
+            : "none";
+      }
+
+      /*
+       * Sammel-Check-in für bearbeitungsberechtigte
+       * Benutzer auf Desktop.
+       */
+      if (checkInAllBtn) {
+        checkInAllBtn.style.display =
+          isEditAllowed() && !isMobile
+            ? "inline-block"
+            : "none";
+      }
+
+      /*
+       * Alle Anreisen abhaken nur für Admin auf Desktop.
+       */
+      if (checkOffAllBtn) {
+        checkOffAllBtn.style.display =
+          isAdmin() && !isMobile
+            ? "inline-block"
+            : "none";
+      }
+
+      /*
+       * Neue Buchung:
+       * Desktop für staff und admin.
+       * Mobil weiterhin nur für admin,
+       * weil isEditAllowed() das vorhandene Verhalten erhält.
+       */
+      if (newBookingBtn) {
+        newBookingBtn.style.display =
+          isEditAllowed()
+            ? "inline-block"
+            : "none";
+
+        if (isMobile) {
+          newBookingBtn.textContent = "➕";
+        }
+      }
+
+      /*
+       * Drucklisten und Monatszählung:
+       * staff und admin auf Desktop.
+       */
+      if (printBtn) {
+        printBtn.style.display =
+          !isMobile && role !== "read"
+            ? "inline-block"
+            : "none";
+      }
+
+      if (monthlyBtn) {
+        monthlyBtn.style.display =
+          !isMobile && role !== "read"
+            ? "inline-block"
+            : "none";
+      }
+
+      /*
+       * Lesemodus:
+       *
+       * read ist immer schreibgeschützt.
+       * Mobil ist staff weiterhin schreibgeschützt.
+       * Admin darf auch mobil bearbeiten.
+       */
+      if (
+        role === "read" ||
+        (isMobile && !isAdmin())
+      ) {
+        document.body.classList.add("readonly");
+      } else {
+        document.body.classList.remove("readonly");
+      }
+
+      /*
+       * Erst nach Anmeldung, Rolle und Berechtigungsaufbau
+       * die Buchungsdaten laden.
+       */
+      await loadData();
+
+      /*
+       * Realtime-Abonnements erst nach erfolgreichem Login starten.
+       */
+      startRealtimeSubscriptions();
+
+      /*
+       * Backup und Druckerinnerung mit dem bisherigen
+       * kurzen zeitlichen Abstand starten.
+       */
+      setTimeout(() => {
+        tryStartBackup();
+        startPrintReminder();
+      }, 1000);
+
+      requestAnimationFrame(
+        updateStickyPositions
+      );
     }
+
+    document.addEventListener(
+      "auth:ready",
+      async function () {
+        try {
+          await initializeBelegungsplan();
+        } catch (error) {
+          /*
+           * Bei einem fehlgeschlagenen Start muss ein
+           * erneuter Versuch möglich bleiben.
+           */
+          belegungsplanGestartet = false;
+
+          console.error(
+            "Fehler beim Start des Belegungsplans:",
+            error
+          );
+
+          alert(
+            "Der Belegungsplan konnte nicht vollständig geladen werden."
+          );
+        }
+      }
+    );
 
     function openBackupList() {
       const box = document.getElementById("backupList");
@@ -6463,7 +6511,6 @@ ${d.toLocaleDateString("de-DE", {
 
       groupPlacement = null;
       singlePlacement = null;
-      await loadUserRole();
       document.getElementById("placementBox")?.remove();
 
       render();
@@ -6664,7 +6711,7 @@ ${d.toLocaleDateString("de-DE", {
 
     function assignRoom(row, forcedType = null, dry = false, batch = false, options = {}) {
       if (!groupPlacement) return false;
-      const user = currentUser;
+      const user = getCurrentUser();
       if (!user) return false;
 
       let tempOccupied = options?.tempOccupied || new Set();
@@ -7300,7 +7347,7 @@ ${d.toLocaleDateString("de-DE", {
         let oldCrib = b.crib;
         let oldCribCount = b.crib_count;
 
-        const user = currentUser;
+        const user = getCurrentUser();
 
         b.start = start.toISOString();
         b.end = end.toISOString();
@@ -7938,7 +7985,7 @@ handleBluecardCheckbox('${b.id}', ${i});
 
       render();
 
-      const user = currentUser;
+      const user = getCurrentUser();
 
       const { error } = await supa
         .from("bookings")
@@ -7984,7 +8031,7 @@ handleBluecardCheckbox('${b.id}', ${i});
 
       render();
 
-      const user = currentUser;
+      const user = getCurrentUser();
 
       const { error } = await supa
         .from("bookings")
@@ -8042,7 +8089,7 @@ handleBluecardCheckbox('${b.id}', ${i});
 
       openInfo(bookings.indexOf(b));
 
-      const user = currentUser;
+      const user = getCurrentUser();
 
       const { error } = await supa
         .from("bookings")
@@ -8247,7 +8294,7 @@ handleBluecardCheckbox('${b.id}', ${i});
           b.paid = newVal;
           render();
 
-          const user = currentUser;
+          const user = getCurrentUser();
 
           const { error } = await supa
             .from("bookings")
@@ -8297,7 +8344,7 @@ handleBluecardCheckbox('${b.id}', ${i});
 
           render();
 
-          const user = currentUser;
+          const user = getCurrentUser();
 
           const { error } = await supa
             .from("bookings")
@@ -9122,7 +9169,7 @@ handleBluecardCheckbox('${b.id}', ${i});
         document.body.style.userSelect = "auto";
 
         if (oldRow !== newRow) {
-          const user = currentUser;
+          const user = getCurrentUser();
 
           /*
            * Bei Late Checkout zuerst prüfen, ob die
@@ -9362,7 +9409,7 @@ handleBluecardCheckbox('${b.id}', ${i});
       document.body.style.userSelect = "auto";
 
       if (changed) {
-        const user = currentUser;
+        const user = getCurrentUser();
 
         const { data, error } = await supa
           .from("bookings")
@@ -9598,7 +9645,7 @@ handleBluecardCheckbox('${b.id}', ${i});
 
             render();
             isResizingUpdate = true;
-            const user = currentUser;
+            const user = getCurrentUser();
 
             const { error } = await supa
               .from("bookings")
@@ -9665,7 +9712,7 @@ handleBluecardCheckbox('${b.id}', ${i});
 
             render();
             isResizingUpdate = true;
-            const user = currentUser;
+            const user = getCurrentUser();
 
             const { error } = await supa
               .from("bookings")
@@ -10488,7 +10535,9 @@ DZ: ${stats.dz}<br>
 `;
 
 
-      let showCheckinBtn = !isMobile && currentRole !== "read";
+      let showCheckinBtn =
+        !isMobile &&
+        getCurrentRole() !== "read";
 
       let isOption = group.name.startsWith("Option:");
 
@@ -10653,7 +10702,7 @@ DZ: ${stats.dz}<br>
     }
 
     async function updateGroupLastEditor(groupId) {
-      const user = currentUser;
+      const user = getCurrentUser();
 
       if (!user || !groupsMap[groupId]) {
         return;
@@ -11125,7 +11174,7 @@ DZ: ${stats.dz}<br>
       }, 200);
 
       try {
-        const user = currentUser;
+        const user = getCurrentUser();
 
         let hasError = false;
 
@@ -11273,7 +11322,7 @@ DZ: ${stats.dz}<br>
 
       render();
 
-      const user = currentUser || (await supa.auth.getUser()).data.user;
+      const user = getCurrentUser() || (await supa.auth.getUser()).data.user;
 
       let ids = groupBookings.map((b) => b.id);
 
@@ -11399,7 +11448,7 @@ DZ: ${stats.dz}<br>
       render();
 
       const ids = changedBookings.map(b => b.id);
-      const user = currentUser;
+      const user = getCurrentUser();
 
       const loadingTimer = setTimeout(() => {
         showLoading(
@@ -11481,7 +11530,7 @@ DZ: ${stats.dz}<br>
         return;
       }
 
-      const user = currentUser;
+      const user = getCurrentUser();
 
       // lokal aktualisieren
       groupBookings.forEach(b => {
@@ -11534,7 +11583,7 @@ DZ: ${stats.dz}<br>
 
       try {
 
-        const user = currentUser;
+        const user = getCurrentUser();
 
         const ids = [];
 
@@ -11794,90 +11843,119 @@ DZ: ${stats.dz}<br>
 
       render();
     }
-    supa
-      .channel("live-bookings")
-      .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, (payload) => {
-        if (isRestoring || isDeleting || isDraggingUpdate || isResizingUpdate) {
-          return;
-        }
 
-        handleRealtimeUpdate(payload);
-      })
-      .subscribe();
+    let realtimeGestartet = false;
 
-    supa
-      .channel("live-groups")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "groups"
-        },
-        (payload) => {
-          loadGroups().then(() => render());
-        }
-      )
-      .subscribe();
+    function startRealtimeSubscriptions() {
+      if (realtimeGestartet) {
+        return;
+      }
 
-    supa
-      .channel("live-users")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "user_roles"
-        },
-        () => {
-          loadUserMap();
-        }
-      )
-      .subscribe();
+      realtimeGestartet = true;
 
-    supa
-      .channel("live-logs")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "booking_logs"
-        },
-        async (payload) => {
-          const logBox = document.getElementById("logContent");
+      supa
+        .channel("live-bookings")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "bookings"
+          },
+          (payload) => {
+            if (
+              isRestoring ||
+              isDeleting ||
+              isDraggingUpdate ||
+              isResizingUpdate
+            ) {
+              return;
+            }
 
-          if (logBox && logBox.style.display === "block") {
-            const currentBookingId = window.currentLogs?.[0]?.booking_id;
+            handleRealtimeUpdate(payload);
+          }
+        )
+        .subscribe();
 
-            if (currentBookingId) {
-              await loadBookingLogs(currentBookingId);
+      supa
+        .channel("live-groups")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "groups"
+          },
+          async () => {
+            await loadGroups();
+            render();
+          }
+        )
+        .subscribe();
+
+      supa
+        .channel("live-logs")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "booking_logs"
+          },
+          async () => {
+            const logBox =
+              document.getElementById("logContent");
+
+            if (
+              logBox &&
+              logBox.style.display === "block"
+            ) {
+              const currentBookingId =
+                window.currentLogs?.[0]?.booking_id;
+
+              if (currentBookingId) {
+                await loadBookingLogs(
+                  currentBookingId
+                );
+              }
             }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
 
-    supa
-      .channel("live-group-files")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "group_files"
-        },
-        async () => {
-          const box = document.getElementById("groupInfoBox");
+      supa
+        .channel("live-group-files")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "group_files"
+          },
+          async () => {
+            const box =
+              document.getElementById(
+                "groupInfoBox"
+              );
 
-          if (!box || box.style.display !== "block") return;
+            if (
+              !box ||
+              box.style.display !== "block"
+            ) {
+              return;
+            }
 
-          if (!window.currentGroupId) return;
+            if (!currentGroupId) {
+              return;
+            }
 
-          await openGroupInfo(window.currentGroupId);
-        }
-      )
-      .subscribe();
+            await openGroupInfo(
+              currentGroupId
+            );
+          }
+        )
+        .subscribe();
+    }
 
 
     function handleRealtimeUpdate(payload) {
@@ -12043,7 +12121,7 @@ DZ: ${stats.dz}<br>
     let backupRunning = false;
 
     async function createBackupIfNeeded() {
-      if (currentRole !== "staff" || isMobile) return;
+      if (getCurrentRole() !== "staff" || isMobile) return;
 
       if (backupRunning) return;
       backupRunning = true;
@@ -12111,7 +12189,7 @@ DZ: ${stats.dz}<br>
 
       if (!user) return;
 
-      if (currentRole !== "staff") {
+      if (getCurrentRole() !== "staff") {
         return;
       }
 
@@ -12383,7 +12461,7 @@ DZ: ${stats.dz}<br>
         crib_count: 0,
 
         user_id:
-          currentUser ? currentUser.id : null
+          getCurrentUser() ? getCurrentUser().id : null
       };
 
 
@@ -12562,7 +12640,7 @@ DZ: ${stats.dz}<br>
     }
 
     async function addBookingToDB(b) {
-      const user = currentUser;
+      const user = getCurrentUser();
 
       if (!user) {
         alert("Nicht eingeloggt!");
@@ -12770,14 +12848,13 @@ DZ: ${stats.dz}<br>
       }
 
       if (e.key === "Enter") {
-        const loginBox = document.getElementById("loginBox");
-        if (loginBox && loginBox.style.display !== "none") {
-          login();
-          return;
-        }
+        const form =
+          document.getElementById("bookingForm");
 
-        const form = document.getElementById("bookingForm");
-        if (form && form.style.display === "block") {
+        if (
+          form &&
+          form.style.display === "block"
+        ) {
           saveBooking();
           return;
         }
@@ -13328,10 +13405,7 @@ DZ: ${stats.dz}<br>
       });
     });
 
-    window.onload = () => {
-      render();
-      requestAnimationFrame(updateStickyPositions);
-    };
+
 
     let resizeTimeout;
 
@@ -13920,14 +13994,13 @@ ${b.invoice_pending
       blockNextClick = true;
     }
 
-    document.getElementById("datePicker").addEventListener("change", async (e) => {
+    document.getElementById("datePicker").addEventListener("change", (e) => {
       const selectedDate = new Date(e.target.value);
 
       current = startOfWeek(selectedDate);
 
       groupPlacement = null;
       singlePlacement = null;
-      await loadUserRole();
       document.getElementById("placementBox")?.remove();
 
       render();

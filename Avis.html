@@ -4,10 +4,393 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Avis schreiben</title>
+
+    <title>Avis schreiben | Bierenbacher Hof</title>
+
+    <!-- Supabase muss vor auth.js geladen werden -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Zentrale Anmeldung und Rollenverwaltung -->
+    <script src="auth.js"></script>
+
+    <style>
+        :root {
+            --primary: #7b2937;
+            --primary-dark: #5d1f2a;
+            --background: #f4f6f8;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: var(--background);
+            color: #222;
+        }
+
+        /* =====================================================
+           LOGIN
+           ===================================================== */
+
+        #loginBlocker {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+        }
+
+        #loginBox {
+            position: fixed;
+            z-index: 1001;
+
+            width: min(340px,
+                    calc(100vw - 40px));
+
+            top: 50%;
+            left: 50%;
+
+            transform: translate(-50%,
+                    -50%);
+
+            padding: 22px;
+
+            background: white;
+
+            border-radius: 12px;
+
+            box-shadow:
+                0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        #loginBox h2 {
+            margin-top: 0;
+            color: var(--primary);
+        }
+
+        #loginBox label {
+            display: block;
+
+            margin-top: 10px;
+            margin-bottom: 4px;
+
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        #loginBox input {
+            width: 100%;
+
+            padding: 10px;
+
+            border:
+                1px solid #cccccc;
+
+            border-radius: 6px;
+
+            font-size: 16px;
+        }
+
+        #loginButton {
+            width: 100%;
+
+            margin-top: 15px;
+
+            padding: 10px;
+
+            border: none;
+            border-radius: 6px;
+
+            background: var(--primary);
+            color: white;
+
+            font-size: 16px;
+            font-weight: 600;
+
+            cursor: pointer;
+        }
+
+        #loginButton:hover {
+            background:
+                var(--primary-dark);
+        }
+
+        #loginButton:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #loginFehler {
+            min-height: 20px;
+
+            margin-top: 10px;
+
+            font-size: 13px;
+        }
+
+
+        /* =====================================================
+           ANWENDUNG
+           ===================================================== */
+
+        #appContent {
+            display: none;
+        }
+
+        header {
+            display: flex;
+
+            align-items: center;
+            justify-content: space-between;
+
+            gap: 15px;
+
+            padding: 12px 20px;
+
+            background:
+                var(--primary);
+
+            color: white;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 21px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        button {
+            padding: 9px 13px;
+
+            border: none;
+            border-radius: 6px;
+
+            background:
+                var(--primary);
+
+            color: white;
+
+            font-weight: 600;
+
+            cursor: pointer;
+        }
+
+        header button {
+            background:
+                rgba(255, 255, 255, 0.16);
+        }
+
+        header button:hover {
+            background:
+                rgba(255, 255, 255, 0.25);
+        }
+
+        main {
+            max-width: 1200px;
+
+            margin: 20px auto;
+
+            padding: 0 20px;
+        }
+
+        .panel {
+            padding: 20px;
+
+            background: white;
+
+            border-radius: 10px;
+
+            box-shadow:
+                0 1px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .placeholder {
+            padding: 60px 20px;
+
+            text-align: center;
+
+            color: #68727d;
+        }
+
+
+        /* =====================================================
+           MOBIL
+           ===================================================== */
+
+        @media (max-width: 650px) {
+
+            header {
+                align-items:
+                    flex-start;
+
+                flex-direction:
+                    column;
+            }
+
+            .header-actions {
+                width: 100%;
+            }
+
+            .header-actions button {
+                flex: 1;
+            }
+
+        }
+    </style>
 </head>
 
+
 <body>
+
+    <!-- =====================================================
+         LOGIN
+         ===================================================== -->
+
+    <div id="loginBlocker"></div>
+
+    <div id="loginBox">
+
+        <h2>Anmeldung</h2>
+
+        <label for="login_email">
+            Benutzername
+        </label>
+
+        <input type="text" id="login_email" placeholder="Benutzername" autocomplete="username">
+
+        <label for="login_password">
+            Passwort
+        </label>
+
+        <input type="password" id="login_password" placeholder="Passwort" autocomplete="current-password"
+            enterkeyhint="go">
+
+        <button id="loginButton" type="button" onclick="login()">
+            Anmelden
+        </button>
+
+        <div id="loginFehler"></div>
+
+    </div>
+
+
+    <!-- =====================================================
+         AVIS-ANWENDUNG
+         Nur staff + admin
+         ===================================================== -->
+
+    <div id="appContent" class="role-staff" data-auth-display="block">
+
+        <header>
+
+            <h1>Avis schreiben</h1>
+
+            <div class="header-actions">
+
+                <button type="button" onclick="location.href='index.html'">
+                    Startseite
+                </button>
+
+                <button type="button" onclick="logout()">
+                    Abmelden
+                </button>
+
+            </div>
+
+        </header>
+
+
+        <main>
+
+            <div class="panel">
+
+                <!--
+                    Hier bauen wir später
+                    die eigentliche Avis-Anwendung.
+                -->
+
+                <div class="placeholder">
+
+                    <h2>Avis schreiben</h2>
+
+                    <p>
+                        Die Avis-Anwendung wird hier eingebaut.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </main>
+
+    </div>
+
+
+    <!-- =====================================================
+         SEITENSPEZIFISCHE AUTH-PRÜFUNG
+         ===================================================== -->
+
+    <script>
+
+        document.addEventListener(
+            "auth:ready",
+            function (event) {
+
+                const role =
+                    event.detail.role;
+
+
+                /*
+                Diese Anwendung ist ausschließlich
+                für staff und admin vorgesehen.
+                */
+
+                if (
+                    role !== "staff" &&
+                    role !== "admin"
+                ) {
+
+                    document
+                        .getElementById(
+                            "appContent"
+                        )
+                        .style.display =
+                        "none";
+
+
+                    alert(
+                        "Dieser Bereich ist nur für Mitarbeitende und Administratoren freigegeben."
+                    );
+
+
+                    window.location.href =
+                        "index.html";
+
+                    return;
+                }
+
+
+                /*
+                Anmeldung und Rolle sind gültig.
+
+                Die zentrale auth.js kümmert
+                sich bereits um die Sichtbarkeit
+                von .role-staff.
+                */
+
+                applyPermissions();
+
+            }
+        );
+
+    </script>
 
 </body>
 
