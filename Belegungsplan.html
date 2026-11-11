@@ -7066,8 +7066,8 @@ ${d.toLocaleDateString("de-DE", {
       endDate.setDate(endDate.getDate() + 1);
 
       document.getElementById("f_name").value = "";
-      document.getElementById("f_start").value = startDate.toISOString().slice(0, 10);
-      document.getElementById("f_end").value = endDate.toISOString().slice(0, 10);
+      document.getElementById("f_start").value = toLocalDateKey(startDate);
+      document.getElementById("f_end").value = toLocalDateKey(endDate);
       document.getElementById("f_price").value = "";
       document.getElementById("f_comment").value = "";
       let groupSelect = document.getElementById("f_group");
