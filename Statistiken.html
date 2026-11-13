@@ -63,9 +63,117 @@
             margin-bottom: 20px;
         }
 
-        .small {
+        .chart-range-control {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .chart-range-control label {
+            font-weight: bold;
+        }
+
+        .chart-range-control select {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background: #fff;
+            color: #222;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* =====================================================
+   TORTENDIAGRAMME
+   ===================================================== */
+
+        .pie-chart-grid {
+            display: grid;
+            grid-template-columns:
+                repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .pie-chart-grid .chart-card {
+            margin-bottom: 0;
+        }
+
+        .pie-chart-card {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pie-chart-card h3 {
+            margin-top: 0;
+            margin-bottom: 8px;
+        }
+
+        .pie-chart-card .small {
+            margin-top: 0;
+            margin-bottom: 15px;
             color: #666;
             font-size: 13px;
+        }
+
+        .pie-chart-container {
+            position: relative;
+            width: 100%;
+            height: 320px;
+            margin-top: auto;
+        }
+
+        .room-type-selection {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .room-type-selection label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 9px;
+            background: #f4f6f9;
+            border: 1px solid #ddd;
+            border-radius: 7px;
+            font-size: 13px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .room-type-selection label:hover {
+            background: #e9edf2;
+        }
+
+        .room-type-selection input {
+            margin: 0;
+            cursor: pointer;
+        }
+
+        @media (max-width: 700px) {
+            .pie-chart-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pie-chart-container {
+                height: 280px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .chart-range-control {
+                align-items: flex-start;
+                justify-content: flex-start;
+            }
+
+            .chart-range-control .small {
+                width: 100%;
+            }
         }
 
 
@@ -328,26 +436,26 @@
             <div class="card">
                 <div>Auslastung</div>
 
-                <div class="kpi-value">
-                    78%
+                <div class="kpi-value" id="kpiOccupancy">
+                    –
                 </div>
             </div>
 
 
             <div class="card">
-                <div>Übernachtungen</div>
+                <div>Belegte Zimmernächte</div>
 
-                <div class="kpi-value">
-                    1.652
+                <div class="kpi-value" id="kpiOccupiedRoomNights">
+                    –
                 </div>
             </div>
 
 
             <div class="card">
-                <div>Gäste</div>
+                <div>Personenübernachtungen</div>
 
-                <div class="kpi-value">
-                    932
+                <div class="kpi-value" id="kpiGuestNights">
+                    –
                 </div>
             </div>
 
@@ -355,26 +463,26 @@
             <div class="card">
                 <div>Umsatz</div>
 
-                <div class="kpi-value">
-                    69.400 €
+                <div class="kpi-value" id="kpiRoomRevenue">
+                    –
                 </div>
             </div>
 
 
             <div class="card">
-                <div>Anreisen heute</div>
+                <div>durchschnittlicher Zimmerpreis</div>
 
-                <div class="kpi-value">
-                    12
+                <div class="kpi-value" id="kpiAdr">
+                    –
                 </div>
             </div>
 
 
             <div class="card">
-                <div>Frühstücke morgen</div>
+                <div>Umsatz pro verfügbarem Zimmer</div>
 
-                <div class="kpi-value">
-                    74
+                <div class="kpi-value" id="kpiRevpar">
+                    –
                 </div>
             </div>
 
@@ -385,10 +493,34 @@
              DIAGRAMME
              ================================================= -->
 
+        <div class="chart-range-control">
+
+            <label for="chartMonthRange">
+                Zeitraum:
+            </label>
+
+            <select id="chartMonthRange">
+
+                <option value="3">
+                    3 Monate
+                </option>
+
+                <option value="6">
+                    6 Monate
+                </option>
+
+                <option value="12" selected>
+                    12 Monate
+                </option>
+
+            </select>
+
+        </div>
+
         <div class="chart-card">
 
             <h3>
-                Auslastung letzte 3 Monate
+                Auslastung nach Monaten
             </h3>
 
             <canvas id="occ"></canvas>
@@ -397,26 +529,110 @@
 
 
         <div class="chart-card">
-
             <h3>
-                Umsatz letzte 3 Monate
+                Umsatz nach Monaten
             </h3>
-
             <canvas id="sales"></canvas>
-
         </div>
 
+        <!-- =================================================
+     WEITERE AUSWERTUNGEN
+     ================================================= -->
 
-        <div class="chart-card">
+        <div class="chart-range-control">
+            <label for="pieChartMonth">
+                Detailauswertung:
+            </label>
 
-            <h3>
-                Zukunftsauslastung
-            </h3>
-
-            <canvas id="future"></canvas>
-
+            <select id="pieChartMonth">
+                <option value="range" selected>
+                    Ausgewählter Zeitraum
+                </option>
+            </select>
         </div>
 
+        <div class="pie-chart-grid">
+
+            <!-- Frühstück -->
+            <div class="chart-card pie-chart-card">
+                <h3>
+                    Personenübernachtungen mit und ohne Frühstück
+                </h3>
+
+                <p class="small">
+                    Auswertung für den ausgewählten Zeitraum.
+                </p>
+
+                <div class="pie-chart-container">
+                    <canvas id="breakfastChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Zimmerkategorien -->
+            <div class="chart-card pie-chart-card">
+                <h3>
+                    Verhältnis der Zimmerkategorien
+                </h3>
+
+                <p class="small">
+                    Grundlage sind die belegten Zimmernächte im
+                    ausgewählten Zeitraum.
+                </p>
+
+                <div id="roomTypeSelection" class="room-type-selection">
+                    <label>
+                        <input type="checkbox" value="ez_room_nights" checked>
+                        EZ
+                    </label>
+
+                    <label>
+                        <input type="checkbox" value="ez_balcony_room_nights" checked>
+                        EZ B
+                    </label>
+
+                    <label>
+                        <input type="checkbox" value="dz_room_nights" checked>
+                        DZ
+                    </label>
+
+                    <label>
+                        <input type="checkbox" value="dz_balcony_room_nights" checked>
+                        DZ B
+                    </label>
+
+                    <label>
+                        <input type="checkbox" value="triple_room_nights" checked>
+                        3-Bett
+                    </label>
+
+                    <label>
+                        <input type="checkbox" value="quad_room_nights" checked>
+                        4-Bett
+                    </label>
+                </div>
+
+                <div class="pie-chart-container">
+                    <canvas id="roomTypeChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Rechnung -->
+            <div class="chart-card pie-chart-card">
+                <h3>
+                    Zimmernächte auf Rechnung
+                </h3>
+
+                <p class="small">
+                    Verhältnis der Zimmernächte mit und ohne
+                    Kostenübernahme.
+                </p>
+
+                <div class="pie-chart-container">
+                    <canvas id="invoiceChart"></canvas>
+                </div>
+            </div>
+
+        </div>
     </div>
     <!-- Ende #appContent -->
 
@@ -431,8 +647,1145 @@
 
         let statistikenGestartet = false;
 
+        /*
+         * Gemeinsame Datenbasis für alle späteren
+         * KPI-Karten und Diagramme.
+         *
+         * Enthält abgeschlossene archivierte Monate
+         * sowie den laufenden, live berechneten Monat.
+         */
+        let monatsstatistiken = [];
+        let occupancyChart = null;
+        let revenueChart = null;
+        let breakfastChart = null;
+        let roomTypeChart = null;
+        let invoiceChart = null;
 
-        function initializeStatistiken() {
+        // =====================================================
+        // DATUMSFUNKTIONEN
+        // =====================================================
+
+        function formatDateAsIso(date) {
+
+            /*
+             * Bewusste lokale Formatierung ohne toISOString().
+             * Dadurch kann die lokale Zeitzone den Monat
+             * nicht versehentlich auf den Vortag verschieben.
+             */
+
+            const year = date.getFullYear();
+
+            const month = String(
+                date.getMonth() + 1
+            ).padStart(2, "0");
+
+            const day = String(
+                date.getDate()
+            ).padStart(2, "0");
+
+            return `${year}-${month}-${day}`;
+        }
+
+
+        function getCurrentMonthIso() {
+
+            const now = new Date();
+
+            return formatDateAsIso(
+                new Date(
+                    now.getFullYear(),
+                    now.getMonth(),
+                    1
+                )
+            );
+        }
+
+
+        function getPreviousMonthIso() {
+
+            const now = new Date();
+
+            return formatDateAsIso(
+                new Date(
+                    now.getFullYear(),
+                    now.getMonth() - 1,
+                    1
+                )
+            );
+        }
+
+
+        // =====================================================
+        // SUPABASE-ERGEBNIS NORMALISIEREN
+        // =====================================================
+
+        function getSingleStatisticsRow(data) {
+
+            /*
+             * Supabase liefert SETOF-/TABLE-Funktionen
+             * normalerweise als Array.
+             *
+             * Die zusätzliche Objektprüfung macht den Code
+             * robust, falls die Rückgabe später als einzelne
+             * JSON-Zeile konfiguriert wird.
+             */
+
+            if (Array.isArray(data)) {
+                return data[0] || null;
+            }
+
+            if (
+                data &&
+                typeof data === "object"
+            ) {
+                return data;
+            }
+
+            return null;
+        }
+
+
+        // =====================================================
+        // VORMONAT BEI BEDARF ARCHIVIEREN
+        // =====================================================
+
+        async function archivePreviousMonthIfMissing() {
+
+            const previousMonth =
+                getPreviousMonthIso();
+
+
+            const {
+                data: existingMonth,
+                error: checkError
+            } = await supa
+                .from("monthly_statistics")
+                .select("month, total_rooms")
+                .eq("month", previousMonth)
+                .maybeSingle();
+
+
+            if (checkError) {
+                throw new Error(
+                    "Der Archivstatus des Vormonats konnte nicht geprüft werden: " +
+                    checkError.message
+                );
+            }
+
+
+            if (existingMonth) {
+
+                if (
+                    Number(existingMonth.total_rooms) !== 58
+                ) {
+                    throw new Error(
+                        `Der archivierte Monat ${previousMonth} wurde nicht mit 58 Zimmern berechnet.`
+                    );
+                }
+
+                return;
+            }
+
+
+            const {
+                error: archiveError
+            } = await supa.rpc(
+                "archive_previous_month_statistics"
+            );
+
+
+            if (archiveError) {
+                throw new Error(
+                    "Der Vormonat konnte nicht archiviert werden: " +
+                    archiveError.message
+                );
+            }
+        }
+
+
+        // =====================================================
+        // ARCHIVIERTE MONATE LADEN
+        // =====================================================
+
+        async function loadArchivedStatistics() {
+
+            const currentMonth =
+                getCurrentMonthIso();
+
+
+            /*
+             * Der laufende Monat wird ausdrücklich ausgeschlossen.
+             * Selbst wenn er versehentlich in der Tabelle läge,
+             * wird er nicht als Archivwert verwendet.
+             */
+
+            const {
+                data,
+                error
+            } = await supa
+                .from("monthly_statistics")
+                .select("*")
+                .lt("month", currentMonth)
+                .order("month", {
+                    ascending: true
+                });
+
+
+            if (error) {
+                throw new Error(
+                    "Die archivierten Monatsstatistiken konnten nicht geladen werden: " +
+                    error.message
+                );
+            }
+
+
+            const archivedMonths =
+                data || [];
+
+
+            const invalidMonth =
+                archivedMonths.find(
+                    row =>
+                        Number(row.total_rooms) !== 58
+                );
+
+
+            if (invalidMonth) {
+                throw new Error(
+                    `Der archivierte Monat ${invalidMonth.month} wurde nicht mit 58 Zimmern berechnet.`
+                );
+            }
+
+
+            return archivedMonths;
+        }
+
+
+        // =====================================================
+        // LAUFENDEN MONAT LIVE LADEN
+        // =====================================================
+
+        async function loadCurrentMonthStatistics() {
+
+            const {
+                data,
+                error
+            } = await supa.rpc(
+                "get_current_month_statistics"
+            );
+
+
+            if (error) {
+                throw new Error(
+                    "Der laufende Monat konnte nicht live berechnet werden: " +
+                    error.message
+                );
+            }
+
+
+            const currentMonth =
+                getSingleStatisticsRow(data);
+
+
+            if (!currentMonth) {
+                throw new Error(
+                    "Die Berechnung des laufenden Monats hat keine Statistikzeile zurückgegeben."
+                );
+            }
+
+
+            if (
+                Number(currentMonth.total_rooms) !== 58
+            ) {
+                throw new Error(
+                    `Der laufende Monat ${currentMonth.month} wurde nicht mit 58 Zimmern berechnet.`
+                );
+            }
+
+
+            return currentMonth;
+        }
+
+
+        // =====================================================
+        // GEMEINSAME MONATSDATENBASIS ERSTELLEN
+        // =====================================================
+
+        async function loadMonthlyStatistics() {
+
+            await archivePreviousMonthIfMissing();
+
+
+            const [
+                archivedMonths,
+                currentMonth
+            ] = await Promise.all([
+                loadArchivedStatistics(),
+                loadCurrentMonthStatistics()
+            ]);
+
+
+            /*
+             * Die Map verhindert doppelte Monate.
+             * Der live berechnete laufende Monat wird zuletzt
+             * eingesetzt und hätte damit immer Vorrang.
+             */
+
+            const monthsByDate =
+                new Map();
+
+
+            for (const monthData of archivedMonths) {
+
+                if (!monthData.month) {
+                    throw new Error(
+                        "Eine archivierte Statistikzeile enthält keinen Monat."
+                    );
+                }
+
+                monthsByDate.set(
+                    monthData.month,
+                    {
+                        ...monthData,
+                        data_source: "archive"
+                    }
+                );
+            }
+
+
+            if (!currentMonth.month) {
+                throw new Error(
+                    "Die Live-Statistik enthält keinen Monat."
+                );
+            }
+
+
+            monthsByDate.set(
+                currentMonth.month,
+                {
+                    ...currentMonth,
+                    data_source: "live"
+                }
+            );
+
+
+            monatsstatistiken =
+                Array.from(
+                    monthsByDate.values()
+                )
+                    .sort(
+                        (a, b) =>
+                            a.month.localeCompare(b.month)
+                    );
+
+
+            console.table(
+                monatsstatistiken
+            );
+
+
+            return monatsstatistiken;
+        }
+
+
+        // =====================================================
+        // MONAT FÜR DIE ANZEIGE FORMATIEREN
+        // =====================================================
+
+        function formatMonthLabel(month) {
+
+            /*
+             * month kommt aus Supabase im Format YYYY-MM-DD.
+             *
+             * Jahr und Monat werden bewusst direkt aus dem
+             * String gelesen. Dadurch entstehen keine
+             * Verschiebungen durch Zeitzonen.
+             */
+
+            const parts =
+                String(month).split("-");
+
+
+            if (parts.length < 2) {
+                return month;
+            }
+
+
+            const year =
+                Number(parts[0]);
+
+            const monthIndex =
+                Number(parts[1]) - 1;
+
+
+            const date =
+                new Date(
+                    year,
+                    monthIndex,
+                    1
+                );
+
+
+            return date.toLocaleDateString(
+                "de-DE",
+                {
+                    month: "long",
+                    year: "numeric"
+                }
+            );
+        }
+
+        // =====================================================
+        // MONATE FÜR DIAGRAMME AUSWÄHLEN
+        // =====================================================
+
+        // =====================================================
+        // ZEITRAUM UND VORJAHRESVERGLEICH
+        // =====================================================
+
+        function getSelectedChartMonths() {
+
+            const rangeSelect =
+                document.getElementById(
+                    "chartMonthRange"
+                );
+
+
+            const numberOfMonths =
+                Number(
+                    rangeSelect.value
+                );
+
+
+            /*
+             * monatsstatistiken ist chronologisch sortiert.
+             * Deshalb erhalten wir mit slice() die zuletzt
+             * vorhandenen Monate.
+             */
+
+            return monatsstatistiken.slice(
+                -numberOfMonths
+            );
+        }
+
+        // =====================================================
+        // DETAILAUSWERTUNG FÜR TORTENDIAGRAMME
+        // =====================================================
+        function populatePieChartMonthSelect() {
+            const monthSelect =
+                document.getElementById(
+                    "pieChartMonth"
+                );
+
+            /*
+             * Die erste Auswahl bleibt immer der oben
+             * gewählte Zeitraum mit 3, 6 oder 12 Monaten.
+             */
+            monthSelect.innerHTML = `
+        <option value="range" selected>
+            Ausgewählter Zeitraum
+        </option>
+    `;
+
+            /*
+             * Die einzelnen Monate werden automatisch aus
+             * monatsstatistiken erzeugt.
+             *
+             * Kopie + reverse(), damit der aktuellste Monat
+             * im Dropdown ganz oben steht.
+             */
+            const monthsDescending =
+                [...monatsstatistiken].reverse();
+
+            for (const monthData of monthsDescending) {
+                const option =
+                    document.createElement("option");
+
+                option.value =
+                    monthData.month;
+
+                option.textContent =
+                    formatMonthLabel(
+                        monthData.month
+                    );
+
+                /*
+                 * Der laufende Monat wird als aktueller
+                 * Buchungsstand kenntlich gemacht.
+                 */
+                if (
+                    monthData.data_source === "live"
+                ) {
+                    option.textContent +=
+                        " (Buchungsstand)";
+                }
+
+                monthSelect.appendChild(
+                    option
+                );
+            }
+        }
+
+        function getSelectedPieChartMonths() {
+            const monthSelect =
+                document.getElementById(
+                    "pieChartMonth"
+                );
+
+            /*
+             * "range" bedeutet:
+             * Die Tortendiagramme übernehmen die bestehende
+             * 3-/6-/12-Monatsauswahl.
+             */
+            if (
+                monthSelect.value === "range"
+            ) {
+                return getSelectedChartMonths();
+            }
+
+            /*
+             * Wurde stattdessen ein bestimmter Monat gewählt,
+             * wird ausschließlich dieser Monat ausgewertet.
+             */
+            const selectedMonth =
+                monatsstatistiken.find(
+                    monthData =>
+                        monthData.month ===
+                        monthSelect.value
+                );
+
+            return selectedMonth
+                ? [selectedMonth]
+                : [];
+        }
+
+        // =====================================================
+        // FRÜHSTÜCKSAUSWERTUNG
+        // =====================================================
+        function updateBreakfastChart() {
+            if (!breakfastChart) {
+                return;
+            }
+
+            const selectedMonths =
+                getSelectedPieChartMonths();
+
+            let guestNights = 0;
+            let breakfastCount = 0;
+
+            for (const monthData of selectedMonths) {
+                const monthGuestNights =
+                    Number(
+                        monthData.guest_nights
+                    );
+
+                const monthBreakfastCount =
+                    Number(
+                        monthData.breakfast_count
+                    );
+
+                if (
+                    Number.isFinite(
+                        monthGuestNights
+                    )
+                ) {
+                    guestNights +=
+                        monthGuestNights;
+                }
+
+                if (
+                    Number.isFinite(
+                        monthBreakfastCount
+                    )
+                ) {
+                    breakfastCount +=
+                        monthBreakfastCount;
+                }
+            }
+
+            /*
+             * breakfast_count zählt Personenübernachtungen
+             * mit Frühstück.
+             *
+             * Die Differenz zu guest_nights ergibt damit
+             * die Personenübernachtungen ohne Frühstück.
+             */
+            const withoutBreakfast =
+                Math.max(
+                    0,
+                    guestNights - breakfastCount
+                );
+
+            breakfastChart.data.datasets[0].data = [
+                breakfastCount,
+                withoutBreakfast
+            ];
+
+            breakfastChart.update();
+        }
+
+
+        // =====================================================
+        // ZIMMERKATEGORIEN-AUSWERTUNG
+        // =====================================================
+        function updateRoomTypeChart() {
+            if (!roomTypeChart) {
+                return;
+            }
+
+            const selectedMonths =
+                getSelectedPieChartMonths();
+
+            const roomTypes = [
+                {
+                    field: "ez_room_nights",
+                    label: "EZ",
+                    color: "#4f81bd"
+                },
+                {
+                    field: "ez_balcony_room_nights",
+                    label: "EZ B",
+                    color: "#70ad47"
+                },
+                {
+                    field: "dz_room_nights",
+                    label: "DZ",
+                    color: "#d6a84b"
+                },
+                {
+                    field: "dz_balcony_room_nights",
+                    label: "DZ B",
+                    color: "#5b9bd5"
+                },
+                {
+                    field: "triple_room_nights",
+                    label: "3-Bett",
+                    color: "#a5a5a5"
+                },
+                {
+                    field: "quad_room_nights",
+                    label: "4-Bett",
+                    color: "#ed7d31"
+                }
+            ];
+
+            const selectedFields =
+                new Set(
+                    Array.from(
+                        document.querySelectorAll(
+                            "#roomTypeSelection input:checked"
+                        )
+                    ).map(
+                        checkbox =>
+                            checkbox.value
+                    )
+                );
+
+            const activeRoomTypes =
+                roomTypes.filter(
+                    roomType =>
+                        selectedFields.has(
+                            roomType.field
+                        )
+                );
+
+            const values =
+                activeRoomTypes.map(
+                    roomType => {
+                        let total = 0;
+
+                        for (
+                            const monthData
+                            of selectedMonths
+                        ) {
+                            const value =
+                                Number(
+                                    monthData[
+                                    roomType.field
+                                    ]
+                                );
+
+                            if (
+                                Number.isFinite(value)
+                            ) {
+                                total += value;
+                            }
+                        }
+
+                        return total;
+                    }
+                );
+
+            roomTypeChart.data.labels =
+                activeRoomTypes.map(
+                    roomType =>
+                        roomType.label
+                );
+
+            roomTypeChart
+                .data
+                .datasets[0]
+                .data =
+                values;
+
+            roomTypeChart
+                .data
+                .datasets[0]
+                .backgroundColor =
+                activeRoomTypes.map(
+                    roomType =>
+                        roomType.color
+                );
+
+            roomTypeChart.update();
+        }
+
+        // =====================================================
+        // RECHNUNGS-AUSWERTUNG
+        // =====================================================
+        function updateInvoiceChart() {
+            if (!invoiceChart) {
+                return;
+            }
+
+            const selectedMonths =
+                getSelectedPieChartMonths();
+
+            let occupiedRoomNights = 0;
+            let invoiceRoomNights = 0;
+
+            for (const monthData of selectedMonths) {
+                const monthOccupiedRoomNights =
+                    Number(
+                        monthData.occupied_room_nights
+                    );
+
+                const monthInvoiceRoomNights =
+                    Number(
+                        monthData.invoice_room_nights
+                    );
+
+                if (
+                    Number.isFinite(
+                        monthOccupiedRoomNights
+                    )
+                ) {
+                    occupiedRoomNights +=
+                        monthOccupiedRoomNights;
+                }
+
+                if (
+                    Number.isFinite(
+                        monthInvoiceRoomNights
+                    )
+                ) {
+                    invoiceRoomNights +=
+                        monthInvoiceRoomNights;
+                }
+            }
+
+            /*
+             * invoice_room_nights enthält die belegten
+             * Zimmernächte mit Kostenübernahme.
+             *
+             * Die übrigen belegten Zimmernächte ergeben
+             * die Zimmernächte ohne Kostenübernahme.
+             */
+            const withoutInvoice =
+                Math.max(
+                    0,
+                    occupiedRoomNights -
+                    invoiceRoomNights
+                );
+
+            invoiceChart.data.datasets[0].data = [
+                invoiceRoomNights,
+                withoutInvoice
+            ];
+
+            invoiceChart.update();
+        }
+
+
+        function getPreviousYearMonthKey(month) {
+
+            /*
+             * Supabase liefert month als YYYY-MM-DD.
+             *
+             * Das Jahr wird direkt aus dem String gelesen.
+             * Dadurch entstehen keine Zeitzonenverschiebungen.
+             */
+
+            const parts =
+                String(month).split("-");
+
+
+            if (parts.length < 2) {
+                return null;
+            }
+
+
+            const year =
+                Number(parts[0]);
+
+            const monthNumber =
+                parts[1];
+
+
+            if (!Number.isInteger(year)) {
+                return null;
+            }
+
+
+            return (
+                String(year - 1) +
+                "-" +
+                monthNumber +
+                "-01"
+            );
+        }
+
+
+        function findPreviousYearMonth(month) {
+
+            const previousYearMonthKey =
+                getPreviousYearMonthKey(
+                    month
+                );
+
+
+            if (!previousYearMonthKey) {
+                return null;
+            }
+
+
+            return (
+                monatsstatistiken.find(
+                    monthData =>
+                        monthData.month ===
+                        previousYearMonthKey
+                ) ||
+                null
+            );
+        }
+
+
+        function getChartColors(selectedMonths) {
+
+            return selectedMonths.map(
+                monthData =>
+                    monthData.data_source === "live"
+                        ? "#d6a84b"
+                        : "#4f81bd"
+            );
+        }
+
+
+        function getPreviousYearValues(
+            selectedMonths,
+            fieldName
+        ) {
+
+            return selectedMonths.map(
+                monthData => {
+
+                    const previousYearMonth =
+                        findPreviousYearMonth(
+                            monthData.month
+                        );
+
+
+                    if (!previousYearMonth) {
+                        return null;
+                    }
+
+
+                    const value =
+                        Number(
+                            previousYearMonth[
+                            fieldName
+                            ]
+                        );
+
+
+                    return Number.isFinite(value)
+                        ? value
+                        : null;
+                }
+            );
+        }
+
+        // =====================================================
+        // MONATSDIAGRAMME AKTUALISIEREN
+        // =====================================================
+
+        function updateMonthlyCharts() {
+
+            const selectedMonths =
+                getSelectedChartMonths();
+
+
+            const labels =
+                selectedMonths.map(
+                    monthData =>
+                        formatMonthLabel(
+                            monthData.month
+                        )
+                );
+
+
+            const currentColors =
+                getChartColors(
+                    selectedMonths
+                );
+
+
+            // -------------------------------------------------
+            // Auslastung
+            // -------------------------------------------------
+
+            if (occupancyChart) {
+
+                occupancyChart.data.labels =
+                    labels;
+
+
+                occupancyChart
+                    .data
+                    .datasets[0]
+                    .data =
+                    selectedMonths.map(
+                        monthData =>
+                            Number(
+                                monthData.occupancy_percent
+                            )
+                    );
+
+
+                occupancyChart
+                    .data
+                    .datasets[0]
+                    .backgroundColor =
+                    currentColors;
+
+
+                occupancyChart
+                    .data
+                    .datasets[1]
+                    .data =
+                    getPreviousYearValues(
+                        selectedMonths,
+                        "occupancy_percent"
+                    );
+
+
+                occupancyChart.update();
+            }
+
+
+            // -------------------------------------------------
+            // Umsatz
+            // -------------------------------------------------
+
+            if (revenueChart) {
+
+                revenueChart.data.labels =
+                    labels;
+
+
+                revenueChart
+                    .data
+                    .datasets[0]
+                    .data =
+                    selectedMonths.map(
+                        monthData =>
+                            Number(
+                                monthData.room_revenue
+                            )
+                    );
+
+
+                revenueChart
+                    .data
+                    .datasets[0]
+                    .backgroundColor =
+                    currentColors;
+
+
+                revenueChart
+                    .data
+                    .datasets[1]
+                    .data =
+                    getPreviousYearValues(
+                        selectedMonths,
+                        "room_revenue"
+                    );
+
+
+                revenueChart.update();
+            }
+        }
+
+        function renderCurrentMonthKpis() {
+
+            /*
+             * monatsstatistiken ist chronologisch sortiert.
+             * Der letzte Eintrag ist der aktuellste Monat.
+             *
+             * Beim laufenden Monat handelt es sich um den
+             * aktuellen Buchungsstand für den gesamten Monat.
+             */
+
+            const currentMonth =
+                monatsstatistiken[
+                monatsstatistiken.length - 1
+                ];
+
+
+            if (!currentMonth) {
+                throw new Error(
+                    "Für die KPI-Anzeige sind keine Monatsstatistiken vorhanden."
+                );
+            }
+
+
+            // -------------------------------------------------
+            // Auslastung
+            // -------------------------------------------------
+
+            const occupancy =
+                Number(
+                    currentMonth.occupancy_percent
+                );
+
+
+            document
+                .getElementById("kpiOccupancy")
+                .textContent =
+                Number.isFinite(occupancy)
+                    ? occupancy.toLocaleString(
+                        "de-DE",
+                        {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        }
+                    ) + " %"
+                    : "–";
+
+
+            // -------------------------------------------------
+            // Belegte Zimmernächte
+            // -------------------------------------------------
+
+            const occupiedRoomNights =
+                Number(
+                    currentMonth.occupied_room_nights
+                );
+
+
+            document
+                .getElementById("kpiOccupiedRoomNights")
+                .textContent =
+                Number.isFinite(occupiedRoomNights)
+                    ? occupiedRoomNights.toLocaleString(
+                        "de-DE"
+                    )
+                    : "–";
+
+
+            // -------------------------------------------------
+            // Personenübernachtungen
+            // -------------------------------------------------
+
+            const guestNights =
+                Number(
+                    currentMonth.guest_nights
+                );
+
+
+            document
+                .getElementById("kpiGuestNights")
+                .textContent =
+                Number.isFinite(guestNights)
+                    ? guestNights.toLocaleString(
+                        "de-DE"
+                    )
+                    : "–";
+
+
+            // -------------------------------------------------
+            // Umsatz
+            // -------------------------------------------------
+
+            const roomRevenue =
+                Number(
+                    currentMonth.room_revenue
+                );
+
+
+            document
+                .getElementById("kpiRoomRevenue")
+                .textContent =
+                Number.isFinite(roomRevenue)
+                    ? roomRevenue.toLocaleString(
+                        "de-DE",
+                        {
+                            style: "currency",
+                            currency: "EUR"
+                        }
+                    )
+                    : "–";
+
+
+            // -------------------------------------------------
+            // ADR
+            // -------------------------------------------------
+
+            const adr =
+                Number(
+                    currentMonth.adr
+                );
+
+
+            document
+                .getElementById("kpiAdr")
+                .textContent =
+                Number.isFinite(adr)
+                    ? adr.toLocaleString(
+                        "de-DE",
+                        {
+                            style: "currency",
+                            currency: "EUR"
+                        }
+                    )
+                    : "–";
+
+
+            // -------------------------------------------------
+            // RevPAR
+            // -------------------------------------------------
+
+            const revpar =
+                Number(
+                    currentMonth.revpar
+                );
+
+
+            document
+                .getElementById("kpiRevpar")
+                .textContent =
+                Number.isFinite(revpar)
+                    ? revpar.toLocaleString(
+                        "de-DE",
+                        {
+                            style: "currency",
+                            currency: "EUR"
+                        }
+                    )
+                    : "–";
+        }
+
+        async function initializeStatistiken() {
 
             /*
              * Verhindert einen doppelten Start,
@@ -448,114 +1801,627 @@
 
 
             /*
-             * Aktuell noch reine Beispieldaten.
+             * Zuerst werden Archivmonate und laufender Monat
+             * zu einer chronologischen Datenbasis verbunden.
              *
-             * Die echten Supabase-Auswertungen werden
-             * später innerhalb dieser Anwendung ergänzt.
+             * Die vorhandenen Beispiel-KPIs und Beispiel-Charts
+             * bleiben in diesem ersten Schritt noch bestehen.
              */
 
+            await loadMonthlyStatistics();
+            renderCurrentMonthKpis();
+            populatePieChartMonthSelect();
+            /*
+             * Aktuell verwenden die sichtbaren KPI-Karten
+             * und Diagramme weiterhin Beispieldaten.
+             *
+             * Sie werden in den nächsten Schritten einzeln
+             * an monatsstatistiken angebunden.
+             */
 
             // -------------------------------------------------
-            // Auslastung
+            // Auslastung mit Vorjahresvergleich
             // -------------------------------------------------
 
-            new Chart(
-                document.getElementById("occ"),
-                {
-                    type: "bar",
+            occupancyChart =
+                new Chart(
+                    document.getElementById("occ"),
+                    {
+                        type: "bar",
 
-                    data: {
+                        data: {
+                            labels: [],
 
-                        labels: [
-                            "Juni",
-                            "Juli",
-                            "August"
-                        ],
+                            datasets: [
+                                {
+                                    label:
+                                        "Auslastung dieses Jahr",
 
-                        datasets: [
-                            {
-                                data: [
-                                    62,
-                                    81,
-                                    89
-                                ]
+                                    data: [],
+
+                                    backgroundColor: [],
+
+                                    borderWidth: 0
+                                },
+                                {
+                                    label:
+                                        "Auslastung Vorjahr",
+
+                                    data: [],
+
+                                    backgroundColor:
+                                        "#b8c7d9",
+
+                                    borderWidth: 0
+                                }
+                            ]
+                        },
+
+                        options: {
+
+                            responsive: true,
+
+                            interaction: {
+                                mode: "index",
+                                intersect: false
+                            },
+
+                            scales: {
+
+                                y: {
+
+                                    beginAtZero: true,
+
+                                    max: 100,
+
+                                    ticks: {
+
+                                        callback:
+                                            function (value) {
+                                                return value + " %";
+                                            }
+
+                                    }
+
+                                }
+
+                            },
+
+                            plugins: {
+
+                                tooltip: {
+
+                                    callbacks: {
+
+                                        label:
+                                            function (context) {
+
+                                                const value =
+                                                    Number(
+                                                        context.raw
+                                                    );
+
+
+                                                if (
+                                                    !Number.isFinite(value)
+                                                ) {
+                                                    return (
+                                                        context.dataset.label +
+                                                        ": keine Daten"
+                                                    );
+                                                }
+
+
+                                                return (
+                                                    context.dataset.label +
+                                                    ": " +
+                                                    value.toLocaleString(
+                                                        "de-DE",
+                                                        {
+                                                            minimumFractionDigits:
+                                                                2,
+
+                                                            maximumFractionDigits:
+                                                                2
+                                                        }
+                                                    ) +
+                                                    " %"
+                                                );
+                                            }
+
+                                    }
+
+                                }
+
                             }
-                        ]
 
+                        }
                     }
-                }
-            );
-
+                );
 
             // -------------------------------------------------
-            // Umsatz
+            // Umsatz mit Vorjahresvergleich
             // -------------------------------------------------
 
-            new Chart(
-                document.getElementById("sales"),
-                {
-                    type: "bar",
+            revenueChart =
+                new Chart(
+                    document.getElementById("sales"),
+                    {
+                        type: "bar",
 
-                    data: {
+                        data: {
+                            labels: [],
 
-                        labels: [
-                            "Juni",
-                            "Juli",
-                            "August"
-                        ],
+                            datasets: [
+                                {
+                                    label:
+                                        "Umsatz aktueller Zeitraum",
 
-                        datasets: [
-                            {
-                                data: [
-                                    17230,
-                                    24180,
-                                    27990
-                                ]
+                                    data: [],
+
+                                    backgroundColor: [],
+
+                                    borderWidth: 0
+                                },
+                                {
+                                    label:
+                                        "Umsatz Vorjahr",
+
+                                    data: [],
+
+                                    backgroundColor:
+                                        "#b8c7d9",
+
+                                    borderWidth: 0
+                                }
+                            ]
+                        },
+
+                        options: {
+
+                            responsive: true,
+
+                            interaction: {
+                                mode: "index",
+                                intersect: false
+                            },
+
+                            scales: {
+
+                                y: {
+
+                                    beginAtZero: true,
+
+                                    ticks: {
+
+                                        callback:
+                                            function (value) {
+
+                                                return Number(
+                                                    value
+                                                ).toLocaleString(
+                                                    "de-DE"
+                                                ) + " €";
+                                            }
+
+                                    }
+
+                                }
+
+                            },
+
+                            plugins: {
+
+                                tooltip: {
+
+                                    callbacks: {
+
+                                        label:
+                                            function (context) {
+
+                                                const value =
+                                                    Number(
+                                                        context.raw
+                                                    );
+
+
+                                                if (
+                                                    !Number.isFinite(value)
+                                                ) {
+                                                    return (
+                                                        context.dataset.label +
+                                                        ": keine Daten"
+                                                    );
+                                                }
+
+
+                                                return (
+                                                    context.dataset.label +
+                                                    ": " +
+                                                    value.toLocaleString(
+                                                        "de-DE",
+                                                        {
+                                                            style:
+                                                                "currency",
+
+                                                            currency:
+                                                                "EUR",
+
+                                                            minimumFractionDigits:
+                                                                2,
+
+                                                            maximumFractionDigits:
+                                                                2
+                                                        }
+                                                    )
+                                                );
+                                            }
+
+                                    }
+
+                                }
+
                             }
-                        ]
 
+                        }
                     }
-                }
-            );
-
+                );
 
             // -------------------------------------------------
-            // Zukunftsauslastung
+            // Frühstücks-Tortendiagramm
             // -------------------------------------------------
+            breakfastChart =
+                new Chart(
+                    document.getElementById(
+                        "breakfastChart"
+                    ),
+                    {
+                        type: "doughnut",
+                        data: {
+                            labels: [
+                                "Mit Frühstück",
+                                "Ohne Frühstück"
+                            ],
+                            datasets: [
+                                {
+                                    data: [
+                                        0,
+                                        0
+                                    ],
+                                    backgroundColor: [
+                                        "#4f81bd",
+                                        "#d9e2ec"
+                                    ],
+                                    borderColor: [
+                                        "#ffffff",
+                                        "#ffffff"
+                                    ],
+                                    borderWidth: 2
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: "bottom"
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label:
+                                            function (context) {
+                                                const value =
+                                                    Number(
+                                                        context.raw
+                                                    );
 
-            new Chart(
-                document.getElementById("future"),
-                {
-                    type: "line",
+                                                const values =
+                                                    context
+                                                        .dataset
+                                                        .data;
 
-                    data: {
+                                                const total =
+                                                    values.reduce(
+                                                        (
+                                                            sum,
+                                                            currentValue
+                                                        ) =>
+                                                            sum +
+                                                            Number(
+                                                                currentValue
+                                                            ),
+                                                        0
+                                                    );
 
-                        labels: [
-                            "Sep",
-                            "Okt",
-                            "Nov",
-                            "Dez",
-                            "Jan",
-                            "Feb"
-                        ],
+                                                const percent =
+                                                    total > 0
+                                                        ? (
+                                                            value /
+                                                            total *
+                                                            100
+                                                        )
+                                                        : 0;
 
-                        datasets: [
-                            {
-                                data: [
-                                    81,
-                                    74,
-                                    53,
-                                    61,
-                                    48,
-                                    52
-                                ]
+                                                return (
+                                                    context.label +
+                                                    ": " +
+                                                    value.toLocaleString(
+                                                        "de-DE"
+                                                    ) +
+                                                    " (" +
+                                                    percent.toLocaleString(
+                                                        "de-DE",
+                                                        {
+                                                            minimumFractionDigits: 1,
+                                                            maximumFractionDigits: 1
+                                                        }
+                                                    ) +
+                                                    " %)"
+                                                );
+                                            }
+                                    }
+                                }
                             }
-                        ]
-
+                        }
                     }
-                }
-            );
+                );
 
+
+            // -------------------------------------------------
+            // Zimmerkategorien-Tortendiagramm
+            // -------------------------------------------------
+            roomTypeChart =
+                new Chart(
+                    document.getElementById(
+                        "roomTypeChart"
+                    ),
+                    {
+                        type: "doughnut",
+                        data: {
+                            labels: [],
+                            datasets: [
+                                {
+                                    data: [],
+                                    backgroundColor: [],
+                                    borderColor: "#ffffff",
+                                    borderWidth: 2
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: "bottom"
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label:
+                                            function (context) {
+                                                const value =
+                                                    Number(
+                                                        context.raw
+                                                    );
+
+                                                const values =
+                                                    context
+                                                        .dataset
+                                                        .data;
+
+                                                const total =
+                                                    values.reduce(
+                                                        (
+                                                            sum,
+                                                            currentValue
+                                                        ) =>
+                                                            sum +
+                                                            Number(
+                                                                currentValue
+                                                            ),
+                                                        0
+                                                    );
+
+                                                const percent =
+                                                    total > 0
+                                                        ? (
+                                                            value /
+                                                            total *
+                                                            100
+                                                        )
+                                                        : 0;
+
+                                                return (
+                                                    context.label +
+                                                    ": " +
+                                                    value.toLocaleString(
+                                                        "de-DE"
+                                                    ) +
+                                                    " Zimmernächte (" +
+                                                    percent.toLocaleString(
+                                                        "de-DE",
+                                                        {
+                                                            minimumFractionDigits: 1,
+                                                            maximumFractionDigits: 1
+                                                        }
+                                                    ) +
+                                                    " %)"
+                                                );
+                                            }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                );
+
+
+            // -------------------------------------------------
+            // Rechnungs-Tortendiagramm
+            // -------------------------------------------------
+            invoiceChart =
+                new Chart(
+                    document.getElementById(
+                        "invoiceChart"
+                    ),
+                    {
+                        type: "doughnut",
+                        data: {
+                            labels: [
+                                "Kostenübernahme",
+                                "vor Ort bezahlt"
+                            ],
+                            datasets: [
+                                {
+                                    data: [
+                                        0,
+                                        0
+                                    ],
+                                    backgroundColor: [
+                                        "#d6a84b",
+                                        "#70ad47"
+                                    ],
+                                    borderColor: [
+                                        "#ffffff",
+                                        "#ffffff"
+                                    ],
+                                    borderWidth: 2
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: "bottom"
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label:
+                                            function (context) {
+                                                const value =
+                                                    Number(
+                                                        context.raw
+                                                    );
+
+                                                const values =
+                                                    context
+                                                        .dataset
+                                                        .data;
+
+                                                const total =
+                                                    values.reduce(
+                                                        (
+                                                            sum,
+                                                            currentValue
+                                                        ) =>
+                                                            sum +
+                                                            Number(
+                                                                currentValue
+                                                            ),
+                                                        0
+                                                    );
+
+                                                const percent =
+                                                    total > 0
+                                                        ? (
+                                                            value /
+                                                            total *
+                                                            100
+                                                        )
+                                                        : 0;
+
+                                                return (
+                                                    context.label +
+                                                    ": " +
+                                                    value.toLocaleString(
+                                                        "de-DE"
+                                                    ) +
+                                                    " Zimmernächte (" +
+                                                    percent.toLocaleString(
+                                                        "de-DE",
+                                                        {
+                                                            minimumFractionDigits: 1,
+                                                            maximumFractionDigits: 1
+                                                        }
+                                                    ) +
+                                                    " %)"
+                                                );
+                                            }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                );
+
+            // -------------------------------------------------
+            // Zeitraumsauswahl aktivieren
+            // -------------------------------------------------
+
+            document
+                .getElementById("chartMonthRange")
+                .addEventListener(
+                    "change",
+                    function () {
+                        updateMonthlyCharts();
+
+                        /*
+                         * Wenn die Detailauswertung den oben
+                         * ausgewählten Zeitraum verwendet,
+                         * müssen sich auch die Tortendiagramme
+                         * aktualisieren.
+                         */
+                        const pieChartMonth =
+                            document.getElementById(
+                                "pieChartMonth"
+                            );
+
+                        if (
+                            pieChartMonth.value === "range"
+                        ) {
+                            updateBreakfastChart();
+                            updateRoomTypeChart();
+                            updateInvoiceChart();
+                        }
+                    }
+                );
+
+
+            document
+                .getElementById("pieChartMonth")
+                .addEventListener(
+                    "change",
+                    function () {
+                        updateBreakfastChart();
+                        updateRoomTypeChart();
+                        updateInvoiceChart();
+                    }
+                );
+
+            document
+                .querySelectorAll(
+                    "#roomTypeSelection input"
+                )
+                .forEach(
+                    checkbox => {
+                        checkbox.addEventListener(
+                            "change",
+                            updateRoomTypeChart
+                        );
+                    }
+                );
+
+            /*
+             * Diagramme mit der aktuell ausgewählten
+             * Zeitspanne erstmals befüllen.
+             */
+            updateMonthlyCharts();
+            updateBreakfastChart();
+            updateRoomTypeChart();
+            updateInvoiceChart();
         }
 
 
@@ -565,7 +2431,7 @@
 
         document.addEventListener(
             "auth:ready",
-            function (event) {
+            async function (event) {
 
                 const role =
                     event.detail.role;
@@ -609,7 +2475,32 @@
                  * Dashboard erst jetzt starten.
                  */
 
-                initializeStatistiken();
+                try {
+
+                    await initializeStatistiken();
+
+                } catch (error) {
+
+                    /*
+                     * Ein erneuter Start bleibt möglich,
+                     * falls auth:ready nochmals ausgelöst wird.
+                     */
+
+                    statistikenGestartet = false;
+
+
+                    console.error(
+                        "Fehler beim Laden der Statistiken:",
+                        error
+                    );
+
+
+                    alert(
+                        error.message ||
+                        "Die Statistiken konnten nicht vollständig geladen werden."
+                    );
+
+                }
 
             }
         );

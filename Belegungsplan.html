@@ -3293,7 +3293,6 @@
     }
 
     function runAllReminders() {
-
       // ✅ Afternoon 14 Uhr
       runPrintReminder(
         "afternoonReminder14",
@@ -3301,24 +3300,6 @@
         "Nachmittags Listen drucken (14 Uhr)?",
         activateAfternoonPreset
       );
-
-      runPrintReminder(
-        "weekendReminder1430",
-        () => {
-          const now = new Date();
-
-          return (
-            now.getDay() === 5 &&
-            (
-              now.getHours() > 14 ||
-              (now.getHours() === 14 && now.getMinutes() >= 30)
-            )
-          );
-        },
-        "Listen fürs Wochenende drucken ?",
-        printWeekendLists
-      );
-
     }
 
     function activateMorningPreset() {
