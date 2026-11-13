@@ -419,12 +419,7 @@
         </div>
 
 
-        <p class="small">
-            Erste Dashboard-Version.
-            Aktuell mit Beispieldaten.
-            Im nächsten Schritt werden die echten
-            Supabase-Daten angebunden.
-        </p>
+
 
 
         <!-- =================================================
@@ -632,6 +627,19 @@
                 </div>
             </div>
 
+            <!-- Buchungsquellen -->
+            <div class="chart-card pie-chart-card">
+                <h3>
+                    Buchungsquellen
+                </h3>
+                <p class="small">
+                    Verteilung der belegten Zimmernächte nach Buchungsquelle.
+                </p>
+                <div class="pie-chart-container">
+                    <canvas id="bookingSourceChart"></canvas>
+                </div>
+            </div>
+
         </div>
     </div>
     <!-- Ende #appContent -->
@@ -660,7 +668,7 @@
         let breakfastChart = null;
         let roomTypeChart = null;
         let invoiceChart = null;
-
+        let bookingSourceChart = null;
         // =====================================================
         // DATUMSFUNKTIONEN
         // =====================================================
@@ -1407,6 +1415,142 @@
         }
 
 
+        // =====================================================
+        // BUCHUNGSQUELLEN-AUSWERTUNG
+        // =====================================================
+        function updateBookingSourceChart() {
+            if (!bookingSourceChart) {
+                return;
+            }
+
+            const selectedMonths =
+                getSelectedPieChartMonths();
+
+            const bookingSources = [
+                {
+                    field: "booking_room_nights",
+                    label: "Booking",
+                    color: "#003580"
+                },
+                {
+                    field: "hrs_room_nights",
+                    label: "HRS",
+                    color: "#e30613"
+                },
+                {
+                    field: "expedia_room_nights",
+                    label: "Expedia",
+                    color: "#f5b700"
+                },
+                {
+                    field: "c_res_room_nights",
+                    label: "C-Res",
+                    color: "#7030A0"
+                },
+                {
+                    field: "phone_room_nights",
+                    label: "Telefon",
+                    color: "#70ad47"
+                },
+                {
+                    field: "email_room_nights",
+                    label: "Email",
+                    color: "#5b9bd5"
+                },
+                {
+                    field: "personal_room_nights",
+                    label: "Persönlich",
+                    color: "#ed7d31"
+                },
+                {
+                    field: "kurzurlaub_room_nights",
+                    label: "kurzurlaub.de",
+                    color: "#00a6a6"
+                },
+                {
+                    field: "tagungshotel_room_nights",
+                    label: "Tagungshotel",
+                    color: "#8b5a2b"
+                },
+                {
+                    field: "verwoehn_we_room_nights",
+                    label: "Verwöhn-WE",
+                    color: "#e377c2"
+                },
+                {
+                    field: "other_source_room_nights",
+                    label: "Sonstiges",
+                    color: "#6c757d"
+                },
+                {
+                    field: "unknown_source_room_nights",
+                    label: "Unbekannt",
+                    color: "#bfbfbf"
+                }
+            ];
+
+            const sourceTotals =
+                bookingSources.map(
+                    source => {
+                        let total = 0;
+
+                        for (const monthData of selectedMonths) {
+                            const value =
+                                Number(
+                                    monthData[
+                                    source.field
+                                    ]
+                                );
+
+                            if (Number.isFinite(value)) {
+                                total += value;
+                            }
+                        }
+
+                        return {
+                            ...source,
+                            value: total
+                        };
+                    }
+                );
+
+            /*
+             * Nur Buchungsquellen mit tatsächlich vorhandenen
+             * Zimmernächten anzeigen.
+             *
+             * Dadurch erscheinen Quellen mit Wert 0 weder als
+             * Segment im Diagramm noch in der Legende.
+             */
+            const activeSources =
+                sourceTotals.filter(
+                    source => source.value > 0
+                );
+
+            bookingSourceChart.data.labels =
+                activeSources.map(
+                    source => source.label
+                );
+
+            bookingSourceChart
+                .data
+                .datasets[0]
+                .data =
+                activeSources.map(
+                    source => source.value
+                );
+
+            bookingSourceChart
+                .data
+                .datasets[0]
+                .backgroundColor =
+                activeSources.map(
+                    source => source.color
+                );
+
+            bookingSourceChart.update();
+        }
+
+
         function getPreviousYearMonthKey(month) {
 
             /*
@@ -1799,25 +1943,9 @@
 
             statistikenGestartet = true;
 
-
-            /*
-             * Zuerst werden Archivmonate und laufender Monat
-             * zu einer chronologischen Datenbasis verbunden.
-             *
-             * Die vorhandenen Beispiel-KPIs und Beispiel-Charts
-             * bleiben in diesem ersten Schritt noch bestehen.
-             */
-
             await loadMonthlyStatistics();
             renderCurrentMonthKpis();
             populatePieChartMonthSelect();
-            /*
-             * Aktuell verwenden die sichtbaren KPI-Karten
-             * und Diagramme weiterhin Beispieldaten.
-             *
-             * Sie werden in den nächsten Schritten einzeln
-             * an monatsstatistiken angebunden.
-             */
 
             // -------------------------------------------------
             // Auslastung mit Vorjahresvergleich
@@ -2358,6 +2486,95 @@
                 );
 
             // -------------------------------------------------
+            // Buchungsquellen-Tortendiagramm
+            // -------------------------------------------------
+            bookingSourceChart =
+                new Chart(
+                    document.getElementById(
+                        "bookingSourceChart"
+                    ),
+                    {
+                        type: "doughnut",
+                        data: {
+                            labels: [],
+                            datasets: [
+                                {
+                                    data: [],
+                                    backgroundColor: [],
+                                    borderColor: "#ffffff",
+                                    borderWidth: 2
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: "bottom"
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label:
+                                            function (context) {
+                                                const value =
+                                                    Number(
+                                                        context.raw
+                                                    );
+
+                                                const values =
+                                                    context
+                                                        .dataset
+                                                        .data;
+
+                                                const total =
+                                                    values.reduce(
+                                                        (
+                                                            sum,
+                                                            currentValue
+                                                        ) =>
+                                                            sum +
+                                                            Number(
+                                                                currentValue
+                                                            ),
+                                                        0
+                                                    );
+
+                                                const percent =
+                                                    total > 0
+                                                        ? (
+                                                            value /
+                                                            total *
+                                                            100
+                                                        )
+                                                        : 0;
+
+                                                return (
+                                                    context.label +
+                                                    ": " +
+                                                    value.toLocaleString(
+                                                        "de-DE"
+                                                    ) +
+                                                    " Zimmernächte (" +
+                                                    percent.toLocaleString(
+                                                        "de-DE",
+                                                        {
+                                                            minimumFractionDigits: 1,
+                                                            maximumFractionDigits: 1
+                                                        }
+                                                    ) +
+                                                    " %)"
+                                                );
+                                            }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                );
+
+
+            // -------------------------------------------------
             // Zeitraumsauswahl aktivieren
             // -------------------------------------------------
 
@@ -2385,6 +2602,7 @@
                             updateBreakfastChart();
                             updateRoomTypeChart();
                             updateInvoiceChart();
+                            updateBookingSourceChart();
                         }
                     }
                 );
@@ -2398,6 +2616,7 @@
                         updateBreakfastChart();
                         updateRoomTypeChart();
                         updateInvoiceChart();
+                        updateBookingSourceChart();
                     }
                 );
 
@@ -2422,6 +2641,7 @@
             updateBreakfastChart();
             updateRoomTypeChart();
             updateInvoiceChart();
+            updateBookingSourceChart();
         }
 
 

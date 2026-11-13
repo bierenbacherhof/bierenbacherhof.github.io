@@ -983,14 +983,20 @@
       border-radius: 4px;
     }
 
-    /* Eingabefelder Gruppenbuchung */
-    #groupForm input:not([type="checkbox"]) {
+    /* Eingabefelder Einzel- und Gruppenbuchung */
+    #singleForm input:not([type="checkbox"]),
+    #singleForm select,
+    #groupForm input:not([type="checkbox"]),
+    #groupForm select {
       border: 1px solid #767676;
       border-radius: 2px;
       box-sizing: border-box;
     }
 
-    #groupForm input:not([type="checkbox"]):focus {
+    #singleForm input:not([type="checkbox"]):focus,
+    #singleForm select:focus,
+    #groupForm input:not([type="checkbox"]):focus,
+    #groupForm select:focus {
       border-color: #333;
       outline: 1px solid #333;
       outline-offset: 0;
@@ -1489,6 +1495,22 @@
       <label>Firma</label><br />
       <input type="text" id="f_company" /><br />
 
+      <label>Buchungsquelle *</label><br />
+      <select id="f_booking_source" required>
+        <option value="" selected>– bitte auswählen –</option>
+        <option value="Booking">Booking</option>
+        <option value="HRS">HRS</option>
+        <option value="Expedia">Expedia</option>
+        <option value="C-Res">C-Res</option>
+        <option value="Telefon">Telefon</option>
+        <option value="Email">Email</option>
+        <option value="Persönlich">Persönlich</option>
+        <option value="kurzurlaub.de">kurzurlaub.de</option>
+        <option value="Tagungshotel">Tagungshotel</option>
+        <option value="Verwöhn-WE">Verwöhn-WE</option>
+        <option value="Sonstiges">Sonstiges</option>
+      </select><br />
+
       <label>Anreise</label><br />
       <input type="date" id="f_start" /><br />
 
@@ -1580,8 +1602,20 @@
       <input type="text" id="g_gruppenkommentar" placeholder="Kommentar" />
       <br><br>
 
-      <div id="groupCategories" style="margin-top:4px"></div>
+      <label>Buchungsquelle *</label><br>
+      <select id="g_booking_source" required>
+        <option value="" selected>– bitte auswählen –</option>
+        <option value="Booking">Booking</option>
+        <option value="HRS">HRS</option>
+        <option value="Expedia">Expedia</option>
+        <option value="C-Res">C-Res</option>
+        <option value="Telefon">Telefon</option>
+        <option value="Email">Email</option>
+        <option value="Persönlich">Persönlich</option>
+      </select>
+      <br><br>
 
+      <div id="groupCategories" style="margin-top:4px"></div>
       <br>
 
       <div class="switch-wrapper">
@@ -2109,6 +2143,7 @@
 
       document.getElementById("f_name").value = "";
       document.getElementById("f_company").value = "";
+      document.getElementById("f_booking_source").value = "";
       document.getElementById("f_price").value = "";
       document.getElementById("f_invoice_pending").checked = false;
       document.getElementById("f_comment").value = "";
@@ -2573,10 +2608,13 @@
       let gruppenkommentar =
         document.getElementById("g_gruppenkommentar").value.trim();
 
+      let bookingSource =
+        document.getElementById("g_booking_source").value;
       let startVal = document.getElementById("g_start").value;
       let endVal = document.getElementById("g_end").value;
       let isCompany = document.getElementById("g_isCompany").checked;
 
+      if (!bookingSource) return alert("Bitte Buchungsquelle auswählen");
       if (!name) return alert("Bitte Gruppenname eingeben");
       if (!startVal) return alert("Bitte Anreise wählen");
       if (!endVal) return alert("Bitte Abreise wählen");
@@ -2800,6 +2838,8 @@
         start,
         end,
         groupId: group ? group.id : null,
+        booking_source:
+          document.getElementById("g_booking_source").value,
         placed: [],
         floorPriority: floorPriority,
         bluecard: document.getElementById("g_bluecard").checked,
@@ -6751,6 +6791,7 @@ ${d.toLocaleDateString("de-DE", {
         name: "",
         company: groupPlacement.isCompany ? document.getElementById("g_name").value.trim() : "",
         price: nightlyPrice,
+        booking_source: groupPlacement.booking_source,
         invoice_pending:
           groupPlacement.invoice_pending || false,
         comment: "",
@@ -6838,6 +6879,8 @@ ${d.toLocaleDateString("de-DE", {
         end: end.toISOString(),
         name: singlePlacement.name,
         price: singlePlacement.price,
+        company: singlePlacement.company || "",
+        booking_source: singlePlacement.booking_source,
         invoice_pending: singlePlacement.invoice_pending || false,
         comment: singlePlacement.comment,
         guests: singlePlacement.guests,
@@ -6990,6 +7033,7 @@ ${d.toLocaleDateString("de-DE", {
       document.querySelector(".switch-wrapper").style.display = "flex";
       document.getElementById("g_name").value = "";
       document.getElementById("g_gruppenkommentar").value = "";
+      document.getElementById("g_booking_source").value = "";
       document.getElementById("g_start").value = "";
       document.getElementById("g_end").value = "";
       document.getElementById("groupCategories").innerHTML = "";
@@ -7138,6 +7182,13 @@ ${d.toLocaleDateString("de-DE", {
         return alert("Bitte Gäste auswählen");
       }
 
+      let booking_source =
+        document.getElementById("f_booking_source").value;
+
+      if (!booking_source) {
+        return alert("Bitte Buchungsquelle auswählen");
+      }
+
       let name = document.getElementById("f_name").value;
       let company = document.getElementById("f_company").value.trim();
       let start = new Date(document.getElementById("f_start").value);
@@ -7173,6 +7224,7 @@ ${d.toLocaleDateString("de-DE", {
             end,
             name,
             company,
+            booking_source,
             price,
             invoice_pending: invoice_pending,
             comment,
@@ -7234,6 +7286,7 @@ ${d.toLocaleDateString("de-DE", {
           invoice_pending: invoice_pending,
           comment: comment,
           guests: guests,
+          booking_source: booking_source,
           color: "yellow",
           group_id: group || null,
           paid: false,
@@ -7334,6 +7387,7 @@ ${d.toLocaleDateString("de-DE", {
         b.end = end.toISOString();
         b.name = name;
         b.company = company;
+        b.booking_source = booking_source;
         b.price = price;
         b.invoice_pending = invoice_pending;
         b.comment = comment;
@@ -7357,6 +7411,7 @@ ${d.toLocaleDateString("de-DE", {
             end: b.end,
             name,
             company,
+            booking_source,
             price,
             invoice_pending: b.invoice_pending,
             comment,
@@ -7600,6 +7655,8 @@ ${d.toLocaleDateString("de-DE", {
 
       document.getElementById("f_name").value = b.name || "";
       document.getElementById("f_company").value = b.company || "";
+      document.getElementById("f_booking_source").value =
+        b.booking_source || "";
       document.getElementById("f_price").value = b.price || "";
       document.getElementById("f_invoice_pending").checked = !!b.invoice_pending;
 
@@ -7671,6 +7728,7 @@ ${d.toLocaleDateString("de-DE", {
 
       document.getElementById("f_name").value = "";
       document.getElementById("f_company").value = "";
+      document.getElementById("f_booking_source").value = "";
       document.getElementById("f_price").value = "";
       document.getElementById("f_totalprice").value = "";
       document.getElementById("f_invoice_pending").checked = false;
@@ -7868,6 +7926,7 @@ ${d.toLocaleDateString("de-DE", {
     <b>📅 Abreise:</b>${end}<br>
     <b>💲 Preis pro Nacht:</b>${nightlyPrice} ${isNaN(nightlyPrice) ? "" : "€"}<br>
     <b>💰 Gesamtpreis:</b>${totalPrice} ${isNaN(totalPrice) ? "" : "€"}<br>
+    <b>📍 Buchungsquelle:</b>${b.booking_source || "-"}<br>
     <b>🧾 Kostenübernahme:</b>${b.invoice_pending ? "Ja" : "Nein"}<br>
     <b>💬 Kommentar:</b>${b.comment || "-"}<br>
     <b>✨ Extrainfo:</b>${extra || "-"}<br>
@@ -8402,6 +8461,19 @@ handleBluecardCheckbox('${b.id}', ${i});
         }
 
         let companyText = b.company ? ` 🏢 ${b.company}` : "";
+
+        let directBookingSmiley = "";
+
+        if (
+          isAdmin() &&
+          (
+            b.booking_source === "Telefon" ||
+            b.booking_source === "Persönlich"
+          )
+        ) {
+          directBookingSmiley = "😁 ";
+        }
+
         let txt = document.createElement("span");
 
         txt.className = "text";
@@ -8440,7 +8512,7 @@ handleBluecardCheckbox('${b.id}', ${i});
             if (!isAdmin()) {
               txt.innerHTML = `${mobileGuests}:${icons}`;
             } else {
-              txt.innerHTML = `${paidIcon}${mobileGuests}:${b.name}${companyText}${icons}`;
+              txt.innerHTML = `${directBookingSmiley}${paidIcon}${mobileGuests}:${b.name}${companyText}${icons}`;
             }
           }
         } else {
@@ -8451,7 +8523,7 @@ handleBluecardCheckbox('${b.id}', ${i});
               txt.innerHTML = "🚽 Toilette"
             }
           } else {
-            txt.innerHTML = `${paidIcon}${b.guests} ${displayName}${companyText}${icons}${commentText}`;
+            txt.innerHTML = `${directBookingSmiley}${paidIcon}${b.guests} ${displayName}${companyText}${icons}${commentText}`;
           }
         }
 
@@ -11996,6 +12068,7 @@ DZ: ${stats.dz}<br>
         end: b.end ? new Date(b.end) : "",
         name: b.name ?? "",
         company: b.company ?? "",
+        booking_source: b.booking_source ?? "",
         price: b.price ?? "",
         invoice_pending: b.invoice_pending ?? false,
         comment: b.comment ?? "",
@@ -12145,6 +12218,7 @@ DZ: ${stats.dz}<br>
     function resetGroupForm() {
       document.getElementById("g_name").value = "";
       document.getElementById("g_gruppenkommentar").value = "";
+      document.getElementById("g_booking_source").value = "";
       document.getElementById("g_start").value = "";
       document.getElementById("g_end").value = "";
 
