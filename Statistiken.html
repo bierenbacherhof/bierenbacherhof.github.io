@@ -12,7 +12,7 @@
 
     <!-- Zentrale Anmeldung und Rollenverwaltung -->
     <script src="auth.js"></script>
-
+    <script src="navigation.js"></script>
     <!-- Diagramme -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -303,28 +303,7 @@
             margin: 0;
         }
 
-        .header-actions {
-            display: flex;
-            gap: 8px;
-        }
 
-        .header-actions button {
-            padding: 9px 13px;
-
-            border: none;
-            border-radius: 6px;
-
-            background: #555;
-            color: white;
-
-            font-weight: 600;
-
-            cursor: pointer;
-        }
-
-        .header-actions button:hover {
-            background: #333;
-        }
 
 
         /* =====================================================
@@ -335,22 +314,6 @@
 
             body {
                 padding: 12px;
-            }
-
-            .page-header {
-                align-items:
-                    flex-start;
-
-                flex-direction:
-                    column;
-            }
-
-            .header-actions {
-                width: 100%;
-            }
-
-            .header-actions button {
-                flex: 1;
             }
 
         }
@@ -399,23 +362,9 @@
     <div id="appContent" class="role-admin" data-auth-display="block">
 
         <div class="page-header">
-
             <h1>
                 📊 Hotel Statistiken
             </h1>
-
-            <div class="header-actions">
-
-                <button type="button" onclick="location.href='index.html'">
-                    Startseite
-                </button>
-
-                <button type="button" onclick="logout()">
-                    Abmelden
-                </button>
-
-            </div>
-
         </div>
 
 
@@ -2083,7 +2032,7 @@
                             datasets: [
                                 {
                                     label:
-                                        "Umsatz aktueller Zeitraum",
+                                        "Umsatz dieses Jahr",
 
                                     data: [],
 

@@ -1,5 +1,57 @@
 "use strict";
 
+// ============================================================
+// GLOBALER AUTH-LADEZUSTAND
+// ============================================================
+
+document.documentElement.classList.add(
+    "auth-loading"
+);
+
+const authLoadingStyle =
+    document.createElement("style");
+
+authLoadingStyle.id =
+    "authLoadingStyle";
+
+authLoadingStyle.textContent = `
+    html.auth-loading body > * {
+        visibility: hidden !important;
+    }
+
+    html.auth-loading body::before {
+        content: "";
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 42px;
+        height: 42px;
+        margin-top: -21px;
+        margin-left: -21px;
+        box-sizing: border-box;
+        border: 4px solid #d8d8d8;
+        border-top-color: #555555;
+        border-radius: 50%;
+        animation: auth-loading-spin 0.8s linear infinite;
+        visibility: visible !important;
+        z-index: 2147483647;
+    }
+
+    @keyframes auth-loading-spin {
+        from {
+            transform: rotate(0deg);
+        }
+
+        to {
+            transform: rotate(360deg);
+        }
+    }
+`;
+
+document.head.appendChild(
+    authLoadingStyle
+);
+
 /*
 ============================================================
 Zentrale Authentifizierung der Hotelsoftware
@@ -129,10 +181,45 @@ function clearLoginMessage() {
     }
 }
 
+// ============================================================
+// GLOBALEN AUTH-LADEZUSTAND BEENDEN
+// ============================================================
+function finishAuthLoading() {
+    document.documentElement.classList.remove(
+        "auth-loading"
+    );
+}
+
+// ============================================================
+// NEUTRALER ZUSTAND WÄHREND DER AUTH-PRÜFUNG
+// ============================================================
+function hideAuthInterface() {
+    const loginBox =
+        getAuthElement("loginBox");
+
+    const loginBlocker =
+        getAuthElement("loginBlocker");
+
+    if (loginBox) {
+        loginBox.style.display = "none";
+    }
+
+    if (loginBlocker) {
+        loginBlocker.style.display = "none";
+    }
+
+    document.body.classList.remove(
+        "logged-in",
+        "logged-out"
+    );
+}
 
 function showLogin() {
-    const loginBox = getAuthElement("loginBox");
-    const loginBlocker = getAuthElement("loginBlocker");
+    const loginBox =
+        getAuthElement("loginBox");
+
+    const loginBlocker =
+        getAuthElement("loginBlocker");
 
     if (loginBox) {
         loginBox.style.display = "";
@@ -142,8 +229,15 @@ function showLogin() {
         loginBlocker.style.display = "";
     }
 
-    document.body.classList.remove("logged-in");
-    document.body.classList.add("logged-out");
+    document.body.classList.remove(
+        "logged-in"
+    );
+
+    document.body.classList.add(
+        "logged-out"
+    );
+
+    finishAuthLoading();
 
     setTimeout(function () {
         const usernameInput =
@@ -157,8 +251,11 @@ function showLogin() {
 
 
 function hideLogin() {
-    const loginBox = getAuthElement("loginBox");
-    const loginBlocker = getAuthElement("loginBlocker");
+    const loginBox =
+        getAuthElement("loginBox");
+
+    const loginBlocker =
+        getAuthElement("loginBlocker");
 
     if (loginBox) {
         loginBox.style.display = "none";
@@ -168,12 +265,18 @@ function hideLogin() {
         loginBlocker.style.display = "none";
     }
 
-    document.body.classList.remove("logged-out");
-    document.body.classList.add("logged-in");
+    document.body.classList.remove(
+        "logged-out"
+    );
+
+    document.body.classList.add(
+        "logged-in"
+    );
 
     clearLoginMessage();
-}
 
+    finishAuthLoading();
+}
 
 // ============================================================
 // BENUTZERROLLE LADEN
@@ -658,12 +761,18 @@ async function logout() {
             return false;
         }
 
-    } catch (error) {
-        console.error(
-            "Unerwarteter Fehler beim Logout:",
-            error
-        );
-    }
+ } catch (error) {
+    console.error(
+        "Unerwarteter Fehler beim Logout:",
+        error
+    );
+
+    alert(
+        "Die Abmeldung konnte nicht durchgeführt werden."
+    );
+
+    return false;
+}
 
 
     currentUser = null;
@@ -833,6 +942,7 @@ function installLoginEvents() {
 // ============================================================
 
 function initializeAuth() {
+    hideAuthInterface();
     installLoginEvents();
     checkAuth();
 }

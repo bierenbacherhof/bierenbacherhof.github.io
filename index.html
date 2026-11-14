@@ -12,7 +12,7 @@
 
     <!-- Zentrale Anmeldung und Rollenverwaltung -->
     <script src="auth.js"></script>
-
+    <script src="navigation.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -208,34 +208,6 @@
         }
 
 
-        /* =====================================================
-           LOGOUT
-           ===================================================== */
-
-        #logoutBtn {
-            position: fixed;
-
-            top: 12px;
-            right: 20px;
-
-            padding: 9px 13px;
-
-            border: none;
-            border-radius: 6px;
-
-            background: #555;
-            color: white;
-
-            font-weight: 600;
-
-            cursor: pointer;
-
-            display: none;
-        }
-
-        #logoutBtn:hover {
-            background: #333;
-        }
 
 
         /* =====================================================
@@ -268,9 +240,6 @@
                 font-size: 52px;
             }
 
-            #logoutBtn {
-                right: 15px;
-            }
         }
     </style>
 </head>
@@ -375,83 +344,6 @@
 
     </div>
 
-
-    <!-- =====================================================
-         LOGOUT
-         ===================================================== -->
-
-    <button id="logoutBtn" type="button" onclick="logout()">
-        🚪 Abmelden
-    </button>
-
-
-    <!-- =====================================================
-         STARTSEITEN-INITIALISIERUNG
-         ===================================================== -->
-
-    <script>
-        "use strict";
-
-
-        /*
-         * auth.js hat zu diesem Zeitpunkt bereits:
-         *
-         * - die Session geprüft
-         * - den Benutzer geladen
-         * - die Rolle geladen
-         * - applyPermissions() ausgeführt
-         *
-         * Danach wird auth:ready ausgelöst.
-         */
-
-
-        document.addEventListener(
-            "auth:ready",
-            function () {
-
-                /*
-                 * Logout erst nach erfolgreicher
-                 * Anmeldung anzeigen.
-                 */
-
-                const logoutButton =
-                    document.getElementById(
-                        "logoutBtn"
-                    );
-
-                if (logoutButton) {
-                    logoutButton.style.display =
-                        "block";
-                }
-
-            }
-        );
-
-
-        /*
-         * Falls die Session während der Verwendung
-         * ungültig wird oder der Benutzer abgemeldet
-         * wurde, Logoutbutton wieder ausblenden.
-         */
-
-        document.addEventListener(
-            "auth:signed-out",
-            function () {
-
-                const logoutButton =
-                    document.getElementById(
-                        "logoutBtn"
-                    );
-
-                if (logoutButton) {
-                    logoutButton.style.display =
-                        "none";
-                }
-
-            }
-        );
-
-    </script>
 
 </body>
 

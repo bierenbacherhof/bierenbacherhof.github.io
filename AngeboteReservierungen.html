@@ -7,6 +7,7 @@
     <title>Angebote & Reservierungen | Bierenbacher Hof</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
+    <script src="navigation.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <style>
         :root {
@@ -46,11 +47,6 @@
         header h1 {
             font-size: 21px;
             margin: 0;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 8px;
         }
 
         .container {
@@ -416,10 +412,7 @@
     <div id="appContent" class="role-staff" data-auth-display="block">
         <header>
             <h1>Angebote & Reservierungen</h1>
-            <div class="header-actions">
-                <button class="light" onclick="location.href = 'index.html'">
-                    Startseite</button><button class="secondary" onclick="logout()">Abmelden</button>
-            </div>
+
         </header>
         <div class="container">
             <aside class="panel sidebar">

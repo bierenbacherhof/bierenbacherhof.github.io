@@ -4,6 +4,7 @@
 <head>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth.js"></script>
+  <script src="navigation.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
   <meta charset="UTF-8" />
@@ -1175,9 +1176,7 @@
         opacity: 1 !important;
       }
 
-      body.logged-in #logoutBtn {
-        display: inline-block !important;
-      }
+
 
       .searchJumpBtn {
         display: inline-block !important;
@@ -1383,7 +1382,6 @@
           🗑️
         </button>
 
-        <button id="logoutBtn" class="auth-only">🚪Logout</button>
       </div>
       <div id="lowerTopRightButtons">
         <button id="monthlyStatsBtn" style="display: none">monatliche Zählung</button>
@@ -13448,16 +13446,6 @@ DZ: ${stats.dz}<br>
           }
         );
       }
-
-      document.getElementById("logoutBtn").addEventListener("click", (e) => {
-        e.stopPropagation();
-
-        if (!confirm("Sind Sie sicher, dass Sie sich ausloggen wollen?")) {
-          return;
-        }
-
-        logout();
-      });
     });
 
 
