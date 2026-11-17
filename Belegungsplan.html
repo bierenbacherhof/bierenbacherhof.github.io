@@ -3302,6 +3302,28 @@
       return x;
     }
 
+    function getCalendarDayDifference(date, referenceDate) {
+      const currentDate = new Date(date);
+      const reference = new Date(referenceDate);
+
+      const currentUtc = Date.UTC(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        currentDate.getDate()
+      );
+
+      const referenceUtc = Date.UTC(
+        reference.getFullYear(),
+        reference.getMonth(),
+        reference.getDate()
+      );
+
+      return Math.round(
+        (currentUtc - referenceUtc) /
+        (1000 * 60 * 60 * 24)
+      );
+    }
+
     function startOfWeek(d) {
       let x = new Date(d);
       let day = x.getDay() || 7;
@@ -8163,12 +8185,15 @@ handleBluecardCheckbox('${b.id}', ${i});
         let bStart = normalizeDate(b.start);
         let bEnd = normalizeDate(b.end);
 
-        let diffStart = Math.floor((bStart - weekStart) / (1000 * 60 * 60 * 24));
-        let diffEnd = Math.floor((bEnd - weekStart) / (1000 * 60 * 60 * 24));
+        let diffStart = getCalendarDayDifference(
+          bStart,
+          weekStart
+        );
 
-
-
-
+        let diffEnd = getCalendarDayDifference(
+          bEnd,
+          weekStart
+        );
 
         if (diffEnd <= 0) {
           let endsExactlyAtStart = diffEnd === 0;
