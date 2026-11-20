@@ -5693,6 +5693,7 @@ window.onload = function() {
         i < leadingEmptyDays;
         i++
       ) {
+
         html += `
       <div class="occupancy-calendar-empty"></div>
     `;
@@ -5773,6 +5774,23 @@ window.onload = function() {
       </div>
     `;
       }
+      // Kalender immer auf 6 Wochen = 42 Felder auffüllen
+      const usedCalendarCells =
+        leadingEmptyDays + daysInMonth;
+
+      const trailingEmptyDays =
+        42 - usedCalendarCells;
+
+      for (
+        let i = 0;
+        i < trailingEmptyDays;
+        i++
+      ) {
+        html += `
+          <div class="occupancy-calendar-empty"></div>
+        `;
+      }
+
 
       html += `
     </div>
